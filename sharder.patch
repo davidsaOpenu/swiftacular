@@ -1,11 +1,243 @@
---- sharder.py	2023-09-01 13:03:42
-+++ sharder.py.patch	2023-09-15 17:23:07
-@@ -63,7 +63,7 @@
-     # fallback to checking if it has any shard ranges
-     if broker.has_other_shard_ranges():
-         return True
--    return False
-+    return True
+diff --git a/.gitignore b/.gitignore
+index f6a236df1..dec89e8d7 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -24,3 +24,4 @@ test/probe/.noseids
+ RELEASENOTES.rst
+ releasenotes/notes/reno.cache
+ 
+ /tools/playbooks/**/*.retry
++.venv/
+diff --git a/swift/common/utils/__init__.py b/swift/common/utils/__init__.py
+index 64a9061b4..659ee0552 100644
+--- a/swift/common/utils/__init__.py
++++ b/swift/common/utils/__init__.py
+@@ -15,6 +15,10 @@
+ 
+ """Miscellaneous utility functions for use with Swift."""
+ 
++IOCTL_PREPARE_READ   = 0x5301  # 'S' for Swift, 01 for read
++IOCTL_PREPARE_WRITE  = 0x5302  # 'S' for Swift, 02 for write
++IOCTL_PREPARE_LIST   = 0x5303  # 'S' for Swift, 03 for list/get_details
++IOCTL_PREPARE_DELETE = 0x5304  # 'S' for Swift, 04 for delete
+ 
+ import base64
+ import binascii
+diff --git a/swift/obj/diskfile.py b/swift/obj/diskfile.py
+index b581f43fa..af28215db 100644
+--- a/swift/obj/diskfile.py
++++ b/swift/obj/diskfile.py
+@@ -78,6 +78,10 @@ from swift.common.storage_policy import (
+     REPL_POLICY, EC_POLICY)
  
  
- def make_shard_ranges(broker, shard_data, shards_account_prefix):
++from swift.common.utils import (IOCTL_PREPARE_READ, IOCTL_PREPARE_WRITE, 
++                              IOCTL_PREPARE_LIST, IOCTL_PREPARE_DELETE)     
++
++
+ PICKLE_PROTOCOL = 2
+ DEFAULT_RECLAIM_AGE = timedelta(weeks=1).total_seconds()
+ DEFAULT_COMMIT_WINDOW = 60.0
+@@ -1833,9 +1837,48 @@ class BaseDiskFileWriter(object):
+             self._fd, self._tmppath = self._get_tempfile()
+         except OSError as err:
+             if err.errno in (errno.ENOSPC, errno.EDQUOT):
+-                # No more inodes in filesystem
++            # No more inodes in filesystem
+                 raise DiskFileNoSpace()
+             raise
++
++        # Attempt to call IOCTL_PREPARE_WRITE
++        try:
++            offset = 0
++            length = self._size if self._size is not None else 0
++            # If length is 0 and your IOCTL_PREPARE_WRITE is not designed for it,
++            # you might want to conditionally call ioctl or pass different args.
++            # For this example, we proceed as per your previous implementation.
++            buf = struct.pack('LL', offset, length)
++            fcntl.ioctl(self._fd, IOCTL_PREPARE_WRITE, buf)
++
++            # Logging the success (using the class logger if available)
++            if hasattr(self, 'logger') and self.logger:
++                self.logger.debug(
++                    "DiskFileWriter: Successfully called IOCTL_PREPARE_WRITE for fd %s, offset %s, length %s",
++                    self._fd, offset, length
++                )
++            # else:
++                # Fallback print for debugging if logger is not set up here
++                # print(f"DEBUG: DiskFileWriter: Successfully called IOCTL_PREPARE_WRITE for fd={self._fd}, offset={offset}, length={length}")
++
++        except IOError as e: # Specific to ioctl failures like EINVAL, EPERM, ENOTTY
++            if hasattr(self, 'logger') and self.logger:
++                self.logger.warning(
++                    "DiskFileWriter: IOCTL_PREPARE_WRITE failed for fd %s: %s (errno %s). Proceeding.",
++                    self._fd, e, e.errno
++                )
++            # else:
++                # print(f"WARNING: DiskFileWriter: IOCTL_PREPARE_WRITE failed for fd={self._fd}: {e} (errno {e.errno}). Proceeding.")
++        except Exception as e: # Catch other potential errors (e.g., struct.error, NameError if IOCTL_PREPARE_WRITE is undefined)
++            if hasattr(self, 'logger') and self.logger:
++                self.logger.error(
++                    "DiskFileWriter: Error during IOCTL_PREPARE_WRITE for fd %s: %s. Proceeding.",
++                    self._fd, e
++                )
++            # else:
++                # print(f"ERROR: DiskFileWriter: Error during IOCTL_PREPARE_WRITE for fd {self._fd}: {e}. Proceeding.")
++
++        # Original logic for fallocate and free space check
+         if self._extension == '.ts':
+             # DELETEs always bypass any free-space reserve checks
+             pass
+@@ -1856,6 +1899,7 @@ class BaseDiskFileWriter(object):
+                     self.manager.fallocate_is_percent
+             ):
+                 raise DiskFileNoSpace()
++                
+         return self
+ 
+     def close(self):
+@@ -2149,30 +2193,53 @@ class BaseDiskFileReader(object):
+             self._init_checks()
+             while True:
+                 try:
+-                    chunk = self._fp.read(self._disk_chunk_size)
+-                except IOError as e:
+-                    if e.errno == errno.EIO:
+-                        # Note that if there's no quarantine hook set up,
+-                        # this won't raise any exception
+-                        self._quarantine(str(e))
+-                    # ... so it's significant that this is not in an else
+-                    raise
+-                if chunk:
+-                    self._update_checks(chunk)
+-                    self._bytes_read += len(chunk)
+-                    if self._bytes_read - dropped_cache > DROP_CACHE_WINDOW:
+-                        self._drop_cache(self._fp.fileno(), dropped_cache,
+-                                         self._bytes_read - dropped_cache)
+-                        dropped_cache = self._bytes_read
+-                    yield chunk
+-                else:
+-                    self._read_to_eof = True
++                    current_offset = self._fp.tell()
++                    current_length = self._disk_chunk_size
++
++                    try:
++                        packed_data_for_read = struct.pack('LL', current_offset, current_length)
++                        fcntl.ioctl(self._fp.fileno(), IOCTL_PREPARE_READ, packed_data_for_read)
++                        if hasattr(self, 'logger') and self.logger:
++                            self.logger.debug(
++                                "DiskFileReader: Successfully called IOCTL_PREPARE_READ for fd %s, offset %s, length %s",
++                                self._fp.fileno(), current_offset, current_length
++                            )
++                    except IOError as ioctl_err:
++                        if hasattr(self, 'logger') and self.logger:
++                            self.logger.warning(
++                                "DiskFileReader: IOCTL_PREPARE_READ failed for fd %s (offset %s, length %s): %s (errno %s). Proceeding with normal read.",
++                                self._fp.fileno(), current_offset, current_length, ioctl_err, ioctl_err.errno
++                            )
++                except Exception as general_ioctl_err:
++                    if hasattr(self, 'logger') and self.logger:
++                        self.logger.error(
++                            "DiskFileReader: Error during IOCTL_PREPARE_READ for fd %s: %s. Proceeding with normal read.",
++                            self._fp.fileno(), general_ioctl_err
++                        )
++                
++                chunk = self._fp.read(self._disk_chunk_size)
++
++            except IOError as e:
++                if e.errno == errno.EIO:
++                    self._quarantine(str(e))
++                raise
++                
++            if chunk:
++                self._update_checks(chunk)
++                self._bytes_read += len(chunk)
++                if self._bytes_read - dropped_cache > DROP_CACHE_WINDOW:
+                     self._drop_cache(self._fp.fileno(), dropped_cache,
+                                      self._bytes_read - dropped_cache)
+-                    break
+-        finally:
+-            if not self._suppress_file_closing:
+-                self.close()
++                    dropped_cache = self._bytes_read
++                yield chunk
++            else:
++                self._read_to_eof = True
++                self._drop_cache(self._fp.fileno(), dropped_cache,
++                                 self._bytes_read - dropped_cache)
++                break
++    finally:
++        if not self._suppress_file_closing:
++            self.close()
+ 
+     def can_zero_copy_send(self):
+         return self._use_splice
+@@ -2865,6 +2932,31 @@ class BaseDiskFile(object):
+         self._datafile_metadata = self._failsafe_read_metadata(
+             fp, data_file,
+             add_missing_checksum=modernize)
++
++
++        try:
++            fcntl.ioctl(fp.fileno(), IOCTL_PREPARE_LIST)
++            if hasattr(self, 'logger'):
++                self.logger.debug(
++                    "DiskFile: Successfully called IOCTL_PREPARE_LIST for fd %s",
++                    fp.fileno()
++            )
++        except IOError as e:
++            if hasattr(self, 'logger'):
++                self.logger.warning(
++                "DiskFile: IOCTL_PREPARE_LIST failed for fd %s: %s (errno %s)",
++                fp.fileno(), e, e.errno
++            )
++        except Exception as e:
++            if hasattr(self, 'logger'):
++                self.logger.error(
++                "DiskFile: Error during IOCTL_PREPARE_LIST for fd %s: %s",
++                fp.fileno(), e
++            )
++
++
++
++
+         self._metadata = {}
+         if meta_file:
+             self._metafile_metadata = self._failsafe_read_metadata(
+@@ -3058,6 +3150,36 @@ class BaseDiskFile(object):
+         """
+         # this is dumb, only tests send in strings
+         timestamp = Timestamp(timestamp)
++
++        if self._fp:
++            try:
++                # Notify kernel/driver before logical delete
++                fcntl.ioctl(self._fp.fileno(), IOCTL_PREPARE_DELETE)
++                if hasattr(self, 'logger'):
++                    self.logger.debug(
++                        "DiskFile: Successfully called IOCTL_PREPARE_DELETE for fd %s, timestamp %s",
++                        self._fp.fileno(), timestamp.internal
++                    )
++            except IOError as e:
++                if hasattr(self, 'logger'):
++                    self.logger.warning(
++                        "DiskFile: IOCTL_PREPARE_DELETE failed for fd %s: %s (errno %s). Proceeding.",
++                        self._fp.fileno(), e, e.errno
++                    )
++            except Exception as e:
++                if hasattr(self, 'logger'):
++                    self.logger.error(
++                        "DiskFile: Error during IOCTL_PREPARE_DELETE for fd %s: %s. Proceeding.",
++                        self._fp.fileno(), e
++                    )
++        else:
++            if hasattr(self, 'logger'):
++                self.logger.info(
++                    "DiskFile: IOCTL_PREPARE_DELETE skipped for object %s, file not open.",
++                    self._name or self._datadir
++                )
++
++        
+         with self.create(extension='.ts') as deleter:
+             deleter.put({'X-Timestamp': timestamp.internal})
+ 
