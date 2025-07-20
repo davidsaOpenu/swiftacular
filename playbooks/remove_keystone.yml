@@ -3,6 +3,8 @@
 - hosts: authentication
 
   tasks:
-
-  - name: remode keystone mysql database
-    mysql_db: name=keystone state=absent
+  # works for both MySQL and MariaDB
+  - name: remove keystone mysql/mariadb database
+    mysql_db:
+      name: keystone
+      state: absent

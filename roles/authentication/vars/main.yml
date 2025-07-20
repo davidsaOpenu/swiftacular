@@ -2,13 +2,12 @@
 
 redhat_packages:
   - openstack-keystone
-  - mysql-server
 
 ubuntu_packages:
   - keystone
   - python-keyring
-  - mysql-server
-  - python-mysqldb
+  - mariadb-server
+  - python3-pymysql
 
 admin_env:
   OS_USERNAME: admin

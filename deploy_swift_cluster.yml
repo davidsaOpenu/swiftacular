@@ -4,27 +4,15 @@
   - all
   gather_facts: yes
   tasks:
-  - name: Ensure system packages are updated
-    ansible.builtin.yum:
-      name: '*'
-      state: latest
-      update_cache: true
-
   - name: Install python3-libselinux
-    ansible.builtin.yum:
+    ansible.builtin.dnf:
       name: python3-libselinux
       state: present
 
-#  - name: set selinux to pemissive
-#    selinux:
-#      policy: targeted
-#      state: permissive
 
-#
 # Setup a package_cache, especially when using
 # your laptop and Vagrant
 #
-
 - hosts: all
   tasks:
     - name: let us port bind

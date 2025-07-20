@@ -116,7 +116,10 @@
 
 
 - name: install rsync 
-  command: yum install -y rsync 
+  dnf:
+    name: rsync
+    state: present
+  become: yes
 
 - name: copy over rsyncd.conf to swift storage
   template: src=rsyncd.conf.j2 dest=/etc/rsyncd.conf

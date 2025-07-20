@@ -1,7 +1,4 @@
 ---
 
-- name: restart mysql
-  service: name=mysqld state=restarted
-
 - name: restart keystone
   service: name=openstack-keystone state=restarted

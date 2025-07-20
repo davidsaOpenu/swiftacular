@@ -10,11 +10,21 @@
 
 - name: Setup storage and proxy hosts so they support custom pcp pdmas
   hosts: storage, proxy
+  become: yes
   tasks:
-    - name: yum update
-      command: sudo yum install -y centos-release-openstack-zed
-    - name: install pip
-      command: sudo yum install -y python3-pip python3-devel pcp-devel liberasurecode-devel
+    - name: Install centos-release-openstack-epoxy
+      dnf:
+        name: centos-release-openstack-epoxy
+        state: present
+
+    - name: Install required packages
+      dnf:
+        name:
+          - python3-pip
+          - python3-devel
+          - pcp-devel
+          - liberasurecode-devel
+        state: present
 
 - name: Setup swiftdbinfo pmda on storage hosts
   hosts: storage
@@ -63,25 +73,58 @@
 
 - name: Setup configure grafana python script
   hosts: grafana,storage,proxy
+  become: yes
   tasks:
-    - name: install pip
-      command: yum install -y python3-pip python3-devel
-    - name:  pip install grafana
-      command: pip install grafana-client
+    - name: Install development packages
+      dnf:
+        name:
+          - python3-devel
+          - python3-pip
+        state: present
+
+    - name: Create virtual environment for grafana-client
+      command: python3 -m venv /opt/grafana-venv
+      args:
+        creates: /opt/grafana-venv
+
+    - name: Set proper ownership for virtual environment
+      file:
+        path: /opt/grafana-venv
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        recurse: yes
+
+    - name: Install grafana-client in virtual environment
+      pip:
+        name: grafana-client
+        state: present
+        virtualenv: /opt/grafana-venv
+        virtualenv_python: python3
+
+    - name: Copy configure_grafana.py script to target hosts
+      copy:
+        src: monitoring/grafana/configure_grafana.py
+        dest: /tmp/configure_grafana.py
+        mode: '0755'
 
 - name: Delete PCP Redis datasource to Grafana
   hosts: grafana
   tasks:
     - name: Run the configure_grafana.py script - delete-default-pcp-datasource
-      script: monitoring/grafana/configure_grafana.py  delete-default-pcp-datasource {{ hostvars['grafana-01']['ansible_default_ipv4']['address'] }}:3000 admin admin
-      args:
-        executable: python3
-
+      command: >
+        /opt/grafana-venv/bin/python /tmp/configure_grafana.py
+        delete-default-pcp-datasource
+        {{ hostvars['grafana-01']['ansible_default_ipv4']['address'] }}:3000
+        admin admin
 
 - name: Add PCP Redis datasource to Grafana
   hosts: storage,proxy
   tasks:
-    - name: Run the configure_grafana.py script -  create-pcp-datasource
-      script: monitoring/grafana/configure_grafana.py  create-pcp-datasource {{ hostvars['grafana-01']['ansible_default_ipv4']['address'] }}:3000 admin admin {{ inventory_hostname }} {{ ansible_host }}
-      args:
-        executable: python3
+    - name: Run the configure_grafana.py script - create-pcp-datasource
+      command: >
+        /opt/grafana-venv/bin/python /tmp/configure_grafana.py
+        create-pcp-datasource
+        {{ hostvars['grafana-01']['ansible_default_ipv4']['address'] }}:3000
+        admin admin
+        {{ inventory_hostname }}
+        {{ ansible_host }}

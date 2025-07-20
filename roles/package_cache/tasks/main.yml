@@ -1,12 +1,12 @@
 ---
 
-#
-# Debian
-#
-
 - name: Display all variables/facts known for a host
   debug:
     var: hostvars[inventory_hostname]
+
+#
+# Debian
+#
 
 - include_tasks: debian.yml
   when: ansible_os_family == 'Debian'

@@ -76,7 +76,7 @@ post_install_common() {
 }
 
 install_for_fedora() {
-    yum install -y yum-utils \
+    dnf install -y dnf-utils \
                    libvirt-devel \
                    qemu-kvm \
                    pcp-devel \
@@ -86,15 +86,12 @@ install_for_fedora() {
                    zlib-devel \
                    ruby-devel \
                    rsync
-    check_success "yum install packages"
+    check_success "dnf install packages"
 
-    # Add HashiCorp repository and install Vagrant
-    # https://developer.hashicorp.com/vagrant/downloads
-    yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
-    check_success "yum-config-manager --add-repo"
+    # Install Vagrant
+    dnf install -y vagrant
+    check_success "dnf install vagrant"
 
-    yum -y install vagrant
-    check_success "yum install vagrant"
 
     dnf5 install -y @development-tools
     check_success "dnf5 install @development-tools"

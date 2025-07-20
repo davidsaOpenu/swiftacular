@@ -1,4 +1,6 @@
 ---
 
-- name: yum makecache
-  command: yum makecache
+- name: Update dnf cache
+  dnf:
+    update_cache: yes
+  become: yes

@@ -124,7 +124,21 @@ Because this playbook configures self-signed SSL certificates and by default the
 You can install the swift client anywhere that you have access to the SSL termination point and Keystone. So you could put it on your local laptop as well, probably with:
 
 ```bash
-$ pip install python-swiftclient
+# Fedora 42
+sudo dnf install python3-swiftclient
+
+# Ubuntu 22.04
+sudo apt-get install python3-swiftclient
+
+# PyPI:
+# Mixing installations from system package managers like dnf or apt with Python's pip
+# on virtual machines is strongly discouraged. This practice can lead to severe version
+# conflicts, broken dependencies, and unpredictable system behavior, making
+# troubleshooting extremely difficult. A virtual environment (virtualenv) should be used
+# when proceeding this way.
+python -m venv venv
+. ./venv/bin/activate
+pip install python-swiftclient
 ```
 
 However, I usually login to the package_cache server and use swift from there.

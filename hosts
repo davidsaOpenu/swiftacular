@@ -29,11 +29,6 @@ swift-proxy-01 ansible_ssh_host=192.168.100.100 ansible_ssh_private_key_file=./.
 swift-storage-01 ansible_ssh_host=192.168.100.200 ansible_ssh_private_key_file=./.vagrant/machines/swift-storage-01/libvirt/private_key
 swift-storage-02 ansible_ssh_host=192.168.100.201 ansible_ssh_private_key_file=./.vagrant/machines/swift-storage-02/libvirt/private_key
 swift-storage-03 ansible_ssh_host=192.168.100.202 ansible_ssh_private_key_file=./.vagrant/machines/swift-storage-03/libvirt/private_key
-#swift-storage-04 ansible_ssh_host=192.168.122.28  ansible_ssh_user=root
-#swift-storage-05 ansible_ssh_host=192.168.122.148 ansible_ssh_user=root
-#swift-storage-06 ansible_ssh_host=192.168.122.15  ansible_ssh_user=root
-#swift-storage-07 ansible_ssh_host=192.168.122.219 ansible_ssh_user=root
-#swift-storage-08 ansible_ssh_host=192.168.122.109 ansible_ssh_user=root
 
 [grafana]
 grafana-01 ansible_ssh_host=192.168.100.150 ansible_ssh_private_key_file=./.vagrant/machines/grafana-01/libvirt/private_key

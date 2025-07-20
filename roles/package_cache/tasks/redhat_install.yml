@@ -1,17 +1,18 @@
 ---
 
-- name: install squid to cache rpm packages
-  command: yum install -y squid
+- name: Install squid to cache rpm packages
+  dnf:
+    name: squid
+    state: present
+  become: yes
 
-- name: install pip
-  command: yum install -y python3-pip
+- name: Install pip
+  dnf:
+    name: python3-pip
+    state: present
+  become: yes
 
-- name: install pytest
-  command: pip3 install pytest
-
-#- name: install python2-pip
-#  command: yum install -y python2-pip
-
-#- name: install selinux
-#  command: pip2 install selinux
-
+- name: Install pytest
+  pip:
+    name: pytest
+    state: present

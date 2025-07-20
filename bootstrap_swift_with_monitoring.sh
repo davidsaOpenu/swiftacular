@@ -14,7 +14,10 @@ run_playbook() {
   local playbook=$1
   local description=$2
 
-  echo "Running $description..."
+  echo "*********************************************************************************************"
+  echo "Running playbook $description..."
+  echo "*********************************************************************************************"
+
   local start_time=$(date +%s%3N)  # Get start time in epoch milliseconds
 
   ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook
@@ -36,56 +39,55 @@ run_playbook() {
   done
 }
 
-# Check if vagrant-libvirt plugin is installed
-if ! vagrant plugin list | grep -q 'vagrant-libvirt'; then
-    echo "Installing vagrant-libvirt plugin..."
-    vagrant plugin install vagrant-libvirt
-else
-    echo "vagrant-libvirt plugin is already installed."
-fi
+# # Check if vagrant-libvirt plugin is installed
+# if ! vagrant plugin list | grep -q 'vagrant-libvirt'; then
+#     echo "Installing vagrant-libvirt plugin..."
+#     vagrant plugin install vagrant-libvirt
+# else
+#     echo "vagrant-libvirt plugin is already installed."
+# fi
 
-./vagrant_box.sh
+# ./vagrant_box.sh
 
-# Install community.general module
-ansible-galaxy collection install community.general
+# # Install community.general module
+# ansible-galaxy collection install community.general
 
-# Install community.mysql
-ansible-galaxy collection install community.mysql
+# # Install community.mysql
+# ansible-galaxy collection install community.mysql
 
-# Install performancecopilot.metrics collection
-# Explicitly get v2.3.0. ansible-galaxy collection install performancecopilot.metrics
-# installs lates 2.4.0 without redis roles.
-# TODO: install latest, address the issue.
-ansible-galaxy collection install git+https://github.com/performancecopilot/ansible-pcp.git,v2.3.0
+# # Install performancecopilot.metrics collection
+# # Explicitly get v2.3.0. ansible-galaxy collection install performancecopilot.metrics
+# # installs lates 2.4.0 without redis roles.
+# # TODO: install latest, address the issue.
+# ansible-galaxy collection install git+https://github.com/performancecopilot/ansible-pcp.git,v2.3.0
 
-# Run the playbooks with timing and logging
-echo start
-vagrant up
-
-
-# List VMs in all sessions
-virsh -c qemu:///session list --all     # user session
-virsh -c qemu:///system list --all      # system session
+# # Run the playbooks with timing and logging
+# echo start
+# vagrant up
 
 
-ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts setup-swift-monitoring.yml
+# # List VMs in all sessions
+# virsh -c qemu:///session list --all     # user session
+# virsh -c qemu:///system list --all      # system session
 
-# Install jsonnet on localhost
-ansible-playbook -i 'localhost,' -c local jsonnet_install.yml
+# cp group_vars/all.example group_vars/all
+
+# ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts setup-swift-monitoring.yml
+
+# # Install jsonnet on localhost
+# ansible-playbook -i 'localhost,' -c local jsonnet_install.yml
  
 
-# Iterate over dashboard pairs and create each dashboard
-for dashboard in "${!dashboards[@]}"; do
-  uid=${dashboards[$dashboard]}
-  python monitoring/grafana/configure_grafana.py create-dashboard ${grafana_ip}:3000 admin admin "monitoring/grafana/dashboards/${dashboard}" "${uid}"
-  echo "Grafana Dashboard for ${dashboard}: http://${grafana_ip}:3000/d/${uid}/"
-done
-
+# # Iterate over dashboard pairs and create each dashboard
+# for dashboard in "${!dashboards[@]}"; do
+#   uid=${dashboards[$dashboard]}
+#   python monitoring/grafana/configure_grafana.py create-dashboard ${grafana_ip}:3000 admin admin "monitoring/grafana/dashboards/${dashboard}" "${uid}"
+#   echo "Grafana Dashboard for ${dashboard}: http://${grafana_ip}:3000/d/${uid}/"
+# done
 
 # Deploy Swift Cluster
-cp group_vars/all.example group_vars/all
-run_playbook "deploy_swift_cluster.yml" "Deploy Swift Cluster"
- 
+# run_playbook "deploy_swift_cluster.yml" "Deploy Swift Cluster"
+# exit 0
 run_playbook "setup_workload_test.yml" "Setup Workload Test"
 
 
