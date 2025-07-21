@@ -2,6 +2,10 @@
 
 set -e
 
+# Vagrant/libvirt creat VMs in system session
+export LIBVIRT_DEFAULT_URI="qemu:///system"
+
+
 # Array of dashboard JSON files and their UIDs
 declare -A dashboards
 dashboards["swiftdbinfo.jsonnet"]="swiftdbinfo"
