@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ccfc9738_ad0a9966",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2025-07-21T23:28:15Z",
+      "side": 1,
+      "message": "verified by https://review.gerrithub.io/c/davidsaOpenu/swiftacular/+/1218871/3?usp\u003drelated-change",
+      "revId": "fda6cab95a1be8bdcc048ddd0566f693106b06e4",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
