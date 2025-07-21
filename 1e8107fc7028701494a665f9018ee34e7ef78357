@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "1e8107fc7028701494a665f9018ee34e7ef78357",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "44ce1f29_ed880d48",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2025-07-21T23:28:04Z",
+      "side": 1,
+      "message": "verified by https://review.gerrithub.io/c/davidsaOpenu/swiftacular/+/1218871/3?usp\u003drelated-change",
+      "revId": "1e8107fc7028701494a665f9018ee34e7ef78357",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     }
   ]
 }
