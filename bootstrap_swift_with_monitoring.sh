@@ -66,10 +66,6 @@ echo start
 vagrant up
 
 
-# List VMs in all sessions
-virsh -c qemu:///session list --all     # user session
-virsh -c qemu:///system list --all      # system session
-
 cp group_vars/all.example group_vars/all
 
 ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts setup-swift-monitoring.yml
