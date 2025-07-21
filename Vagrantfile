@@ -35,7 +35,7 @@ Vagrant.configure("2") do |config|
   config.vm.provider :libvirt do |libvirt|
     # false = Use system session (qemu:///system)
     # true = Use user session (qemu:///session)
-    libvirt.qemu_use_session = true # use the user libvirt session
+    libvirt.qemu_use_session = false # use the user libvirt session
     # libvirt.uri = 'qemu:///session' # fallback if the above line doesn't work
   end
 
