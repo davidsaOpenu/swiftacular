@@ -11,7 +11,6 @@ checkmodule -M -m -o allow-swiftdbinfo.mod allow-swiftdbinfo.te
 semodule_package -o allow-swiftdbinfo.pp -m allow-swiftdbinfo.mod
 sudo semodule -i allow-swiftdbinfo.pp
 
-python -m pip install swift
 pmdaSetup
 pmdaInstall
 exit

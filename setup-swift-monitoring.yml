@@ -20,7 +20,7 @@
     - name: Install required packages
       dnf:
         name:
-          - python3-pip
+          #- python3-pip
           - python3-devel
           - pcp-devel
           - liberasurecode-devel
@@ -36,10 +36,39 @@
         mode: u=rwx,g=rwx,o=rwx
     - name: change ownership pf pdma
       command: sudo chown $USER /var/lib/pcp/pmdas/swiftdbinfo
+
+    - name: Install OpenStack Epoxy release package
+      ansible.builtin.dnf:
+        name: centos-release-openstack-epoxy
+        state: present
+
+    - name: Enable CRB repository for additional dependencies
+      ansible.builtin.command:
+        cmd: dnf config-manager --set-enabled crb
+      become: yes
+
+    - name: Update package cache after adding repo and enabling CRB
+      ansible.builtin.dnf:
+        update_cache: yes
+
+    - name: Install required dependencies
+      ansible.builtin.dnf:
+        name:
+          - python3-pyxattr
+          - python3-pip
+        state: present
+
+    - name: Install OpenStack Swift
+      ansible.builtin.dnf:
+        name: 
+          - openstack-swift
+          - python3-swift
+        state: present
+
     - name: Install PDMA
       shell: |
             cd /var/lib/pcp/pmdas/swiftdbinfo
-            sudo ./Install
+            sudo ./Install.sh
     - name: Enable and configure perssitant logging for custom pdma
       shell: |
             sudo sed -i '/\[access\]/i\
@@ -79,7 +108,7 @@
       dnf:
         name:
           - python3-devel
-          - python3-pip
+          # - python3-pip
         state: present
 
     - name: Create virtual environment for grafana-client

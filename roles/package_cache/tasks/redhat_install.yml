@@ -6,13 +6,7 @@
     state: present
   become: yes
 
-- name: Install pip
-  dnf:
-    name: python3-pip
-    state: present
-  become: yes
-
-- name: Install pytest
-  pip:
-    name: pytest
+- name: Install pytest using system package manager
+  ansible.builtin.dnf:
+    name: python3-pytest
     state: present
