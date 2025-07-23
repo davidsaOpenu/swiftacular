@@ -3,6 +3,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7a3930d9_b19efd55",
+        "filename": ".gitreview",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2025-07-23T06:41:21Z",
+      "side": 1,
+      "message": "nessesary? we have a master branch in the repo",
+      "revId": "72df61c745abb0feceb915bbf203da22a8661d72",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "5d676019_a2a35b4a",
         "filename": "/COMMIT_MSG",
         "patchSetId": 1
