@@ -1,6 +1,40 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "5d676019_a2a35b4a",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2025-07-23T06:29:47Z",
+      "side": 1,
+      "message": "https://www.mediawiki.org/wiki/Gerrit/Commit_message_guidelines",
+      "revId": "72df61c745abb0feceb915bbf203da22a8661d72",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "970556d7_1d55ebcf",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2025-07-23T06:29:47Z",
+      "side": 1,
+      "message": "aslo, plz add a link to the Trello card",
+      "revId": "72df61c745abb0feceb915bbf203da22a8661d72",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "1c8d7d32_1c067077",
