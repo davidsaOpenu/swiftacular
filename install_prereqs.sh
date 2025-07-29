@@ -111,7 +111,7 @@ install_for_fedora() {
     dnf install python3-resolvelib
     check_success "!!"
 
-    dnf install ansible-lint
+    dnf install python3-tox
     check_success "!!"
 }
 
@@ -145,7 +145,7 @@ install_for_ubuntu() {
     check_success "!!"
     apt install -y ansible
     check_success "!!"
-    apt install ansible-lint
+    apt  install python3-tox
     check_success "!!"
 
     grep -qxF 'export PATH=$HOME/.local/bin:$PATH' ~/.bashrc || echo 'export PATH=$HOME/.local/bin:$PATH' >> ~/.bashrc
