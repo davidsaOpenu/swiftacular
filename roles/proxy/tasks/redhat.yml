@@ -1,6 +1,6 @@
 ---
 - name: Install required proxy packages
   ansible.builtin.dnf:
-    name: "{{ redhat_packages }}"
+    name: "{{ proxy_redhat_packages }}"
     state: present
   become: true

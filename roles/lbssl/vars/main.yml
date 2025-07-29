@@ -1,10 +1,10 @@
 ---
 
 # Yup -- capital P on Pound for redhat
-redhat_packages:
+lbssl_redhat_packages:
   - Pound
   - openssl
 
-ubuntu_packages:
+lbssl_ubuntu_packages:
   - pound
   - openssl

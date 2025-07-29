@@ -3,19 +3,25 @@
 # Install and configure a keystone authentication server
 #
 
-- ansible.builtin.include_tasks: debian.yml
+- name: Play debian.yml
+  ansible.builtin.include_tasks: debian.yml
   when: ansible_os_family == 'Debian'
 
-- ansible.builtin.include_tasks: redhat.yml
+- name: Play redhat.yml
+  ansible.builtin.include_tasks: redhat.yml
   when: ansible_os_family == 'RedHat'
 
 #
 # Common
 #
 
-- ansible.builtin.include_tasks: common.yml
-- ansible.builtin.include_tasks: debian_test.yml
+- name: Play common.yml
+  ansible.builtin.include_tasks: common.yml
+
+- name: Play debian_test.yml
+  ansible.builtin.include_tasks: debian_test.yml
   when: ansible_os_family == 'Debian'
 
-- ansible.builtin.include_tasks: redhat_test.yml
+- name: Play redhat_test.yml
+  ansible.builtin.include_tasks: redhat_test.yml
   when: ansible_os_family == 'RedHat'

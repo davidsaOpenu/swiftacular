@@ -3,17 +3,32 @@
 # For some reason the pound package is capitalized
 - name: Ensure required packages are installed
   ansible.builtin.dnf:
-    name: "{{ redhat_packages }}"
+    name: "{{ lbssl_redhat_packages }}"
     state: present
   become: true
 
 - name: Ensure there is a /etc/pound directory
-  ansible.builtin.file: dest=/etc/pound state=directory owner=pound group=pound mode=0750
+  ansible.builtin.file:
+    dest: /etc/pound
+    state: directory
+    owner: pound
+    group: pound
+    mode: "0750"
 - name: Remove default /etc/pound.cfg file
-  ansible.builtin.file: path=/etc/pound.cfg state=absent
+  ansible.builtin.file:
+    path: /etc/pound.cfg
+    state: absent
 - name: Copy over pound.cfg
-  ansible.builtin.template: src=redhat_pound.cfg.j2 dest=/etc/pound/pound.cfg owner=root group=root mode=0644
+  ansible.builtin.template:
+    src: redhat_pound.cfg.j2
+    dest: /etc/pound/pound.cfg
+    owner: root
+    group: root
+    mode: "0644"
   notify: restart pound
 
 - name: Link /etc/pound/pound.cfg to /etc/pound.cfg
-  ansible.builtin.file: src=/etc/pound/pound.cfg dest=/etc/pound.cfg state=link
+  ansible.builtin.file:
+    src: /etc/pound/pound.cfg
+    dest: /etc/pound.cfg
+    state: link

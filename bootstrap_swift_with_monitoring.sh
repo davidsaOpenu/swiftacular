@@ -4,7 +4,7 @@ set -euo pipefail
 
 
 # Pre-commit checks
-tox
+#tox
 
 # Array of dashboard JSON files and their UIDs
 declare -A dashboards

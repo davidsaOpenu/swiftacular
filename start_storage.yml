@@ -1,30 +1,40 @@
 ---
-# XXX FIX ME - duplicate code XXX
-- name: put the *.ring.gz files on all storage servers
-  copy: src=fetch/{{ item }}.ring.gz dest=/etc/swift/{{item}}.ring.gz owner=swift group=swift mode=0640
+- name: Put the *.ring.gz files on all storage servers
+  ansible.builtin.copy:
+    src: "fetch/{{ item }}.ring.gz"
+    dest: "/etc/swift/{{ item }}.ring.gz"
+    owner: swift
+    group: swift
+    mode: "0640"
   register: new_rings
   with_items:
     - account
     - object
     - container
 
-- name: make sure default configuration files are *not* there
-  file: state=absent path=/etc/swift/{{ item }}-server.conf
+- name: Make sure default configuration files are *not* there
+  ansible.builtin.file:
+    state: absent
+    path: /etc/swift/{{ item }}-server.conf
   with_items:
     - account
     - object
     - container
 
-- name: stop swift-storage node services
-  command: swift-init all stop
+- name: Restart swift services when rings changed
   when: new_rings.changed
-  ignore_errors: true
+  block:
+    - name: Stop swift-storage node services
+      ansible.builtin.command: swift-init all stop
+      register: swift_stop_result
+      changed_when: swift_stop_result.rc == 0
+      failed_when: false
+      become: true
 
-- name: restart swift-storage node services
-  command: swift-init all start
-  when: new_rings.changed
+    - name: Restart swift-storage node services # noqa no-handler no-changed-when
+      ansible.builtin.command: swift-init all start
 
-# XXX FIX ME XXX
-- name: restart syslog
-  service: name=rsyslog state=restarted
-  when: new_rings.changed
+    - name: Restart syslog # noqa no-handler no-changed-when
+      ansible.builtin.service:
+        name: rsyslog
+        state: restarted

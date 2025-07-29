@@ -1,9 +1,12 @@
 ---
 - name: Install precise openstack havana apt repository
-  ansible.builtin.apt_repository: repo='deb http://ubuntu-cloud.archive.canonical.com/ubuntu precise-updates/havana main' state=present
+  ansible.builtin.apt_repository:
+    repo: "deb http://ubuntu-cloud.archive.canonical.com/ubuntu precise-updates/havana main"
+    state: present
   register: new_repo
   when: ansible_distribution_release == "precise"
 
-- name: Update apt
-  ansible.builtin.command: apt-get update
-  when: new_repo.changed
+- name: Update package cache if repository changed
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 0

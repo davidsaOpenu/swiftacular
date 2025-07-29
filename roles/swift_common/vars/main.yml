@@ -1,12 +1,12 @@
 ---
 
-ubuntu_packages:
+swift_common_ubuntu_packages:
   - swift
   - python-swiftclient
   - openssh-server
   - rsync
 
-redhat_packages:
+swift_common_redhat_packages:
   - openstack-swift
   - rsync
   - python3-swiftclient
