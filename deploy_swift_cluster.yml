@@ -13,9 +13,8 @@
 #
 - hosts: all
   tasks:
-    - name: let us port bind
-      command: setsebool -P swift_can_network 1
-
+    - name: Let us port bind
+      ansible.builtin.command: setsebool -P swift_can_network 1
 - hosts: package_cache
   roles:
     - package_cache
@@ -27,8 +26,8 @@
 
 - hosts: all
   tasks:
-    - name: redirection ansible_ethN
-      set_fact:
+    - name: Redirection ansible_ethN
+      ansible.builtin.set_fact:
         ansible_eth1: "{{ ansible_ens6 }}"
         ansible_eth2: "{{ ansible_ens7 }}"
         ansible_eth3: "{{ ansible_ens8 }}"
@@ -48,8 +47,8 @@
 
 - hosts: all
   tasks:
-    - name: redirection ansible_ethN twice
-      set_fact:
+    - name: Redirection ansible_ethN twice
+      ansible.builtin.set_fact:
         ansible_eth1: "{{ ansible_ens6 }}"
         ansible_eth2: "{{ ansible_ens7 }}"
         ansible_eth3: "{{ ansible_ens8 }}"
@@ -77,8 +76,8 @@
 #
 - hosts: all
   tasks:
-    - name: redirection ansible_ethN again
-      set_fact:
+    - name: Redirection ansible_ethN again
+      ansible.builtin.set_fact:
         ansible_eth1: "{{ ansible_ens6 }}"
         ansible_eth2: "{{ ansible_ens7 }}"
         ansible_eth3: "{{ ansible_ens8 }}"
@@ -100,20 +99,18 @@
   #  vars_file:
   #  - include_tasks: vars/{{ansible_os_family}}.yml
   tasks:
-    - include_tasks: start_proxy.yml
-
+    - ansible.builtin.include_tasks: start_proxy.yml
 - hosts:
     - storage
   #  vars_file:
   #  - include_tasks: vars/{{ansible_os_family}}.yml
   tasks:
-    - include_tasks: start_storage.yml
-
+    - ansible.builtin.include_tasks: start_storage.yml
 - hosts:
     - all
   tasks:
-    - name: restore selinux state
-      selinux:
+    - name: Restore selinux state
+      ansible.posix.selinux:
         policy: targeted
         state: enforcing
 

@@ -8,4 +8,9 @@
   with_items: "{{ redhat_packages }}"
 
 - name: Copy rsync init script to /etc/init.d/rsync
-  ansible.builtin.copy: src=redhat_rsync.init dest=/etc/rc.d/init.d/rsync owner=root group=root mode=0755
+  ansible.builtin.copy:
+    src: redhat_rsync.init
+    dest: /etc/rc.d/init.d/rsync
+    owner: root
+    group: root
+    mode: "0755"
