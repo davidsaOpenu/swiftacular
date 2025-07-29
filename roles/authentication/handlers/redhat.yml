@@ -1,4 +1,5 @@
 ---
-
-- name: restart keystone
-  service: name=openstack-keystone state=restarted
+- name: Restart keystone
+  ansible.builtin.service:
+    name: openstack-keystone
+    state: restarted

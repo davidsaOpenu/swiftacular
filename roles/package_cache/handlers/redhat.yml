@@ -1,6 +1,7 @@
 ---
-
 # redhat handlers
 
-- name: restart squid
-  service: name=squid state=restarted
+- name: Restart squid
+  ansible.builtin.service:
+    name: squid
+    state: restarted

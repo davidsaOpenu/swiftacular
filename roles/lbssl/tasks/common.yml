@@ -1,5 +1,3 @@
 ---
-
-- include_tasks: common_pound_ssl.yml
-- include_tasks: common_pound_service.yml
-
+- ansible.builtin.include_tasks: common_pound_ssl.yml
+- ansible.builtin.include_tasks: common_pound_service.yml

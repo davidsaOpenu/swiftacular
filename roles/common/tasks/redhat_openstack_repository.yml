@@ -1,7 +1,6 @@
 ---
-
 - name: Install SELinux Python bindings
-  dnf:
+  ansible.builtin.dnf:
     name: python3-libselinux
     state: present
-  become: yes
+  become: true
