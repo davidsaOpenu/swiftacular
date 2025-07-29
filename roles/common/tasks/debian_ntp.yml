@@ -4,9 +4,16 @@
 #
 
 - name: Install ntp package
-  ansible.builtin.apt: pkg=ntp state=installed
+  ansible.builtin.apt:
+    pkg: ntp
+    state: installed
 - name: Set timezone to timezone_area/timezone_city
-  ansible.builtin.template: src=timezone.j2 dest=/etc/timezone owner=root group=root mode=0644
+  ansible.builtin.template:
+    src: timezone.j2
+    dest: /etc/timezone
+    owner: root
+    group: root
+    mode: "0644"
   register: timezone
 
 - name: Setup timezone link
@@ -14,7 +21,9 @@
   when: timezone.changed
 
 - name: Stop ntpd to run ntpdate
-  ansible.builtin.service: name=ntp state=stopped
+  ansible.builtin.service:
+    name: ntp
+    state: stopped
   when: timezone.changed
 
 - name: Set time with ntpdate
@@ -22,5 +31,8 @@
   when: timezone.changed
 
 - name: Start ntpd
-  ansible.builtin.service: name=ntp state=running enabled=yes
+  ansible.builtin.service:
+    name: ntp
+    state: running
+    enabled: "yes"
   when: timezone.changed

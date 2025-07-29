@@ -17,7 +17,6 @@
   apt: name={{ item }} state=installed
   with_items:
     - nmap
-    #- rubygems
     - libxml2
     - libxslt1-dev
     - libxml2-dev
