@@ -1,9 +1,23 @@
 ---
+- name: Update DNF package cache
+  ansible.builtin.dnf:
+    update_cache: true
+
+- name: Enable CRB repository
+  ansible.builtin.command:
+    cmd: dnf config-manager --enable crb
+  changed_when: false # noqa no-changed-when
+
+- name: Install centos-release-openstack-epoxy
+  ansible.builtin.dnf:
+    name: centos-release-openstack-epoxy
+    state: present
+
+- name: Update package cache after adding OpenStack repository
+  ansible.builtin.dnf:
+    update_cache: true
+
 - name: Install required packages for swift_common
-  ansible.builtin.shell: |
-    dnf update -y
-    dnf config-manager --enable crb
-    dnf install -y centos-release-openstack-epoxy
-    # setenforce 0
-    dnf update -y
-    dnf install -y openstack-swift rsync
+  ansible.builtin.dnf:
+    name: "{{ swift_common_redhat_packages }}"
+    state: present

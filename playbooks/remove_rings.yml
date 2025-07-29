@@ -1,6 +1,6 @@
 ---
-- hosts: storage
-
+- name: Stop storage services and cleanup disk images
+  hosts: storage
   tasks:
     - name: Stop all swift-storage node services
       ansible.builtin.command: swift-init all stop
@@ -10,15 +10,19 @@
       ansible.builtin.shell: umount /srv/node/{{ disk_prefix }}{{ item }}; losetup -d /dev/loop{{ item }}; rm -f /var/tmp/{{ disk_prefix }}{{ item }}.img
       with_sequence: count=3
 
-- hosts: proxy
-
+- name: Stop proxy services and cleanup builder files
+  hosts: proxy
   tasks:
     - name: Stop swift-proxy on proxy nodes
-      ansible.builtin.service: name=openstack-swift-proxy state=stopped
+      ansible.builtin.service:
+        name: openstack-swift-proxy
+        state: stopped
       when: ansible_os_family == 'RedHat'
 
     - name: Stop swift-proxy on proxy nodes
-      ansible.builtin.service: name=swift-proxy state=stopped
+      ansible.builtin.service:
+        name: swift-proxy
+        state: stopped
       when: ansible_os_family == 'Debian'
 
     - name: Remove builder files
@@ -28,10 +32,10 @@
         - container
         - object
 
-- hosts:
+- name: Remove ring files from all Swift nodes
+  hosts:
     - storage
     - proxy
-
   tasks:
     - name: Remove ring files
       ansible.builtin.command: rm -f /etc/swift/{{item}}.ring.gz

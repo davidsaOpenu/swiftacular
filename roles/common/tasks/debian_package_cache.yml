@@ -1,9 +1,15 @@
 ---
 - name: Setup apt-cacher-ng proxy
-  ansible.builtin.template: src=01proxy.j2 dest=/etc/apt/apt.conf.d/01proxy
+  ansible.builtin.template:
+    src: 01proxy.j2
+    dest: /etc/apt/apt.conf.d/01proxy
   register: new_apt_cacher
 
 - name: Install required packages to add havana repository
-  ansible.builtin.apt: name={{ item }} state=installed update_cache=yes
-  with_items: ubuntu_packages
+  ansible.builtin.apt:
+    name: "{{"
+    state: installed
+    update_cache: "yes"
+    cmd: item }}
+  with_items: common_ubuntu_packages
   when: new_apt_cacher.changed

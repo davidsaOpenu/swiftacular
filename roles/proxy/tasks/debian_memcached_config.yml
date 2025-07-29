@@ -1,4 +1,7 @@
 ---
 - name: Tell memcached what IP to listen on
-  ansible.builtin.lineinfile: dest=/etc/memcached.conf regexp="^-l" line='-l {{ ansible_ens8.ipv4.address }}'
+  ansible.builtin.lineinfile:
+    dest: /etc/memcached.conf
+    regexp: "^-l"
+    line: "-l {{ ansible_ens8.ipv4.address }}"
   notify: restart memcached
