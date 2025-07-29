@@ -25,10 +25,12 @@
         url: https://github.com/jsonnet-bundler/jsonnet-bundler/releases/download/v0.6.0/jb-linux-amd64
         dest: "{{ lookup('env', 'HOME') }}/.local/bin/jb"
         mode: '0755'
-        timeout: 60
-        force: no  # Don't re-download if file exists
-      retries: 3
-      delay: 10
+        timeout: 180
+        force: no     # Don't re-download if file exists
+      register: jb_download_result
+      retries: 5
+      delay: 15
+      until: jb_download_result is succeeded
 
     - name: Ensure ~/.local/bin is in the user's PATH
       lineinfile:
