@@ -88,6 +88,11 @@ install_for_fedora() {
 
     # Required for ansible-galaxy later in bootstrap script
     dnf install python3-resolvelib
+    check_success "!!"
+
+    # Install ansible-lint
+    dnf install ansible-lint
+    check_success "!!"
 }
 
 install_for_ubuntu() {
@@ -119,6 +124,9 @@ install_for_ubuntu() {
     check_success "!!"
     apt install ansible
     check_success "!!"
+    apt install ansible-lint
+    check_success "!!"
+
 
     grep -qxF 'export PATH=$HOME/.local/bin:$PATH' ~/.bashrc || echo 'export PATH=$HOME/.local/bin:$PATH' >> ~/.bashrc
 
