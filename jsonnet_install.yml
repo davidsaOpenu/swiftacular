@@ -20,15 +20,24 @@
         dest: "{{ lookup('env', 'HOME') }}/.local/bin/jsonnet"
         mode: '0755'
 
-    - name: Download jb binary
-      get_url:
-        url: https://github.com/jsonnet-bundler/jsonnet-bundler/releases/download/v0.6.0/jb-linux-amd64
-        dest: "{{ lookup('env', 'HOME') }}/.local/bin/jb"
+    - name: Download jb binary with wget (reliable workaround)
+      command: >
+        wget -O {{ lookup('env', 'HOME') }}/.local/bin/jb
+        https://github.com/jsonnet-bundler/jsonnet-bundler/releases/download/v0.6.0/jb-linux-amd64
+      args:
+        creates: "{{ lookup('env', 'HOME') }}/.local/bin/jb"
+      register: wget_result
+      retries: 5
+      delay: 15
+      until: wget_result.rc == 0
+
+    - name: Ensure jb binary is executable
+      file:
+        path: "{{ lookup('env', 'HOME') }}/.local/bin/jb"
         mode: '0755'
-        timeout: 60
-        force: no  # Don't re-download if file exists
-      retries: 3
-      delay: 10
+        owner: "{{ lookup('pipe', 'whoami') }}"
+        group: "{{ lookup('pipe', 'id -gn') }}"
+
 
     - name: Ensure ~/.local/bin is in the user's PATH
       lineinfile:

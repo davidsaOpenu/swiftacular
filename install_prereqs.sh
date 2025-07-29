@@ -88,6 +88,7 @@ install_for_fedora() {
 
     # Required for ansible-galaxy later in bootstrap script
     dnf install python3-resolvelib
+    check_success "!!"
 }
 
 install_for_ubuntu() {
