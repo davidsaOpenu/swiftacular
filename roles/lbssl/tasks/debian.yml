@@ -4,11 +4,26 @@
 #
 
 - name: Install required packages for lbssl
-  ansible.builtin.apt: pkg={{ item }} state=installed update_cache=yes cache_valid_time=3600
-  with_items: ubuntu_packages
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: "yes"
+    cache_valid_time: "3600"
+  with_items: "{{ lbssl_ubuntu_packages }}"
 
 - name: Set /etc/default/pound to allow pound to start
-  ansible.builtin.template: src=default_pound.j2 dest=/etc/default/pound
+  ansible.builtin.template:
+    src: default_pound.j2
+    dest: /etc/default/pound
+    owner: root
+    group: root
+    mode: "0644"
+
 - name: Copy over pound.cfg
-  ansible.builtin.template: src=ubuntu_pound.cfg.j2 dest=/etc/pound/pound.cfg owner=root group=root mode=0644
+  ansible.builtin.template:
+    src: ubuntu_pound.cfg.j2
+    dest: /etc/pound/pound.cfg
+    owner: root
+    group: root
+    mode: "0644"
   notify: restart pound

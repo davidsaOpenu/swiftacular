@@ -1,15 +1,15 @@
 ---
 
-redhat_packages:
+authentication_redhat_packages:
   - openstack-keystone
 
-ubuntu_packages:
+authentication_ubuntu_packages:
   - keystone
   - python-keyring
   - mariadb-server
   - python3-pymysql
 
-admin_env:
+authentication_admin_env:
   OS_USERNAME: admin
   OS_PASSWORD: "{{ keystone_admin_token }}"
   OS_PROJECT_NAME: admin

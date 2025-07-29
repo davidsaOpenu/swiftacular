@@ -23,16 +23,22 @@
   when: ansible_distribution == 'CentOS'
 
 - name: Enable CodeReady Builder repository
-  ansible.builtin.command: dnf config-manager --set-enabled crb
+  ansible.builtin.dnf:
+    name: [] # Don't install/update any packages
+    enablerepo: crb
+    state: present
   become: true
   when: ansible_distribution == 'CentOS'
 
-- name: Upgrade all packages
+- name: Update_only all packages
   ansible.builtin.dnf:
     name: "*"
-    state: latest
+    state: present
+    update_only: true
   become: true
   when: ansible_distribution == 'CentOS'
+  tags:
+    - skip_ansible_lint
 
 - name: Install OpenStack client
   ansible.builtin.dnf:

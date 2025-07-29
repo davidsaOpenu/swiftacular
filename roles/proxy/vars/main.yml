@@ -1,6 +1,6 @@
 ---
 
-ubuntu_packages:
+proxy_ubuntu_packages:
   - swift-proxy
   - swift-object
   - memcached
@@ -11,7 +11,7 @@ ubuntu_packages:
   - python-xattr
   - python-memcache
 
-redhat_packages:
+proxy_redhat_packages:
   - openstack-swift-proxy
   - memcached
   - libevent
