@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "d5423550f6ca2e9e1bb55b1a84f0aa3ee3a303e4",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f480850c_9944e0df",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2025-07-29T15:13:01Z",
+      "side": 1,
+      "message": "13:31:45  TASK [Get container sharding results] ******************************************\n13:32:00  changed: [swift-storage-02]\n13:32:00  changed: [swift-storage-03]\n13:32:00  changed: [swift-storage-01]\n13:32:00  \n13:32:00  TASK [Show output] *************************************************************\n13:32:00  ok: [swift-storage-01] \u003d\u003e {\n13:32:00      \"command_output.stdout\": \"unsharded\"\n13:32:00  }\n13:32:00  ok: [swift-storage-02] \u003d\u003e {\n13:32:00      \"command_output.stdout\": \"\"\n13:32:00  }\n13:32:00  ok: [swift-storage-03] \u003d\u003e {\n13:32:00      \"command_output.stdout\": \"unsharded\"\n13:32:00  }\n13:32:00  \n13:32:00  TASK [Check the output] ********************************************************\n13:32:00  fatal: [swift-storage-01]: FAILED! \u003d\u003e {\"changed\": false, \"msg\": \"The container is unsharded\"}\n13:32:00  skipping: [swift-storage-02]\n13:32:00  fatal: [swift-storage-03]: FAILED! \u003d\u003e {\"changed\": false, \"msg\": \"The container is unsharded\"}\n13:32:00  \n13:32:00  TASK [Check if sharded] ********************************************************\n13:32:00  changed: [swift-storage-02]\n13:32:00  \n13:32:00  PLAY RECAP *********************************************************************\n13:32:00  swift-package-cache-01     : ok\u003d5    changed\u003d3    unreachable\u003d0    failed\u003d0    skipped\u003d0    rescued\u003d0    ignored\u003d0   \n13:32:00  swift-storage-01           : ok\u003d10   changed\u003d6    unreachable\u003d0    failed\u003d1    skipped\u003d1    rescued\u003d0    ignored\u003d0   \n13:32:00  swift-storage-02           : ok\u003d11   changed\u003d7    unreachable\u003d0    failed\u003d0    skipped\u003d2    rescued\u003d0    ignored\u003d0   \n13:32:00  swift-storage-03           : ok\u003d10   changed\u003d6    unreachable\u003d0    failed\u003d1    skipped\u003d1    rescued\u003d0    ignored\u003d0   \n13:32:00  \n[Pipeline] }",
+      "revId": "d5423550f6ca2e9e1bb55b1a84f0aa3ee3a303e4",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     }
   ]
 }
