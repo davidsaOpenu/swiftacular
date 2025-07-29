@@ -1,14 +1,12 @@
 ---
-
 - hosts:
-  - all
-  gather_facts: yes
+    - all
+  gather_facts: true
   tasks:
-  - name: Install python3-libselinux
-    ansible.builtin.dnf:
-      name: python3-libselinux
-      state: present
-
+    - name: Install python3-libselinux
+      ansible.builtin.dnf:
+        name: python3-libselinux
+        state: present
 
 # Setup a package_cache, especially when using
 # your laptop and Vagrant
@@ -20,21 +18,21 @@
 
 - hosts: package_cache
   roles:
-  - package_cache
+    - package_cache
 
 - hosts:
-  - all
+    - all
   roles:
-  - common
+    - common
 
 - hosts: all
   tasks:
-  - name: redirection ansible_ethN
-    set_fact:
-      ansible_eth1: "{{ ansible_ens6 }}"
-      ansible_eth2: "{{ ansible_ens7 }}"
-      ansible_eth3: "{{ ansible_ens8 }}"
-      ansible_eth4: "{{ ansible_ens9 }}"
+    - name: redirection ansible_ethN
+      set_fact:
+        ansible_eth1: "{{ ansible_ens6 }}"
+        ansible_eth2: "{{ ansible_ens7 }}"
+        ansible_eth3: "{{ ansible_ens8 }}"
+        ansible_eth4: "{{ ansible_ens9 }}"
 
 # - hosts:
 #   - lbssl
@@ -42,20 +40,20 @@
 #   - lbssl
 
 - hosts:
-  - proxy
-  - storage
-  - package_cache
+    - proxy
+    - storage
+    - package_cache
   roles:
     - swift_common
 
 - hosts: all
   tasks:
-  - name: redirection ansible_ethN twice
-    set_fact:
-      ansible_eth1: "{{ ansible_ens6 }}"
-      ansible_eth2: "{{ ansible_ens7 }}"
-      ansible_eth3: "{{ ansible_ens8 }}"
-      ansible_eth4: "{{ ansible_ens9 }}"
+    - name: redirection ansible_ethN twice
+      set_fact:
+        ansible_eth1: "{{ ansible_ens6 }}"
+        ansible_eth2: "{{ ansible_ens7 }}"
+        ansible_eth3: "{{ ansible_ens8 }}"
+        ansible_eth4: "{{ ansible_ens9 }}"
 
 - hosts:
     - swiftclient
@@ -63,14 +61,14 @@
     - swiftclient
 
 - hosts:
-   - authentication
+    - authentication
   roles:
-   - authentication
+    - authentication
 
 - hosts:
-  - proxy
+    - proxy
   roles:
-  - proxy
+    - proxy
 
 #
 # I would have expected serial to work here, and
@@ -79,18 +77,18 @@
 #
 - hosts: all
   tasks:
-  - name: redirection ansible_ethN again
-    set_fact:
-      ansible_eth1: "{{ ansible_ens6 }}"
-      ansible_eth2: "{{ ansible_ens7 }}"
-      ansible_eth3: "{{ ansible_ens8 }}"
-      ansible_eth4: "{{ ansible_ens9 }}"
+    - name: redirection ansible_ethN again
+      set_fact:
+        ansible_eth1: "{{ ansible_ens6 }}"
+        ansible_eth2: "{{ ansible_ens7 }}"
+        ansible_eth3: "{{ ansible_ens8 }}"
+        ansible_eth4: "{{ ansible_ens9 }}"
 
 - hosts:
-  - storage
+    - storage
   serial: 1
   roles:
-  - storage
+    - storage
 
 #
 # These are not so much roles as starting services
@@ -98,27 +96,26 @@
 #
 
 - hosts:
-  - proxy
-#  vars_file:
-#  - include_tasks: vars/{{ansible_os_family}}.yml
+    - proxy
+  #  vars_file:
+  #  - include_tasks: vars/{{ansible_os_family}}.yml
   tasks:
-  - include_tasks: start_proxy.yml
+    - include_tasks: start_proxy.yml
 
 - hosts:
-  - storage
-#  vars_file:
-#  - include_tasks: vars/{{ansible_os_family}}.yml
+    - storage
+  #  vars_file:
+  #  - include_tasks: vars/{{ansible_os_family}}.yml
   tasks:
-  - include_tasks: start_storage.yml
+    - include_tasks: start_storage.yml
 
 - hosts:
-  - all
+    - all
   tasks:
-  - name: restore selinux state
-    selinux:
-      policy: targeted
-      state: enforcing
-
+    - name: restore selinux state
+      selinux:
+        policy: targeted
+        state: enforcing
 
 #
 # Probably best to run these on their own?

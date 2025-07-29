@@ -1,5 +1,4 @@
 ---
-
 #
 # Run security tests using gauntlt
 #
@@ -26,8 +25,8 @@
 - name: ensure gauntlt is installed
   gem: name={{ item }} state=present
   with_items:
-  - gauntlt
-  - json
+    - gauntlt
+    - json
 
 - name: create a /root/attack directory
   file: state=directory path=/root/gauntlt
@@ -36,8 +35,7 @@
   template: src=../attacks/ssl_proxy.attack.j2 dest=/root/gauntlt/ssl_proxy.attack
 
 - name: run gauntlt
-  command: gauntlt 
-           chdir=/root
+  command: gauntlt chdir=/root
 
-- name: cleanup attack files 
+- name: cleanup attack files
   command: rm -rf /root/gauntlt

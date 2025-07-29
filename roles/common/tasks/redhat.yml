@@ -1,13 +1,6 @@
 ---
-
 # redhat
 
-- include_tasks: redhat_package_cache.yml
-
-- include_tasks: redhat_ntp.yml
-
-- include_tasks: redhat_openstack_repository.yml
-
-  #- name: stop iptables
-  #service: name=iptables state=stopped
-  
+- ansible.builtin.include_tasks: redhat_package_cache.yml
+- ansible.builtin.include_tasks: redhat_ntp.yml
+- ansible.builtin.include_tasks: redhat_openstack_repository.yml

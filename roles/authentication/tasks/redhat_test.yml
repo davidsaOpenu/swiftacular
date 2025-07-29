@@ -1,9 +1,10 @@
+---
 #
 # Run a basic test to see if keystone is running
 #
 
-- name: test keystone with user list
-#  shell: keystone --insecure --token {{ keystone_admin_token }} --endpoint https://{{ keystone_server }}:35357/v2.0 user-list
-  shell: /usr/bin/openstack user list
+- name: Test keystone with user list
+  #  shell: keystone --insecure --token {{ keystone_admin_token }} --endpoint https://{{ keystone_server }}:35357/v2.0 user-list
+  ansible.builtin.command: /usr/bin/openstack user list
   environment: "{{ admin_env }}"
   when: keystone_db_created.changed

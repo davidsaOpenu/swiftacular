@@ -56,7 +56,7 @@ class Workloader:
         object_metadata = ObjectMetadata(name=object_name,
                                                 content_length=object_size,
                                                 content_hash=hash(object_content))
-                                        
+
         return object_metadata
 
     @retry(tries=3)

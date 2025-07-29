@@ -1,21 +1,20 @@
-
+---
 # Apply patch to sharder.py to ensure sharding is always set to true.
 # Then run workloader and verification.
 
 - name: Sharder patch
   hosts: storage
-  become: yes
+  become: true
   tasks:
     - name: Copy the sharder patch file to the target host
-      copy:
+      ansible.builtin.copy:
         src: sharder.patch
         dest: /tmp/sharder.patch
 
     - name: Install patch package
-      command: dnf install -y patch
-
+      ansible.builtin.command: dnf install -y patch
     - name: Check if sharder patch is already applied
-      shell: patch --dry-run -p0 < /tmp/sharder.patch
+      ansible.builtin.shell: patch --dry-run -p0 < /tmp/sharder.patch
       args:
         chdir: /usr/lib/python3.9/site-packages/swift/container
       register: patch_check
@@ -23,26 +22,24 @@
       changed_when: false
 
     - name: Apply sharder patch
-      shell: patch -p0 < /tmp/sharder.patch  # Shell because '<' doesn't work otherwise
+      ansible.builtin.shell: patch -p0 < /tmp/sharder.patch
       args:
         chdir: /usr/lib/python3.9/site-packages/swift/container
       when: patch_check.rc == 0
-    
-    - name: Stop sharders
-      command: swift-init container-sharder stop
-      ignore_errors: yes
-    
-    - name: Start sharders
-      command: sudo swift-init container-sharder start
 
+    - name: Stop sharders
+      ansible.builtin.command: swift-init container-sharder stop
+      ignore_errors: true
+
+    - name: Start sharders
+      ansible.builtin.command: sudo swift-init container-sharder start
 - name: Workload tests
   hosts: package_cache
   tasks:
     - name: Copy tests directory to package_cache host
-      copy:
+      ansible.builtin.copy:
         src: workload_tests
         dest: /home/vagrant/
-
 
     - name: Install pytest using system package manager
       ansible.builtin.dnf:
@@ -56,7 +53,7 @@
 
     # We're currently only running the tiny test. It would be good to run everything!
     - name: Run workload tests
-      command: /usr/bin/python -m pytest test_workload.py::test_tiny_workload -svx
+      ansible.builtin.command: /usr/bin/python -m pytest test_workload.py::test_tiny_workload -svx
       args:
         chdir: /home/vagrant/workload_tests
       register: pytest_result
@@ -64,28 +61,25 @@
 - name: Verify sharding
   hosts: storage
   tasks:
-
     # It's entirely possible that for bigger tests, it would take much longer than 10 minutes for sharding to complete.
     - name: Wait for sharding
-      command: sleep 600
-
-    # The container name in the command is hard-coded to match the workloader test. It would be good to make it variable!
+      ansible.builtin.command: sleep 600
     - name: Get container sharding results
-      shell: |  # Big ugly command to check whether container is sharded. 
+      ansible.builtin.shell: |  # Big ugly command to check whether container is sharded.
         for FILE in /srv/node/td*/containers/*/*/*/*.db; do swift-manage-shard-ranges $FILE info; done 2>&1 | grep '^Loaded.*the-test-container$' -A 20 | grep -m 1 "db_state" | sed -e "s/^db_state = //"
       register: command_output
 
     - name: Show output
-      debug: 
+      ansible.builtin.debug:
         var: command_output.stdout
 
     - name: Check the output
-      fail:
+      ansible.builtin.fail:
         msg: "The container is unsharded"
       when: command_output.stdout == "unsharded"
 
-    - name: Check if sharded  # Also succeeds if output is empty result, meaning no replica on host
-      command: sleep 0
+    - name: Check if sharded # Also succeeds if output is empty result, meaning no replica on host
+      ansible.builtin.command: sleep 0
       retries: 1
       delay: 0
       until: command_output.stdout == "sharded" or command_output.stdout == ""

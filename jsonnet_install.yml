@@ -1,14 +1,14 @@
 ---
 - name: Install jsonnet and jb (Jsonnet Bundler) from source for a regular user
   hosts: localhost
-  become: no
-  gather_facts: no
+  become: false
+  gather_facts: false
   tasks:
     - name: Clone jsonnet repository from GitHub into user's home directory
       git:
         repo: "https://github.com/google/jsonnet.git"
         dest: "{{ lookup('env', 'HOME') }}/jsonnet"
-        update: yes
+        update: true
 
     - name: Build jsonnet using make (non-root user)
       community.general.make:
@@ -18,7 +18,7 @@
       copy:
         src: "{{ lookup('env', 'HOME') }}/jsonnet/jsonnet"
         dest: "{{ lookup('env', 'HOME') }}/.local/bin/jsonnet"
-        mode: '0755'
+        mode: "0755"
 
     - name: Download jb binary with wget (reliable workaround)
       command: >
@@ -34,17 +34,16 @@
     - name: Ensure jb binary is executable
       file:
         path: "{{ lookup('env', 'HOME') }}/.local/bin/jb"
-        mode: '0755'
+        mode: "0755"
         owner: "{{ lookup('pipe', 'whoami') }}"
         group: "{{ lookup('pipe', 'id -gn') }}"
-
 
     - name: Ensure ~/.local/bin is in the user's PATH
       lineinfile:
         path: "{{ lookup('env', 'HOME') }}/.bashrc"
         line: 'export PATH=$PATH:{{ lookup("env", "HOME") }}/.local/bin'
         state: present
-        regexp: '^export PATH=.*'
+        regexp: "^export PATH=.*"
 
     - name: Install jsonnet packages from jsonnetfile.json
       shell: jb install

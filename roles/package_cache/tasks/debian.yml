@@ -1,5 +1,4 @@
 ---
-
-- include_tasks: debian_install.yml
-- include_tasks: debian_configure.yml
-- include_tasks: debian_service.yml
+- ansible.builtin.include_tasks: debian_install.yml
+- ansible.builtin.include_tasks: debian_configure.yml
+- ansible.builtin.include_tasks: debian_service.yml

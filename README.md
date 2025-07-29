@@ -1,10 +1,10 @@
 ```
-  _________       .__  _____  __                      .__                
- /   _____/_  _  _|__|/ ____\/  |______    ____  __ __|  | _____ _______ 
+  _________       .__  _____  __                      .__
+ /   _____/_  _  _|__|/ ____\/  |______    ____  __ __|  | _____ _______
  \_____  \\ \/ \/ /  \   __\\   __\__  \ _/ ___\|  |  \  | \__  \\_  __ \
  /        \\     /|  ||  |   |  |  / __ \\  \___|  |  /  |__/ __ \|  | \/
-/_______  / \/\_/ |__||__|   |__| (____  /\___  >____/|____(____  /__|   
-        \/                             \/     \/                \/       
+/_______  / \/\_/ |__||__|   |__| (____  /\___  >____/|____(____  /__|
+        \/                             \/     \/                \/
 ```
 
 # OpenStack Swift and Ansible
@@ -28,7 +28,7 @@ This repository will create a virtualized OpenStack Swift cluster using Vagrant,
   - [Starting over](#starting-over)
   - [Modules](#modules)
   - [Issues](#issues)
- 
+
 
 ## tl;dr
 
@@ -145,10 +145,10 @@ However, I usually login to the package_cache server and use swift from there.
 
 ```bash
 $ vagrant ssh swift-package-cache-01
-vagrant@swift-package-cache-01:~$ . /vagrant/testrc 
+vagrant@swift-package-cache-01:~$ . /vagrant/testrc
 vagrant@swift-package-cache-01:~$ swift list
 vagrant@swift-package-cache-01:~$ echo "swift is cool" > swift.txt
-vagrant@swift-package-cache-01:~$ swift upload swifty swift.txt 
+vagrant@swift-package-cache-01:~$ swift upload swifty swift.txt
 swift.txt
 vagrant@swift-package-cache-01:~$ swift list
 swifty
@@ -158,7 +158,7 @@ swift.txt
 
 ## Starting over
 
-If you want to redo the installation there are a few ways. 
+If you want to redo the installation there are a few ways.
 
 To restart completely:
 

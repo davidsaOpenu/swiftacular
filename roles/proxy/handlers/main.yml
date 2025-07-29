@@ -1,8 +1,5 @@
 ---
-
-- name: restart memcached
-  service: name=memcached state=restarted
-
-# Probably can't restart the proxy on first install
-- name: restart proxy-server
-  service: name=swift-proxy state=restarted
+- name: Restart memcached
+  ansible.builtin.service: name=memcached state=restarted
+- name: Restart proxy-server
+  ansible.builtin.service: name=swift-proxy state=restarted

@@ -1,5 +1,4 @@
 ---
-
 #
 # Install and configure a keystone authentication server
 #
@@ -8,12 +7,12 @@
 # Debian
 #
 
-- import_tasks: debian.yml
+- ansible.builtin.import_tasks: debian.yml
   when: ansible_os_family == 'Debian'
 
 #
 # Redhat
 #
 
-- import_tasks: redhat.yml
+- ansible.builtin.import_tasks: redhat.yml
   when: ansible_os_family == 'RedHat'

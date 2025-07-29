@@ -1,28 +1,16 @@
 ---
-
 #
 # Stop portmapper
-# 
+#
 
-- name: ensure portmap is not running
-  service: name=portmap state=stopped enabled=no
+- name: Ensure portmap is not running
+  ansible.builtin.service: name=portmap state=stopped enabled=no
   ignore_errors: true
 
 #
 # NTP
-# 
-
-- include_tasks: debian_ntp.yml
-
-#
-# Package cache
 #
 
-- include_tasks: debian_package_cache.yml
-
-#
-# Havana repository
-# 
-
-- include_tasks: debian_openstack_repository.yml
-
+- ansible.builtin.include_tasks: debian_ntp.yml
+- ansible.builtin.include_tasks: debian_package_cache.yml
+- ansible.builtin.include_tasks: debian_openstack_repository.yml

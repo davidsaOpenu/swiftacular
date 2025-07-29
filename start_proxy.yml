@@ -1,13 +1,10 @@
 ---
-
 #
 # Create files necessary to start the proxy and also start it
-# 
+#
 
 - name: rebalance rings
-  command: swift-ring-builder {{ item }}.builder rebalance
-           creates=/etc/swift/{{ item }}.ring.gz 
-           chdir=/etc/swift 
+  command: swift-ring-builder {{ item }}.builder rebalance creates=/etc/swift/{{ item }}.ring.gz chdir=/etc/swift
   register: rebalance
   with_items:
     - account

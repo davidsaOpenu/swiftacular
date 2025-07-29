@@ -1,14 +1,11 @@
 ---
-
-- name: install required keystone packages
-  apt: pkg={{ item }} state=installed update_cache=yes cache_valid_time=3600
+- name: Install required keystone packages
+  ansible.builtin.apt: pkg={{ item }} state=installed update_cache=yes cache_valid_time=3600
   with_items: ubuntu_packages
 
-- name: create empty /var/log/keystone/keystone.log 
-  command: touch /var/log/keystone/keystone.log creates=/var/log/keystone/keystone.log
-
-- name: ensure /var/log/keystone/keystone.log has the correct privileges
-  file: path=/var/log/keystone/keystone.log owner=keystone group=keystone
-
-- name: remove default keystone sqlite database file
-  file: path=/var/lib/keystone/keystone.db state=absent
+- name: Create empty /var/log/keystone/keystone.log
+  ansible.builtin.command: touch /var/log/keystone/keystone.log creates=/var/log/keystone/keystone.log
+- name: Ensure /var/log/keystone/keystone.log has the correct privileges
+  ansible.builtin.file: path=/var/log/keystone/keystone.log owner=keystone group=keystone
+- name: Remove default keystone sqlite database file
+  ansible.builtin.file: path=/var/lib/keystone/keystone.db state=absent

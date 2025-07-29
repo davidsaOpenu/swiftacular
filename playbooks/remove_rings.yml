@@ -1,45 +1,41 @@
 ---
-
 - hosts: storage
 
   tasks:
+    - name: Stop all swift-storage node services
+      ansible.builtin.command: swift-init all stop
+      ignore_errors: true
 
-  - name: stop all swift-storage node services
-    command: swift-init all stop
-    ignore_errors: True
-
-  - name: cleanup image mounts
-    shell: umount /srv/node/{{ disk_prefix }}{{ item }}; losetup -d /dev/loop{{ item }}; rm -f /var/tmp/{{ disk_prefix }}{{ item }}.img
-    with_sequence: count=3
+    - name: Cleanup image mounts
+      ansible.builtin.shell: umount /srv/node/{{ disk_prefix }}{{ item }}; losetup -d /dev/loop{{ item }}; rm -f /var/tmp/{{ disk_prefix }}{{ item }}.img
+      with_sequence: count=3
 
 - hosts: proxy
 
   tasks:
+    - name: Stop swift-proxy on proxy nodes
+      ansible.builtin.service: name=openstack-swift-proxy state=stopped
+      when: ansible_os_family == 'RedHat'
 
-  - name: stop swift-proxy on proxy nodes
-    service: name=openstack-swift-proxy state=stopped
-    when: ansible_os_family == 'RedHat'
+    - name: Stop swift-proxy on proxy nodes
+      ansible.builtin.service: name=swift-proxy state=stopped
+      when: ansible_os_family == 'Debian'
 
-  - name: stop swift-proxy on proxy nodes
-    service: name=swift-proxy state=stopped
-    when: ansible_os_family == 'Debian'
-
-  - name: remove builder files
-    command: rm -f /etc/swift/{{item}}.builder
-    with_items:
-    - account
-    - container
-    - object
+    - name: Remove builder files
+      ansible.builtin.command: rm -f /etc/swift/{{item}}.builder
+      with_items:
+        - account
+        - container
+        - object
 
 - hosts:
-  - storage
-  - proxy
+    - storage
+    - proxy
 
   tasks:
-
-  - name: remove ring files
-    command: rm -f /etc/swift/{{item}}.ring.gz
-    with_items:
-    - account
-    - container
-    - object
+    - name: Remove ring files
+      ansible.builtin.command: rm -f /etc/swift/{{item}}.ring.gz
+      with_items:
+        - account
+        - container
+        - object
