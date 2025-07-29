@@ -1,8 +1,6 @@
 ---
-#
-# Run some tests to verify installation
-#
-
-- hosts: swiftclient
+- name: Run swiftclient.yml tests to verify installation
+  hosts: swiftclient
   tasks:
-    - ansible.builtin.include_tasks: swiftclient.yml
+    - name: Run swiftclient.yml tests
+      ansible.builtin.include_tasks: swiftclient.yml
