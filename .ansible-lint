@@ -1,0 +1,2 @@
+exclude_paths:
+  - library/ansible_collections/**

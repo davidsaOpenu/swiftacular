@@ -5,9 +5,10 @@
   gather_facts: false
   tasks:
     - name: Clone jsonnet repository from GitHub into user's home directory
-      git:
+      ansible.builtin.git:
         repo: "https://github.com/google/jsonnet.git"
         dest: "{{ lookup('env', 'HOME') }}/jsonnet"
+        version: "7d1cbf8e69bc8b28e0405080771ccd4da36ac716"
         update: true
 
     - name: Build jsonnet using make (non-root user)
@@ -15,37 +16,40 @@
         chdir: "{{ lookup('env', 'HOME') }}/jsonnet"
 
     - name: Add jsonnet to the user's local bin directory
-      copy:
+      ansible.builtin.copy:
         src: "{{ lookup('env', 'HOME') }}/jsonnet/jsonnet"
         dest: "{{ lookup('env', 'HOME') }}/.local/bin/jsonnet"
         mode: "0755"
 
-    - name: Download jb binary with wget (reliable workaround)
-      command: >
-        wget -O {{ lookup('env', 'HOME') }}/.local/bin/jb
-        https://github.com/jsonnet-bundler/jsonnet-bundler/releases/download/v0.6.0/jb-linux-amd64
-      args:
-        creates: "{{ lookup('env', 'HOME') }}/.local/bin/jb"
-      register: wget_result
+    - name: Download jb binary
+      ansible.builtin.get_url:
+        url: https://github.com/jsonnet-bundler/jsonnet-bundler/releases/download/v0.6.0/jb-linux-amd64
+        dest: "{{ lookup('env', 'HOME') }}/.local/bin/jb"
+        mode: "0755"
+        force: false
+      register: download_result
       retries: 5
       delay: 15
-      until: wget_result.rc == 0
+      until: download_result is succeeded
 
     - name: Ensure jb binary is executable
-      file:
+      ansible.builtin.file:
         path: "{{ lookup('env', 'HOME') }}/.local/bin/jb"
         mode: "0755"
         owner: "{{ lookup('pipe', 'whoami') }}"
         group: "{{ lookup('pipe', 'id -gn') }}"
 
     - name: Ensure ~/.local/bin is in the user's PATH
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: "{{ lookup('env', 'HOME') }}/.bashrc"
         line: 'export PATH=$PATH:{{ lookup("env", "HOME") }}/.local/bin'
         state: present
         regexp: "^export PATH=.*"
 
     - name: Install jsonnet packages from jsonnetfile.json
-      shell: jb install
+      ansible.builtin.command: jb install
       environment:
         PATH: "{{ lookup('env', 'HOME') }}/.local/bin:{{ lookup('env', 'PATH') }}"
+      register: jb_result
+      changed_when: "'GET https' in jb_result.stdout and '200' in jb_result.stdout"
+      failed_when: jb_result.rc != 0

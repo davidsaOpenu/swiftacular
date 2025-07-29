@@ -1,41 +1,53 @@
 ---
-- hosts: storage
-
+- name: Stop storage services and cleanup disk images
+  hosts: storage
   tasks:
     - name: Stop all swift-storage node services
       ansible.builtin.command: swift-init all stop
-      ignore_errors: true
+      register: stop_result
+      failed_when: stop_result.rc not in [0]
+      changed_when: "'stopped' in stop_result.stdout or stop_result.rc == 0"
 
     - name: Cleanup image mounts
-      ansible.builtin.shell: umount /srv/node/{{ disk_prefix }}{{ item }}; losetup -d /dev/loop{{ item }}; rm -f /var/tmp/{{ disk_prefix }}{{ item }}.img
+      ansible.builtin.shell: |
+        umount /srv/node/{{ disk_prefix }}{{ item }} || true
+        losetup -d /dev/loop{{ item }} || true
+        rm -f /var/tmp/{{ disk_prefix }}{{ item }}.img
       with_sequence: count=3
+      changed_when: false
 
-- hosts: proxy
-
+- name: Stop proxy services and cleanup builder files
+  hosts: proxy
   tasks:
     - name: Stop swift-proxy on proxy nodes
-      ansible.builtin.service: name=openstack-swift-proxy state=stopped
+      ansible.builtin.service:
+        name: openstack-swift-proxy
+        state: stopped
       when: ansible_os_family == 'RedHat'
 
     - name: Stop swift-proxy on proxy nodes
-      ansible.builtin.service: name=swift-proxy state=stopped
+      ansible.builtin.service:
+        name: swift-proxy
+        state: stopped
       when: ansible_os_family == 'Debian'
 
     - name: Remove builder files
-      ansible.builtin.command: rm -f /etc/swift/{{item}}.builder
+      ansible.builtin.command: rm -f /etc/swift/{{ item }}.builder
       with_items:
         - account
         - container
         - object
+      changed_when: false
 
-- hosts:
+- name: Remove ring files from all Swift nodes
+  hosts:
     - storage
     - proxy
-
   tasks:
     - name: Remove ring files
-      ansible.builtin.command: rm -f /etc/swift/{{item}}.ring.gz
+      ansible.builtin.command: rm -f /etc/swift/{{ item }}.ring.gz
       with_items:
         - account
         - container
         - object
+      changed_when: false

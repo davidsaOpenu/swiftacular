@@ -11,11 +11,15 @@
 #    Verify return code: 21 (unable to verify the first certificate)
 
 - name: Verify ssl cert
-  ansible.builtin.command: echo QUIT | openssl s_client -showcerts -connect 192.168.100.50:35357 2>&1 | grep "Verify return code"
+  ansible.builtin.shell: |
+    set -o pipefail
+    echo QUIT | openssl s_client -showcerts -connect 192.168.100.50:35357 2>&1 | grep "Verify return code"
   register: openssl_s_client
+  changed_when: false
 
 - name: Test for openssl client failed
-  ansible.builtin.debug: msg="ssl client failed"
+  ansible.builtin.debug:
+    msg: "ssl client failed"
   when: openssl_s_client.stdout.find("ok") == -1
 
 #
@@ -28,37 +32,107 @@
 #
 
 - name: Check if adminrc exists
-  ansible.builtin.stat: path=/home/vagrant/adminrc
+  ansible.builtin.stat:
+    path: /home/vagrant/adminrc
+  register: adminrc_stat
+
 - name: Run keystone user-list using adminrc file
-  ansible.builtin.shell: chdir=/home/vagrant executable="/bin/bash" source ./adminrc; keystone --insecure user-list
+  ansible.builtin.shell: |
+    source ./adminrc
+    keystone --insecure user-list
+  args:
+    chdir: /home/vagrant
+    executable: "/bin/bash"
+  when: adminrc_stat.stat.exists
+  changed_when: false
+
 - name: Check if testrc exists
-  ansible.builtin.stat: path=/home/vagrant/testrc
+  ansible.builtin.stat:
+    path: /home/vagrant/testrc
+  register: testrc_stat
+
 - name: Run swift stat using testrc file
-  ansible.builtin.shell: chdir=/home/vagrant executable="/bin/bash" source ./testrc; swift  stat
+  ansible.builtin.shell: |
+    source ./testrc
+    swift stat
+  args:
+    chdir: /home/vagrant
+    executable: "/bin/bash"
+  when: testrc_stat.stat.exists
+  changed_when: false
+
 - name: Run swift list using testrc file
-  ansible.builtin.shell: chdir=/home/vagrant executable="/bin/bash" source ./testrc; swift  list
+  ansible.builtin.shell: |
+    source ./testrc
+    swift list
+  args:
+    chdir: /home/vagrant
+    executable: "/bin/bash"
+  when: testrc_stat.stat.exists
+  changed_when: false
+
 - name: Create a file to upload
-  ansible.builtin.shell: chdir=/home/vagrant executable="/bin/bash" echo $RANDOM > swift.txt
+  ansible.builtin.shell: echo $RANDOM > swift.txt
+  args:
+    chdir: /home/vagrant
+    executable: "/bin/bash"
+  changed_when: true
+
 - name: Get md5sum of uploaded file
-  ansible.builtin.command: chdir=/home/vagrant md5sum swift.txt
+  ansible.builtin.command: md5sum swift.txt
+  args:
+    chdir: /home/vagrant
   register: md5sum_upload
+  changed_when: false
 
 - name: Upload a file into swift
-  ansible.builtin.shell: chdir=/home/vagrant executable="/bin/bash" source ./testrc; swift upload swifty swift.txt
-- name: Remove swift.txt
-  ansible.builtin.command: chdir=/home/vagrant rm -f ./swift.txt
-- name: Download file again
-  ansible.builtin.shell: chdir=/home/vagrant executable="/bin/bash" source ./testrc; swift download swifty swift.txt
-- name: Get md5sum of downloaded file
-  ansible.builtin.command: chdir=/home/vagrant md5sum swift.txt
-  register: md5sum_download
+  ansible.builtin.shell: |
+    source ./testrc
+    swift upload swifty swift.txt
+  args:
+    chdir: /home/vagrant
+    executable: "/bin/bash"
+  changed_when: true
 
-- ansible.builtin.fail:
-    msg: "md5sum for downloaded swift.txt file does not match uploaded md5sum"
-  when: md5sum_download.stdout != md5sum_upload.stdout
+- name: Remove swift.txt
+  ansible.builtin.file:
+    path: /home/vagrant/swift.txt
+    state: absent
+
+- name: Download file again
+  ansible.builtin.shell: |
+    source ./testrc
+    swift download swifty swift.txt
+  args:
+    chdir: /home/vagrant
+    executable: "/bin/bash"
+  changed_when: true
+
+- name: Get md5sum of downloaded file
+  ansible.builtin.command: md5sum swift.txt
+  args:
+    chdir: /home/vagrant
+  register: md5sum_download
+  changed_when: false
+
+- name: Verify md5sum of downloaded file matches uploaded file
+  ansible.builtin.assert:
+    that:
+      - md5sum_download.stdout == md5sum_upload.stdout
+    fail_msg: "md5sum for downloaded swift.txt file does not match uploaded md5sum"
+    success_msg: "md5sum verified: downloaded file matches uploaded"
 
 # NOTE: This will delete all containers, files!
 - name: Delete all from swifty container
-  ansible.builtin.shell: chdir=/home/vagrant executable="/bin/bash" source ./testrc; swift delete --all
+  ansible.builtin.shell: |
+    source ./testrc
+    swift delete --all
+  args:
+    chdir: /home/vagrant
+    executable: /bin/bash
+  changed_when: false
+
 - name: Remove swift.txt
-  ansible.builtin.command: chdir=/home/vagrant rm -f ./swift.txt
+  ansible.builtin.file:
+    path: /home/vagrant/swift.txt
+    state: absent

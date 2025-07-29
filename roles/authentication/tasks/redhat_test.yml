@@ -4,7 +4,8 @@
 #
 
 - name: Test keystone with user list
-  #  shell: keystone --insecure --token {{ keystone_admin_token }} --endpoint https://{{ keystone_server }}:35357/v2.0 user-list
   ansible.builtin.command: /usr/bin/openstack user list
-  environment: "{{ admin_env }}"
-  when: keystone_db_created.changed
+  environment: "{{ authentication_admin_env }}"
+  register: keystone_test
+  failed_when: keystone_test.rc != 0
+  changed_when: false

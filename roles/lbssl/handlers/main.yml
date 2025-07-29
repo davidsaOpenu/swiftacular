@@ -1,3 +1,27 @@
 ---
 - name: Restart pound
-  ansible.builtin.service: name=pound state=restarted
+  ansible.builtin.service:
+    name: pound
+    state: restarted
+
+- name: Verify ssl cert
+  ansible.builtin.command: openssl x509 -in /etc/pound/server.crt -text
+  changed_when: false
+
+- name: Read certificate file
+  ansible.builtin.slurp:
+    src: /etc/pound/server.crt
+  register: cert_content
+
+- name: Read private key file
+  ansible.builtin.slurp:
+    src: /etc/pound/server.key
+  register: key_content
+
+- name: Create combined pem file
+  ansible.builtin.copy:
+    content: "{{ (cert_content.content | b64decode) + (key_content.content | b64decode) }}"
+    dest: /etc/pound/server.pem
+    owner: root
+    group: root
+    mode: "0600"

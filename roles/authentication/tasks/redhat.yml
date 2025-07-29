@@ -26,11 +26,12 @@
     state: present
   become: true
 
-- name: Update all packages excluding problematic dependencies
+- name: Update all packages
   ansible.builtin.dnf:
     name: "*"
-    state: latest
+    state: present
     update_cache: true
+    update_only: true
 
   become: true
 
@@ -57,24 +58,43 @@
     enabled: true
   become: true
 
-- name: Create keystone directories # Test
-  ansible.builtin.command: mkdir -p /etc/keystone /var/log/keystone
+- name: Ensure keystone directories exist with correct permissions
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "{{ item.mode }}"
+  loop:
+    - path: /etc/keystone
+      mode: "0755"
+    - path: /var/log/keystone
+      mode: "0750"
+
 - name: Copy over /etc/keystone/logging.conf
-  ansible.builtin.copy: src=redhat_logging.conf dest=/etc/keystone/logging.conf mode=0640
-  notify: restart keystone
+  ansible.builtin.copy:
+    src: redhat_logging.conf
+    dest: /etc/keystone/logging.conf
+    mode: "0640"
+  notify: Restart keystone
 
 - name: Create empty /var/log/keystone/error.log and access.log
-  ansible.builtin.command: touch /var/log/keystone/{{ item }}.log creates=/var/log/keystone/{{ item }}.log
+  ansible.builtin.command: "touch /var/log/keystone/{{ item }}.log"
+  args:
+    creates: "/var/log/keystone/{{ item }}.log"
   with_items:
     - error
     - access
 
 - name: Ensure error.log and access.log are writable by keystone
-  ansible.builtin.file: path=/var/log/keystone/{{ item }}.log state=file
-  with_items:
+  ansible.builtin.file:
+    path: /var/log/keystone/{{ item }}.log
+    state: file
+    mode: "0644"
+  loop:
     - error
     - access
 
 - name: Ensure keystone can write to /var/log/keystone
-  ansible.builtin.file: path=/var/log/keystone recurse=yes
-  notify: restart keystone
+  ansible.builtin.file:
+    path: /var/log/keystone
+    recurse: "yes"
+  notify: Restart keystone

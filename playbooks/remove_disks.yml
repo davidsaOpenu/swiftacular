@@ -1,7 +1,23 @@
 ---
-- hosts: storage
-
+- name: Cleanup storage disk images and mounts
+  hosts: storage
   tasks:
-    - name: Cleanup image mounts
-      ansible.builtin.shell: umount /srv/node/{{ disk_prefix }}{{ item }}; losetup -d /dev/loop{{ item }}; rm -f /var/tmp/{{ disk_prefix }}{{ item }}.img
+    - name: Unmount disk directories
+      ansible.builtin.command: umount /srv/node/{{ disk_prefix }}{{ item }}
+      with_sequence: count=3
+      register: umount_result
+      failed_when: umount_result.rc not in [0]
+      changed_when: umount_result.rc == 0
+
+    - name: Detach loop devices
+      ansible.builtin.command: losetup -d /dev/loop{{ item }}
+      with_sequence: count=3
+      register: detach_result
+      failed_when: detach_result.rc not in [0, 2] # handle fatal errors (exit status 2)
+      changed_when: detach_result.rc == 0
+
+    - name: Remove disk image files
+      ansible.builtin.file:
+        path: /var/tmp/{{ disk_prefix }}{{ item }}.img
+        state: absent
       with_sequence: count=3

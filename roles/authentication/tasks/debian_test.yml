@@ -3,14 +3,14 @@
 # Run a basic test to see if keystone is running
 #
 
-- name: Test keystone on precise with user-list
-  ansible.builtin.command: keystone --insecure --token {{ keystone_admin_token }} --endpoint https://{{ keystone_server }}:35357/v2.0 user-list
-  when: keystone.changed and ansible_distribution_release == "precise"
-
-#
-# keystone on trusty has commands changed to have "os" before option
-#
-
-- name: Test keystone on trusty with user-list
-  ansible.builtin.command: keystone --insecure --os-token {{ keystone_admin_token }} --os-endpoint https://{{ keystone_server }}:35357/v2.0 user-list
-  when: keystone.changed and ansible_distribution_release == "trusty"
+- name: Test keystone service with openstack CLI
+  ansible.builtin.command: /usr/bin/openstack user list
+  environment:
+    OS_TOKEN: "{{ keystone_admin_token }}"
+    OS_URL: "https://{{ keystone_server }}:35357/v2.0"
+    OS_IDENTITY_API_VERSION: "2.0"
+  register: keystone_test
+  failed_when: keystone_test.rc != 0
+  changed_when: false
+  retries: 3
+  delay: 5
