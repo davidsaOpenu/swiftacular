@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 # Array of dashboard JSON files and their UIDs
 declare -A dashboards
