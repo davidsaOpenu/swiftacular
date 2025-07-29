@@ -1,35 +1,41 @@
 ---
 - name: Make sure /srv/node exists
-  ansible.builtin.file: path=/srv/node state=directory
+  ansible.builtin.file:
+    path: /srv/node
+    state: directory
+    owner: swift
+    group: swift
+    mode: "0755"
+
 - name: Make sure /var/swift/recon exists
-  ansible.builtin.file: path=/var/swift/recon state=directory owner=swift group=swift mode=0750
+  ansible.builtin.file:
+    path: /var/swift/recon
+    state: directory
+    owner: swift
+    group: swift
+    mode: "0750"
+
 - name: Make /srv/node disk device directories
-  ansible.builtin.file: state=directory path=/srv/node/{{ disk_prefix }}{{ item|int - 1 }} owner=swift group=swift mode=0770
-  with_sequence: count={{ disks }}
-#  when: "losetup.rc > 0"
-
-# NOTE: Would likely not want the nobootwait in production, but in virtualbox the loop devices won't be setup yet so it won't be able to reboot without that setting, assuming the mount points are setup in /etc/fstab
-# NOTE: later on removed nobootwait b/c didn't work on redhat
-#- name: mount swift disks
-#  mount: name=/srv/node/{{ disk_prefix }}{{ item }} state=mounted src=/dev/loop{{ item }} opts="noatime,nodiratime,nobarrier" fstype=xfs
-#  with_sequence: count={{ disks }}
-#  when: "losetup.rc > 0"
-#  tags:
-#    - remount_loop_devices
-
-- name: Create \"disks\" - maybe this need to change
-  ansible.builtin.command: truncate -s 1GB /srv/node/disk-{{ disk_prefix }}{{ item|int - 1 }}
+  ansible.builtin.file:
+    state: directory
+    path: /srv/node/{{ disk_prefix }}{{ item | int - 1 }}
+    owner: swift
+    group: swift
+    mode: "0770"
   with_sequence: count={{ disks }}
 
-- name: Format disks
-  ansible.builtin.shell: mkfs.xfs -f /srv/node/disk-{{ disk_prefix }}{{ item|int - 1 }};
+- name: Create disk files
+  ansible.builtin.command: truncate -s 1GB /srv/node/disk-{{ disk_prefix }}{{ item | int - 1 }}
   with_sequence: count={{ disks }}
+  args:
+    creates: /srv/node/disk-{{ disk_prefix }}{{ item | int - 1 }}
 
-#- name: format nvme disks
-#  shell: mkfs.xfs -f /dev/nvme{{ item|int - 1 }}n1;
-#  with_sequence: count={{ disks }}
-#  ignore_errors: True
-#
+- name: Format disks with XFS
+  community.general.filesystem:
+    fstype: xfs
+    dev: "/srv/node/disk-{{ disk_prefix }}{{ item | int - 1 }}"
+    force: false
+  with_sequence: count={{ disks }}
 
 - name: Add mount to /etc/fstab
   ansible.builtin.lineinfile:
@@ -37,15 +43,22 @@
     line: "/srv/node/disk-{{ disk_prefix }}{{ item | int - 1 }} /srv/node/{{ disk_prefix }}{{ item | int - 1 }} xfs loop,noatime 0 0"
   with_sequence: count={{ disks }}
 
-#- name: mount swift disks
-#  mount: name=/srv/node/{{ disk_prefix }}{{ item|int - 1 }} state=mounted src=/srv/node/disk-{{ disk_prefix }}{{ item|int - 1 }}  opts="loop,noatime 0 0" fstype=xfs
-#  with_sequence: count={{ disks }}
-#
+- name: Mount swift storage devices
+  ansible.posix.mount:
+    src: "/srv/node/disk-{{ disk_prefix }}{{ item | int - 1 }}"
+    path: "/srv/node/{{ disk_prefix }}{{ item | int - 1 }}"
+    fstype: xfs
+    opts: loop,noatime
+    state: mounted
+  with_sequence: count={{ disks }}
 
-- name: Get the mount
-  ansible.builtin.command: mount -a
-- name: Set permissions on /srv/node/* after being mounted
-  ansible.builtin.file: state=directory path=/srv/node/{{ disk_prefix }}{{ item|int - 1 }} owner=swift group=swift mode=0770
+- name: Set permissions on mounted storage devices
+  ansible.builtin.file:
+    state: directory
+    path: "/srv/node/{{ disk_prefix }}{{ item | int - 1 }}"
+    owner: swift
+    group: swift
+    mode: "0770"
   with_sequence: count={{ disks }}
 
 #
@@ -54,31 +67,52 @@
 
 - name: Install rsync
   ansible.builtin.dnf:
-    name: rsync
+    name: rsync-daemon
     state: present
   become: true
 
 - name: Copy over rsyncd.conf to swift storage
-  ansible.builtin.template: src=rsyncd.conf.j2 dest=/etc/rsyncd.conf
-- name: Make sure rsync is running
-  ansible.builtin.command: rsync --daemon
+  ansible.builtin.template:
+    src: rsyncd.conf.j2
+    dest: /etc/rsyncd.conf
+    mode: "0755"
+  become: true
+
+- name: Make sure rsync daemon is running
+  ansible.builtin.service:
+    name: rsyncd
+    state: started
+    enabled: true
+
 - name: Ensure *-server directories exist in /etc/swift
-  ansible.builtin.file: path=/etc/swift/{{ item }}-server state=directory owner=swift group=swift mode=0755
+  ansible.builtin.file:
+    path: "/etc/swift/{{ item }}-server"
+    state: directory
+    mode: "0755"
   with_items:
     - account
     - container
     - object
+  become: true
 
 - name: Copy over *-server.conf files
-  ansible.builtin.template: src={{ item }}-server.conf.j2 dest=/etc/swift/{{ item }}-server/{{ item }}-server.conf owner=swift group=swift mode=0644
+  ansible.builtin.template:
+    src: "{{ item }}-server.conf.j2"
+    dest: "/etc/swift/{{ item }}-server/{{ item }}-server.conf"
+    mode: "0755"
   with_items:
     - account
     - container
     - object
+  become: true
 
 - name: Copy over *-replication.conf files
-  ansible.builtin.template: src={{ item }}-replication.conf.j2 dest=/etc/swift/{{ item }}-server/{{ item }}-replication.conf owner=swift group=swift mode=0644
+  ansible.builtin.template:
+    src: "{{ item }}-replication.conf.j2"
+    dest: "/etc/swift/{{ item }}-server/{{ item }}-replication.conf"
+    mode: "0755"
   with_items:
     - account
     - container
     - object
+  become: true

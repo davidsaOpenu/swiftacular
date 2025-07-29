@@ -13,12 +13,12 @@
   become: true
   tasks:
     - name: Install centos-release-openstack-epoxy
-      dnf:
+      ansible.builtin.dnf:
         name: centos-release-openstack-epoxy
         state: present
 
     - name: Install required packages
-      dnf:
+      ansible.builtin.dnf:
         name:
           - python3-devel
           - pcp-devel
@@ -29,12 +29,17 @@
   hosts: storage
   tasks:
     - name: Copy pdma to host
-      copy:
+      ansible.builtin.copy:
         src: monitoring/pdmas/swiftdbinfo/
         dest: /var/lib/pcp/pmdas/swiftdbinfo/
         mode: u=rwx,g=rwx,o=rwx
-    - name: change ownership pf pdma
-      command: sudo chown $USER /var/lib/pcp/pmdas/swiftdbinfo
+
+    - name: Change ownership of pdma
+      ansible.builtin.file:
+        path: /var/lib/pcp/pmdas/swiftdbinfo
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        recurse: true
 
     - name: Install OpenStack Epoxy release package
       ansible.builtin.dnf:
@@ -45,6 +50,7 @@
       ansible.builtin.command:
         cmd: dnf config-manager --set-enabled crb
       become: true
+      changed_when: false # noqa no-changed-when
 
     - name: Update package cache after adding repo and enabling CRB
       ansible.builtin.dnf:
@@ -64,25 +70,32 @@
         state: present
 
     - name: Install PDMA
-      shell: |
+      ansible.builtin.shell: |
         cd /var/lib/pcp/pmdas/swiftdbinfo
         sudo ./Install.sh
-    - name: Enable and configure perssitant logging for custom pdma
-      shell: |
-        sudo sed -i '/\[access\]/i\
-        log mandatory on every 60 seconds {\
-        swiftdbinfo.size\
-        swiftdbinfo.object.count\
-        swiftdbinfo.object.dist\
-        }
+      changed_when: false # noqa no-changed-when
 
-        ' /var/lib/pcp/config/pmlogger/config.default
+    - name: Enable and configure persistent logging for custom pdma
+      ansible.builtin.blockinfile:
+        path: /var/lib/pcp/config/pmlogger/config.default
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - swiftdbinfo logging"
+        insertbefore: "^\\[access\\]"
+        block: |
+          log mandatory on every 60 seconds {
+          swiftdbinfo.size
+          swiftdbinfo.object.count
+          swiftdbinfo.object.dist
+          }
+      become: true
 
-- name: Restart pmlogger to finsh PDMAS setup
+- name: Restart pmlogger to finish PDMAS setup
   hosts: storage, proxy
   tasks:
     - name: Restart pmlogger
-      command: sudo systemctl restart pmlogger
+      ansible.builtin.systemd:
+        name: pmlogger
+        state: restarted
+      become: true
 
 - name: Setup Grafana
   hosts: grafana
@@ -93,42 +106,48 @@
 - name: Add echarts to Grafana
   hosts: grafana
   tasks:
-    - name: install echarts
-      command: sudo grafana-cli plugins install volkovlabs-echarts-panel
-    - name: install echarts
-      command: sudo systemctl restart grafana-server
+    - name: Install echarts plugin
+      ansible.builtin.command: grafana-cli plugins install volkovlabs-echarts-panel
+      become: true
+      changed_when: false # noqa no-changed-when
+
+    - name: Restart grafana-server
+      ansible.builtin.systemd:
+        name: grafana-server
+        state: restarted
+      become: true
 
 - name: Setup configure grafana python script
   hosts: grafana,storage,proxy
   become: true
   tasks:
     - name: Install development packages
-      dnf:
+      ansible.builtin.dnf:
         name:
           - python3-devel
         state: present
 
     - name: Create virtual environment for grafana-client
-      command: python3 -m venv /opt/grafana-venv
+      ansible.builtin.command: python3 -m venv /opt/grafana-venv
       args:
         creates: /opt/grafana-venv
 
     - name: Set proper ownership for virtual environment
-      file:
+      ansible.builtin.file:
         path: /opt/grafana-venv
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
         recurse: true
 
     - name: Install grafana-client in virtual environment
-      pip:
+      ansible.builtin.pip:
         name: grafana-client
         state: present
         virtualenv: /opt/grafana-venv
         virtualenv_python: python3
 
     - name: Copy configure_grafana.py script to target hosts
-      copy:
+      ansible.builtin.copy:
         src: monitoring/grafana/configure_grafana.py
         dest: /tmp/configure_grafana.py
         mode: "0755"
@@ -137,20 +156,22 @@
   hosts: grafana
   tasks:
     - name: Run the configure_grafana.py script - delete-default-pcp-datasource
-      command: >
+      ansible.builtin.command: >
         /opt/grafana-venv/bin/python /tmp/configure_grafana.py
         delete-default-pcp-datasource
         {{ hostvars['grafana-01']['ansible_default_ipv4']['address'] }}:3000
         admin admin
+      changed_when: false # noqa no-changed-when
 
 - name: Add PCP Redis datasource to Grafana
   hosts: storage,proxy
   tasks:
     - name: Run the configure_grafana.py script - create-pcp-datasource
-      command: >
+      ansible.builtin.command: >
         /opt/grafana-venv/bin/python /tmp/configure_grafana.py
         create-pcp-datasource
         {{ hostvars['grafana-01']['ansible_default_ipv4']['address'] }}:3000
         admin admin
         {{ inventory_hostname }}
         {{ ansible_host }}
+      changed_when: false # noqa no-changed-when

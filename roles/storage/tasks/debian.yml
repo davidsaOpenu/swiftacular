@@ -4,10 +4,20 @@
 #
 
 - name: Install required packages for swift storage
-  ansible.builtin.apt: pkg={{ item }} state=installed update_cache=yes cache_valid_time=3600
-  with_items: ubuntu_packages
+  ansible.builtin.apt:
+    pkg: "{{ storage_ubuntu_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
 
-- name: Edit /etc/sysconfig/rsync
-  ansible.builtin.lineinfile: dest=/etc/default/rsync regexp=^RSYNC_ENABLE line="RSYNC_ENABLE=true"
-- name: Edit /etc/sysconfig/rsync
-  ansible.builtin.lineinfile: dest=/etc/default/rsync regexp=^RSYNC_OPTS line="RSYNC_OPTS='--address {{ ansible_ens8.ipv4.address }}'"
+- name: Edit /etc/default/rsync - Enable rsync
+  ansible.builtin.lineinfile:
+    dest: /etc/default/rsync
+    regexp: ^RSYNC_ENABLE
+    line: "RSYNC_ENABLE=true"
+
+- name: Edit /etc/default/rsync - Set rsync options
+  ansible.builtin.lineinfile:
+    dest: /etc/default/rsync
+    regexp: ^RSYNC_OPTS
+    line: "RSYNC_OPTS='--address {{ ansible_ens8.ipv4.address }}'"

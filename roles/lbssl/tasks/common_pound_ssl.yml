@@ -3,21 +3,14 @@
 # Create an SSL certificate for pound to use
 #
 
-# XXX FIX ME - ansible_fqdn? XXX
 - name: Create self-signed SSL cert for pound
-  ansible.builtin.command: openssl req -new -nodes -x509 -subj "/C=US/ST=Oregon/L=Portland/O=IT/CN={{ ansible_ens6.ipv4.address }}" -days 3650 -keyout
-    /etc/pound/server.key -out /etc/pound/server.crt -extensions v3_ca creates=/etc/pound/server.crt
-  register: new_cert
-  notify: restart pound
-
-- name: Verify cert file
-  ansible.builtin.command: openssl x509 -in /etc/pound/server.crt -text
-  when: new_cert.changed
-
-- name: Create a pem file
-  ansible.builtin.command: openssl x509 -in /etc/pound/server.crt -out /etc/pound/server.pem
-  when: new_cert.changed
-
-- name: Add server.key to server.pem file
-  ansible.builtin.shell: openssl rsa -in /etc/pound/server.key >> /etc/pound/server.pem
-  when: new_cert.changed
+  ansible.builtin.command:
+    cmd: openssl req -new -nodes -x509 -subj "/C=US/ST=Oregon/L=Portland/O=IT/CN={{ ansible_ens6.ipv4.address }}" -days 3650 -keyout /etc/pound/server.key -out
+      /etc/pound/server.crt -extensions v3_ca
+    creates: /etc/pound/server.crt
+  notify:
+    - Verify ssl cert
+    - Create combined pem file
+    - Restart pound
+    - Read certificate file
+    - Read private key file
