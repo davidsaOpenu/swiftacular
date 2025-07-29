@@ -29,7 +29,7 @@ def addMeta(vmName, inventory, group):
 #
 conn = libvirt.open("qemu:///system")
 if conn == None:
-    print 'Failed to open connection to hypervisor'
+    print ('Failed to open connection to hypervisor')
     sys.exit(1)
 
 #
@@ -86,4 +86,4 @@ for vm in conn.listAllDomains():
 		# 	inventory['lbssl']['hosts'].append(vm.name())
 		# 	addMeta(vm.name(), inventory, 'lbssl')
 
-print json.dumps(inventory, indent=4)
+print (json.dumps(inventory, indent=4))

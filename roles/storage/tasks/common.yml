@@ -1,10 +1,23 @@
 ---
 - name: Make sure /srv/node exists
-  ansible.builtin.file: path=/srv/node state=directory
+  ansible.builtin.file:
+    path: /srv/node
+    state: directory
 - name: Make sure /var/swift/recon exists
-  ansible.builtin.file: path=/var/swift/recon state=directory owner=swift group=swift mode=0750
+  ansible.builtin.file:
+    path: /var/swift/recon
+    state: directory
+    owner: swift
+    group: swift
+    mode: "0750"
 - name: Make /srv/node disk device directories
-  ansible.builtin.file: state=directory path=/srv/node/{{ disk_prefix }}{{ item|int - 1 }} owner=swift group=swift mode=0770
+  ansible.builtin.file:
+    state: directory
+    path: /srv/node/{{
+    owner: swift
+    group: swift
+    mode: "0770"
+    cmd: disk_prefix }}{{ item | int - 1 }}
   with_sequence: count={{ disks }}
 #  when: "losetup.rc > 0"
 
@@ -45,7 +58,13 @@
 - name: Get the mount
   ansible.builtin.command: mount -a
 - name: Set permissions on /srv/node/* after being mounted
-  ansible.builtin.file: state=directory path=/srv/node/{{ disk_prefix }}{{ item|int - 1 }} owner=swift group=swift mode=0770
+  ansible.builtin.file:
+    state: directory
+    path: /srv/node/{{
+    owner: swift
+    group: swift
+    mode: "0770"
+    cmd: disk_prefix }}{{ item | int - 1 }}
   with_sequence: count={{ disks }}
 
 #
@@ -59,25 +78,45 @@
   become: true
 
 - name: Copy over rsyncd.conf to swift storage
-  ansible.builtin.template: src=rsyncd.conf.j2 dest=/etc/rsyncd.conf
+  ansible.builtin.template:
+    src: rsyncd.conf.j2
+    dest: /etc/rsyncd.conf
 - name: Make sure rsync is running
   ansible.builtin.command: rsync --daemon
 - name: Ensure *-server directories exist in /etc/swift
-  ansible.builtin.file: path=/etc/swift/{{ item }}-server state=directory owner=swift group=swift mode=0755
+  ansible.builtin.file:
+    path: /etc/swift/{{
+    state: directory
+    owner: swift
+    group: swift
+    mode: "0755"
+    cmd: item }}-server
   with_items:
     - account
     - container
     - object
 
 - name: Copy over *-server.conf files
-  ansible.builtin.template: src={{ item }}-server.conf.j2 dest=/etc/swift/{{ item }}-server/{{ item }}-server.conf owner=swift group=swift mode=0644
+  ansible.builtin.template:
+    src: "{{"
+    dest: /etc/swift/{{
+    owner: swift
+    group: swift
+    mode: "0644"
+    cmd: item }}-server.conf.j2 item }}-server/{{ item }}-server.conf
   with_items:
     - account
     - container
     - object
 
 - name: Copy over *-replication.conf files
-  ansible.builtin.template: src={{ item }}-replication.conf.j2 dest=/etc/swift/{{ item }}-server/{{ item }}-replication.conf owner=swift group=swift mode=0644
+  ansible.builtin.template:
+    src: "{{"
+    dest: /etc/swift/{{
+    owner: swift
+    group: swift
+    mode: "0644"
+    cmd: item }}-replication.conf.j2 item }}-server/{{ item }}-replication.conf
   with_items:
     - account
     - container

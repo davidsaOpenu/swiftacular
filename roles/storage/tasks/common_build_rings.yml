@@ -32,8 +32,10 @@
   with_sequence: count={{ disks }}
 
 - name: Build account ring
-  ansible.builtin.command: swift-ring-builder account.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6002R{{ ansible_ens9.ipv4.address
-    }}:6002/{{ disk_prefix }}{{ item|int - 1 }} 100 chdir=/etc/swift
+  ansible.builtin.command:
+    chdir: /etc/swift
+    cmd: swift-ring-builder account.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6002R{{ ansible_ens9.ipv4.address }}:6002/{{
+      disk_prefix }}{{ item | int - 1 }} 100
   delegate_to: "{{ swift_proxy_server }}"
   vars:
     ansible_ssh_user: vagrant
@@ -43,16 +45,20 @@
 #  when: losetup.rc >0 and rings_exist.rc > 0
 
 - name: Build container ring
-  ansible.builtin.command: swift-ring-builder container.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6001R{{ ansible_ens9.ipv4.address
-    }}:6001/{{ disk_prefix }}{{ item|int - 1 }} 100 chdir=/etc/swift
+  ansible.builtin.command:
+    chdir: /etc/swift
+    cmd: swift-ring-builder container.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6001R{{ ansible_ens9.ipv4.address }}:6001/{{
+      disk_prefix }}{{ item | int - 1 }} 100
   delegate_to: "{{ swift_proxy_server }}"
   with_sequence: count={{ disks }}
   when: rings_exist.rc > 0
 #  when: losetup.rc >0 and rings_exist.rc > 0
 
 - name: Build object ring
-  ansible.builtin.command: swift-ring-builder object.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6000R{{ ansible_ens9.ipv4.address
-    }}:6000/{{ disk_prefix }}{{ item|int - 1 }} 100 chdir=/etc/swift
+  ansible.builtin.command:
+    chdir: /etc/swift
+    cmd: swift-ring-builder object.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6000R{{ ansible_ens9.ipv4.address }}:6000/{{ disk_prefix
+      }}{{ item | int - 1 }} 100
   delegate_to: "{{ swift_proxy_server }}"
   with_sequence: count={{ disks }}
   when: rings_exist.rc > 0

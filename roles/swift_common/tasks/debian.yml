@@ -1,4 +1,8 @@
 ---
 - name: Install required packages for swift_common
-  ansible.builtin.apt: pkg={{ item }} state=installed update_cache=yes
-  with_items: ubuntu_packages
+  ansible.builtin.apt:
+    pkg: "{{"
+    state: installed
+    update_cache: "yes"
+    cmd: item }}
+  with_items: swift_common_ubuntu_packages
