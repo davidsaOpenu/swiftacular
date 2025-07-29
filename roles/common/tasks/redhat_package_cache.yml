@@ -23,7 +23,10 @@
   when: ansible_distribution == 'CentOS'
 
 - name: Enable CodeReady Builder repository
-  ansible.builtin.command: dnf config-manager --set-enabled crb
+  ansible.builtin.dnf:
+    name: [] # Don't install/update any packages
+    enablerepo: crb
+    state: present
   become: true
   when: ansible_distribution == 'CentOS'
 

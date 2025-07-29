@@ -1,3 +1,5 @@
 ---
 - name: Restart pound
-  ansible.builtin.service: name=pound state=restarted
+  ansible.builtin.service:
+    name: pound
+    state: restarted

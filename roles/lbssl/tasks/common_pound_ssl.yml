@@ -3,21 +3,36 @@
 # Create an SSL certificate for pound to use
 #
 
-# XXX FIX ME - ansible_fqdn? XXX
 - name: Create self-signed SSL cert for pound
-  ansible.builtin.command: openssl req -new -nodes -x509 -subj "/C=US/ST=Oregon/L=Portland/O=IT/CN={{ ansible_ens6.ipv4.address }}" -days 3650 -keyout
-    /etc/pound/server.key -out /etc/pound/server.crt -extensions v3_ca creates=/etc/pound/server.crt
+  ansible.builtin.command:
+    cmd: openssl req -new -nodes -x509 -subj "/C=US/ST=Oregon/L=Portland/O=IT/CN={{ ansible_ens6.ipv4.address }}" -days 3650 -keyout /etc/pound/server.key -out
+      /etc/pound/server.crt -extensions v3_ca
+    creates: /etc/pound/server.crt
   register: new_cert
   notify: restart pound
 
 - name: Verify cert file
   ansible.builtin.command: openssl x509 -in /etc/pound/server.crt -text
   when: new_cert.changed
+  changed_when: false
 
-- name: Create a pem file
-  ansible.builtin.command: openssl x509 -in /etc/pound/server.crt -out /etc/pound/server.pem
+- name: Read certificate file
+  ansible.builtin.slurp:
+    src: /etc/pound/server.crt
+  register: cert_content
   when: new_cert.changed
 
-- name: Add server.key to server.pem file
-  ansible.builtin.shell: openssl rsa -in /etc/pound/server.key >> /etc/pound/server.pem
+- name: Read private key file
+  ansible.builtin.slurp:
+    src: /etc/pound/server.key
+  register: key_content
+  when: new_cert.changed
+
+- name: Create combined PEM file
+  ansible.builtin.copy:
+    content: "{{ (cert_content.content | b64decode) + (key_content.content | b64decode) }}"
+    dest: /etc/pound/server.pem
+    owner: root
+    group: root
+    mode: "0600"
   when: new_cert.changed
