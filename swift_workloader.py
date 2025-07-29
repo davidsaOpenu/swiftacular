@@ -41,7 +41,7 @@ def retry(tries, delay=0):
 
 
 class Workloader:
-    def __init__(self, object_count=OBJECT_COUNT, mean_size=MEAN_SIZE, 
+    def __init__(self, object_count=OBJECT_COUNT, mean_size=MEAN_SIZE,
                  max_size=MAX_SIZE, min_size=MIN_SIZE, stdev_size=STDEV_SIZE,
                  retention_time=RETENTION_TIME, connection=None):
         self._object_count = object_count

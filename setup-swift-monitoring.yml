@@ -10,7 +10,7 @@
 
 - name: Setup storage and proxy hosts so they support custom pcp pdmas
   hosts: storage, proxy
-  become: yes
+  become: true
   tasks:
     - name: Install centos-release-openstack-epoxy
       dnf:
@@ -44,11 +44,11 @@
     - name: Enable CRB repository for additional dependencies
       ansible.builtin.command:
         cmd: dnf config-manager --set-enabled crb
-      become: yes
+      become: true
 
     - name: Update package cache after adding repo and enabling CRB
       ansible.builtin.dnf:
-        update_cache: yes
+        update_cache: true
 
     - name: Install required dependencies
       ansible.builtin.dnf:
@@ -58,25 +58,25 @@
 
     - name: Install OpenStack Swift
       ansible.builtin.dnf:
-        name: 
+        name:
           - openstack-swift
           - python3-swift
         state: present
 
     - name: Install PDMA
       shell: |
-            cd /var/lib/pcp/pmdas/swiftdbinfo
-            sudo ./Install.sh
+        cd /var/lib/pcp/pmdas/swiftdbinfo
+        sudo ./Install.sh
     - name: Enable and configure perssitant logging for custom pdma
       shell: |
-            sudo sed -i '/\[access\]/i\
-            log mandatory on every 60 seconds {\
-            swiftdbinfo.size\
-            swiftdbinfo.object.count\
-            swiftdbinfo.object.dist\
-            }
+        sudo sed -i '/\[access\]/i\
+        log mandatory on every 60 seconds {\
+        swiftdbinfo.size\
+        swiftdbinfo.object.count\
+        swiftdbinfo.object.dist\
+        }
 
-            ' /var/lib/pcp/config/pmlogger/config.default
+        ' /var/lib/pcp/config/pmlogger/config.default
 
 - name: Restart pmlogger to finsh PDMAS setup
   hosts: storage, proxy
@@ -100,7 +100,7 @@
 
 - name: Setup configure grafana python script
   hosts: grafana,storage,proxy
-  become: yes
+  become: true
   tasks:
     - name: Install development packages
       dnf:
@@ -118,7 +118,7 @@
         path: /opt/grafana-venv
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
-        recurse: yes
+        recurse: true
 
     - name: Install grafana-client in virtual environment
       pip:
@@ -131,7 +131,7 @@
       copy:
         src: monitoring/grafana/configure_grafana.py
         dest: /tmp/configure_grafana.py
-        mode: '0755'
+        mode: "0755"
 
 - name: Delete PCP Redis datasource to Grafana
   hosts: grafana

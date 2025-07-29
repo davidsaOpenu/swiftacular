@@ -53,7 +53,7 @@ for vm in conn.listAllDomains():
 
 	if vm.isActive():
 		xmlDoc = minidom.parseString(vm.XMLDesc())
-		interfaces = xmlDoc.getElementsByTagName('mac') 
+		interfaces = xmlDoc.getElementsByTagName('mac')
 
 		mac =  interfaces[0].getAttribute('address')
 
@@ -64,7 +64,7 @@ for vm in conn.listAllDomains():
 				col = line.split()
 				if col[1] == mac:
 					ip = col[2]
-					break	
+					break
 
 		# ugh
 		if 'keystone' in vm.name():

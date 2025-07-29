@@ -1,4 +1,3 @@
 ---
-
-- name: ensure apt-cacher-ng is running
-  service: name=apt-cacher-ng state=started
+- name: Ensure apt-cacher-ng is running
+  ansible.builtin.service: name=apt-cacher-ng state=started

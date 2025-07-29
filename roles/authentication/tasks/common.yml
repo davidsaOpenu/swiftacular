@@ -1,26 +1,25 @@
 ---
-
 #
 # Keystone operations common to redhat and debian
 #
 
-- name: copy over keystone.conf from template
-  template: src=keystone_new.conf.j2 dest=/etc/keystone/keystone.conf owner=root group=root mode=0644
+- name: Copy over keystone.conf from template
+  ansible.builtin.template: src=keystone_new.conf.j2 dest=/etc/keystone/keystone.conf owner=root group=root mode=0644
   notify:
     - restart keystone
 
-- name: check if there is a /etc/keystone/ssl/certs/keystone.pem file
-  command: ls /etc/keystone/ssl/certs/keystone.pem
+- name: Check if there is a /etc/keystone/ssl/certs/keystone.pem file
+  ansible.builtin.command: ls /etc/keystone/ssl/certs/keystone.pem
   register: keystone_pem_missing
   ignore_errors: true
   changed_when: keystone_pem_missing.rc > 0
 
-- name: remove /etc/keystone/ssl if there is not a keystone.pem file
-  file: path=/etc/keystone/ssl state=absent
+- name: Remove /etc/keystone/ssl if there is not a keystone.pem file
+  ansible.builtin.file: path=/etc/keystone/ssl state=absent
   when: keystone_pem_missing.rc > 0
   changed_when: keystone_pem_missing.rc > 0
 
-- name: install keystone packages (RedHat/CentOS)
+- name: Install keystone packages (RedHat/CentOS)
   ansible.builtin.dnf:
     name:
       - openstack-keystone
@@ -29,7 +28,7 @@
       - python3-PyMySQL # required for both MySQL and MariaDB if using Ansible modules like mysql_db
     state: present
   when: ansible_os_family == "RedHat"
-  become: yes
+  become: true
 
 - name: Install ALL required Python dependencies (RedHat/CentOS)
   ansible.builtin.dnf:
@@ -46,11 +45,11 @@
       - python3-pycparser
       - python3-setuptools
     state: present
-  become: yes
+  become: true
   when: ansible_os_family == "RedHat"
 
-- name: install keystone packages (Debian/Ubuntu)
-  apt:
+- name: Install keystone packages (Debian/Ubuntu)
+  ansible.builtin.apt:
     name:
       - keystone
       - apache2
@@ -60,9 +59,9 @@
       - python3-cffi
       - python3-openssl
     state: present
-    update_cache: yes
+    update_cache: true
   when: ansible_os_family == "Debian"
-  become: yes
+  become: true
 
 - name: Verify cryptography module installation
   ansible.builtin.shell: |
@@ -82,7 +81,7 @@
   register: debug_info
 
 - name: Display debug information
-  debug:
+  ansible.builtin.debug:
     var: debug_info.stdout_lines
 
 # START MYSQL CONFIGURATION
@@ -90,24 +89,24 @@
   ansible.builtin.systemd:
     name: mariadb
     state: started
-    enabled: yes
+    enabled: true
   when: ansible_os_family == "RedHat"
-  become: yes
+  become: true
 
 - name: Start and enable MariaDB (Debian/Ubuntu)
   ansible.builtin.systemd:
     name: mariadb
     state: started
-    enabled: yes
+    enabled: true
   when: ansible_os_family == "Debian"
-  become: yes
+  become: true
 
 - name: Create keystone database
   community.mysql.mysql_db:
     name: keystone
     state: present
     login_unix_socket: /var/lib/mysql/mysql.sock
-  become: yes
+  become: true
   register: keystone_db_created
 
 - name: Create keystone mysql user for localhost
@@ -118,7 +117,7 @@
     host: localhost
     state: present
     login_unix_socket: /var/lib/mysql/mysql.sock
-  become: yes
+  become: true
 
 - name: Create keystone mysql user for remote access
   community.mysql.mysql_user:
@@ -128,37 +127,37 @@
     host: "%"
     state: present
     login_unix_socket: /var/lib/mysql/mysql.sock
-  become: yes
+  become: true
 
 # Configure database connection in keystone.conf
 - name: Configure database connection in keystone.conf
   ansible.builtin.lineinfile:
     path: /etc/keystone/keystone.conf
-    regexp: '^#?connection\s*='
+    regexp: "^#?connection\\s*="
     line: "connection = mysql+pymysql://keystone:{{ keystone_mysql_password }}@localhost/keystone"
-    insertafter: '^\[database\]'
+    insertafter: "^\\[database\\]"
     state: present
-  become: yes
+  become: true
   notify:
     - restart keystone
 
 # Test keystone-manage before running setup commands
 - name: Test keystone-manage command
-  ansible.builtin.shell: keystone-manage --help
-  become: yes
+  ansible.builtin.command: keystone-manage --help
+  become: true
   register: keystone_test
   failed_when: keystone_test.rc != 0
 
 # Initialize Fernet key repositories with better error handling
 - name: Initialize Fernet repositories
-  ansible.builtin.shell: keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone
-  become: yes
+  ansible.builtin.command: keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone
+  become: true
   register: fernet_result
   failed_when: fernet_result.rc != 0
 
-- name: Initialize credential repositories  
-  ansible.builtin.shell: keystone-manage credential_setup --keystone-user keystone --keystone-group keystone
-  become: yes
+- name: Initialize credential repositories
+  ansible.builtin.command: keystone-manage credential_setup --keystone-user keystone --keystone-group keystone
+  become: true
   register: credential_result
   failed_when: credential_result.rc != 0
   notify:
@@ -167,34 +166,34 @@
 - name: Run keystone database migration
   ansible.builtin.command: keystone-manage db_sync
   #when: keystone_db_created.changed
-  become: yes
+  become: true
 
 - name: Bootstrap the Identity service
   ansible.builtin.command: >
-    keystone-manage bootstrap 
-    --bootstrap-password {{ keystone_admin_token }} 
-    --bootstrap-admin-url http://{{ keystone_server }}:5000/v3/ 
-    --bootstrap-internal-url http://{{ keystone_server }}:5000/v3/ 
-    --bootstrap-public-url http://{{ keystone_server }}:5000/v3/ 
+    keystone-manage bootstrap
+    --bootstrap-password {{ keystone_admin_token }}
+    --bootstrap-admin-url http://{{ keystone_server }}:5000/v3/
+    --bootstrap-internal-url http://{{ keystone_server }}:5000/v3/
+    --bootstrap-public-url http://{{ keystone_server }}:5000/v3/
     --bootstrap-region-id RegionOne
-  become: yes
+  become: true
 
 - name: Ensure keystone directory ownership
   ansible.builtin.file:
     path: /var/lib/keystone
     owner: keystone
     group: keystone
-    recurse: yes
+    recurse: true
     state: directory
-  become: yes
+  become: true
 
 - name: Configure ServerName in httpd.conf (RedHat/CentOS)
   ansible.builtin.replace:
     path: /etc/httpd/conf/httpd.conf
-    regexp: '#ServerName www.example.com:80'
+    regexp: "#ServerName www.example.com:80"
     replace: 'ServerName {{ ansible_fqdn | default("127.0.0.1") }}'
   when: ansible_os_family == "RedHat"
-  become: yes
+  become: true
 
 - name: Configure ServerName in apache2.conf (Debian/Ubuntu)
   ansible.builtin.lineinfile:
@@ -202,7 +201,7 @@
     line: 'ServerName {{ ansible_fqdn | default("127.0.0.1") }}'
     state: present
   when: ansible_os_family == "Debian"
-  become: yes
+  become: true
 
 - name: Create keystone WSGI config link (RedHat/CentOS)
   ansible.builtin.file:
@@ -210,7 +209,7 @@
     dest: /etc/httpd/conf.d/wsgi-keystone.conf
     state: link
   when: ansible_os_family == "RedHat"
-  become: yes
+  become: true
   ignore_errors: true
 
 - name: Enable keystone site (Debian/Ubuntu)
@@ -219,7 +218,7 @@
     dest: /etc/apache2/sites-enabled/keystone.conf
     state: link
   when: ansible_os_family == "Debian"
-  become: yes
+  become: true
   ignore_errors: true
 
 - name: Disable default Apache site (Debian/Ubuntu)
@@ -227,14 +226,14 @@
     path: /etc/apache2/sites-enabled/000-default.conf
     state: absent
   when: ansible_os_family == "Debian"
-  become: yes
+  become: true
 
 - name: Allow httpd to connect to database
   ansible.posix.seboolean:
     name: httpd_can_network_connect_db
-    state: yes
-    persistent: yes
-  become: yes
+    state: true
+    persistent: true
+  become: true
   when: ansible_os_family == "RedHat"
   ignore_errors: true
 
@@ -242,21 +241,21 @@
   ansible.builtin.systemd:
     name: httpd
     state: started
-    enabled: yes
+    enabled: true
   when: ansible_os_family == "RedHat"
-  become: yes
+  become: true
 
 - name: Start and enable Apache HTTP service (Debian/Ubuntu)
   ansible.builtin.systemd:
     name: apache2
     state: started
-    enabled: yes
+    enabled: true
   when: ansible_os_family == "Debian"
-  become: yes
+  become: true
 
 - name: Wait for keystone to be available
-  ansible.builtin.wait_for: 
-    host: "{{ keystone_server }}" 
+  ansible.builtin.wait_for:
+    host: "{{ keystone_server }}"
     port: 5000
     timeout: 60
 
@@ -267,13 +266,11 @@
       {% for key, value in admin_env.items() %}
       export {{ key }}={{ value | quote }}
       {% endfor %}
-    mode: '0644'
-  become: yes
-
-
+    mode: "0644"
+  become: true
 
 - name: Test keystone authentication
-  ansible.builtin.shell: /usr/bin/openstack token issue
+  ansible.builtin.command: /usr/bin/openstack token issue
   environment: "{{ admin_env }}"
   register: token_test
   failed_when: token_test.rc != 0
@@ -282,35 +279,35 @@
 
 - name: Create keystone region and endpoints
   ansible.builtin.shell: |
-   /usr/bin/openstack region create {{ keystone_region }} || true
-   /usr/bin/openstack endpoint create --region {{ keystone_region }} keystone public http://{{ keystone_server }}:5000/v3 || true
-   /usr/bin/openstack endpoint create --region {{ keystone_region }} keystone internal http://{{ keystone_server }}:5000/v3 || true
-   /usr/bin/openstack endpoint create --region {{ keystone_region }} keystone admin http://{{ keystone_server }}:5000/v3 || true
+    /usr/bin/openstack region create {{ keystone_region }} || true
+    /usr/bin/openstack endpoint create --region {{ keystone_region }} keystone public http://{{ keystone_server }}:5000/v3 || true
+    /usr/bin/openstack endpoint create --region {{ keystone_region }} keystone internal http://{{ keystone_server }}:5000/v3 || true
+    /usr/bin/openstack endpoint create --region {{ keystone_region }} keystone admin http://{{ keystone_server }}:5000/v3 || true
   environment: "{{ admin_env }}"
 
 - name: Create swift service and endpoints
   ansible.builtin.shell: |
-   /usr/bin/openstack service create --name swift --description "Object Store Service" object-store || true
-   /usr/bin/openstack endpoint create --region {{ keystone_region }} object-store public 'http://{{ swift_proxy_server }}:8080/v1/AUTH_$(tenant_id)s' || true
-   /usr/bin/openstack endpoint create --region {{ keystone_region }} object-store internal 'http://{{ swift_proxy_server }}:8080/v1/AUTH_$(tenant_id)s' || true
-   /usr/bin/openstack endpoint create --region {{ keystone_region }} object-store admin http://{{ swift_proxy_server }}:8080/v1 || true
+    /usr/bin/openstack service create --name swift --description "Object Store Service" object-store || true
+    /usr/bin/openstack endpoint create --region {{ keystone_region }} object-store public 'http://{{ swift_proxy_server }}:8080/v1/AUTH_$(tenant_id)s' || true
+    /usr/bin/openstack endpoint create --region {{ keystone_region }} object-store internal 'http://{{ swift_proxy_server }}:8080/v1/AUTH_$(tenant_id)s' || true
+    /usr/bin/openstack endpoint create --region {{ keystone_region }} object-store admin http://{{ swift_proxy_server }}:8080/v1 || true
   environment: "{{ admin_env }}"
 
 - name: Create OpenStack projects
   ansible.builtin.shell: |
-   /usr/bin/openstack project create --description "Service Tenant" service || true
-   /usr/bin/openstack project create --description "Default Tenant" demo || true
+    /usr/bin/openstack project create --description "Service Tenant" service || true
+    /usr/bin/openstack project create --description "Default Tenant" demo || true
   environment: "{{ admin_env }}"
 
 - name: Create OpenStack users
   ansible.builtin.shell: |
-   /usr/bin/openstack user create --project service --password {{ keystone_generic_service_password }} --domain Default swift || true
-   /usr/bin/openstack user create --project demo --password {{ keystone_test_user_password }} --domain Default {{ keystone_test_user }} || true
+    /usr/bin/openstack user create --project service --password {{ keystone_generic_service_password }} --domain Default swift || true
+    /usr/bin/openstack user create --project demo --password {{ keystone_test_user_password }} --domain Default {{ keystone_test_user }} || true
   environment: "{{ admin_env }}"
 
 - name: Create roles and assign permissions
   ansible.builtin.shell: |
-   /usr/bin/openstack role add --project service --user swift admin || true
-   /usr/bin/openstack role create swiftoperator || true
-   /usr/bin/openstack role add --project demo --user {{ keystone_test_user }} swiftoperator || true
+    /usr/bin/openstack role add --project service --user swift admin || true
+    /usr/bin/openstack role create swiftoperator || true
+    /usr/bin/openstack role add --project demo --user {{ keystone_test_user }} swiftoperator || true
   environment: "{{ admin_env }}"

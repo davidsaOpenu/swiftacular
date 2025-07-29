@@ -1,12 +1,11 @@
 ---
-
 #
 # Install swift storage
-# 
+#
 
-- name: install required packages for swift storage
-  command: dnf --enablerepo=centos-openstack-epoxy -y install {{ item }} 
+- name: Install required packages for swift storage
+  ansible.builtin.command: dnf --enablerepo=centos-openstack-epoxy -y install {{ item }}
   with_items: "{{ redhat_packages }}"
 
-- name: copy rsync init script to /etc/init.d/rsync
-  copy: src=redhat_rsync.init dest=/etc/rc.d/init.d/rsync owner=root group=root mode=0755
+- name: Copy rsync init script to /etc/init.d/rsync
+  ansible.builtin.copy: src=redhat_rsync.init dest=/etc/rc.d/init.d/rsync owner=root group=root mode=0755

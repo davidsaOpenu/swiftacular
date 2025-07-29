@@ -1,7 +1,6 @@
 ---
-
-- name: install required packages for swift_common
-  shell: |
+- name: Install required packages for swift_common
+  ansible.builtin.shell: |
     dnf update -y
     dnf config-manager --enable crb
     dnf install -y centos-release-openstack-epoxy

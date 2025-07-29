@@ -1,8 +1,7 @@
 ---
-
 #
 # SSL Testing
-# 
+#
 
 # If cert is ok, returns "ok", otherwise is not ok, ok?
 #
@@ -11,12 +10,12 @@
 # client$ echo QUIT | openssl s_client -showcerts -connect 192.168.100.50:35357 -showcerts -debug 2>&1 | grep "Verify return code"
 #    Verify return code: 21 (unable to verify the first certificate)
 
-- name: verify ssl cert 
-  command: echo QUIT | openssl s_client -showcerts -connect 192.168.100.50:35357 2>&1 | grep "Verify return code"
+- name: Verify ssl cert
+  ansible.builtin.command: echo QUIT | openssl s_client -showcerts -connect 192.168.100.50:35357 2>&1 | grep "Verify return code"
   register: openssl_s_client
 
-- name: test for openssl client failed
-  debug: msg="ssl client failed"
+- name: Test for openssl client failed
+  ansible.builtin.debug: msg="ssl client failed"
   when: openssl_s_client.stdout.find("ok") == -1
 
 #
@@ -24,55 +23,42 @@
 # curl: (51) SSL: certificate subject name 'localhost' does not match target host name '192.168.100.50'
 #
 
-
 #
-# 
+#
 #
 
-- name: check if adminrc exists
-  stat: path=/home/vagrant/adminrc
-
-- name: run keystone user-list using adminrc file
-  shell: chdir=/home/vagrant executable="/bin/bash" source ./adminrc; keystone --insecure user-list
-
-#
-# Run some tests using swift client
-# 
-
-- name: check if testrc exists
-  stat: path=/home/vagrant/testrc
-
-- name: run swift stat using testrc file
-  shell: chdir=/home/vagrant executable="/bin/bash" source ./testrc; swift  stat
-
-- name: run swift list using testrc file
-  shell: chdir=/home/vagrant executable="/bin/bash" source ./testrc; swift  list
-
-- name: create a file to upload
-  shell: chdir=/home/vagrant executable="/bin/bash" echo $RANDOM > swift.txt
-
-- name: get md5sum of uploaded file
-  command: chdir=/home/vagrant md5sum swift.txt 
+- name: Check if adminrc exists
+  ansible.builtin.stat: path=/home/vagrant/adminrc
+- name: Run keystone user-list using adminrc file
+  ansible.builtin.shell: chdir=/home/vagrant executable="/bin/bash" source ./adminrc; keystone --insecure user-list
+- name: Check if testrc exists
+  ansible.builtin.stat: path=/home/vagrant/testrc
+- name: Run swift stat using testrc file
+  ansible.builtin.shell: chdir=/home/vagrant executable="/bin/bash" source ./testrc; swift  stat
+- name: Run swift list using testrc file
+  ansible.builtin.shell: chdir=/home/vagrant executable="/bin/bash" source ./testrc; swift  list
+- name: Create a file to upload
+  ansible.builtin.shell: chdir=/home/vagrant executable="/bin/bash" echo $RANDOM > swift.txt
+- name: Get md5sum of uploaded file
+  ansible.builtin.command: chdir=/home/vagrant md5sum swift.txt
   register: md5sum_upload
 
-- name: upload a file into swift
-  shell: chdir=/home/vagrant executable="/bin/bash" source ./testrc; swift upload swifty swift.txt
-- name: remove swift.txt
-  command: chdir=/home/vagrant rm -f ./swift.txt
-
-- name: download file again
-  shell: chdir=/home/vagrant executable="/bin/bash" source ./testrc; swift download swifty swift.txt
-
-- name: get md5sum of downloaded file
-  command: chdir=/home/vagrant md5sum swift.txt 
+- name: Upload a file into swift
+  ansible.builtin.shell: chdir=/home/vagrant executable="/bin/bash" source ./testrc; swift upload swifty swift.txt
+- name: Remove swift.txt
+  ansible.builtin.command: chdir=/home/vagrant rm -f ./swift.txt
+- name: Download file again
+  ansible.builtin.shell: chdir=/home/vagrant executable="/bin/bash" source ./testrc; swift download swifty swift.txt
+- name: Get md5sum of downloaded file
+  ansible.builtin.command: chdir=/home/vagrant md5sum swift.txt
   register: md5sum_download
 
-- fail: msg="md5sum for downloaded swift.txt file does not match uploaded md5sum"
+- ansible.builtin.fail:
+    msg: "md5sum for downloaded swift.txt file does not match uploaded md5sum"
   when: md5sum_download.stdout != md5sum_upload.stdout
 
 # NOTE: This will delete all containers, files!
-- name: delete all from swifty container
-  shell: chdir=/home/vagrant executable="/bin/bash" source ./testrc; swift delete --all
-
-- name: remove swift.txt
-  command: chdir=/home/vagrant rm -f ./swift.txt
+- name: Delete all from swifty container
+  ansible.builtin.shell: chdir=/home/vagrant executable="/bin/bash" source ./testrc; swift delete --all
+- name: Remove swift.txt
+  ansible.builtin.command: chdir=/home/vagrant rm -f ./swift.txt

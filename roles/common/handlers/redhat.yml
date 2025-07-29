@@ -1,6 +1,5 @@
 ---
-
 - name: Update dnf cache
-  dnf:
-    update_cache: yes
-  become: yes
+  ansible.builtin.dnf:
+    update_cache: true
+  become: true

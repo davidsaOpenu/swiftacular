@@ -1,43 +1,42 @@
 ---
-
 - name: Install Swift dependencies
-  dnf:
+  ansible.builtin.dnf:
     name:
       - python3-devel
       - gcc
     state: present
-  become: yes
+  become: true
   when: ansible_distribution == 'CentOS'
 
 - name: Install OpenStack repository
-  dnf:
+  ansible.builtin.dnf:
     name: centos-release-openstack-epoxy
     state: present
-  become: yes
+  become: true
   when: ansible_distribution == 'CentOS'
 
 - name: Install OpenStack SELinux package
-  dnf:
+  ansible.builtin.dnf:
     name: openstack-selinux
     state: present
-  become: yes
+  become: true
   when: ansible_distribution == 'CentOS'
 
 - name: Enable CodeReady Builder repository
-  command: dnf config-manager --set-enabled crb
-  become: yes
+  ansible.builtin.command: dnf config-manager --set-enabled crb
+  become: true
   when: ansible_distribution == 'CentOS'
 
 - name: Upgrade all packages
-  dnf:
+  ansible.builtin.dnf:
     name: "*"
     state: latest
-  become: yes
+  become: true
   when: ansible_distribution == 'CentOS'
 
 - name: Install OpenStack client
-  dnf:
+  ansible.builtin.dnf:
     name: python3-openstackclient
     state: present
-  become: yes
+  become: true
   when: ansible_distribution == 'CentOS'

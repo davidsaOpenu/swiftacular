@@ -1,13 +1,8 @@
 ---
-
 #
 # Run some tests to verify installation
-# 
+#
 
 - hosts: swiftclient
   tasks:
-  - include_tasks: swiftclient.yml
-
-#- hosts: gauntlt
-#  tasks:
-#  - include_tasks: gauntlt.yml
+    - ansible.builtin.include_tasks: swiftclient.yml
