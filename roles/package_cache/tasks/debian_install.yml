@@ -1,5 +1,9 @@
 ---
 - name: Install required package_cache packages
-  ansible.builtin.apt: pkg={{ item }} state=installed update_cache=yes cache_valid_time=3600
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: "yes"
+    cache_valid_time: "3600"
   with_items:
     - apt-cacher-ng
