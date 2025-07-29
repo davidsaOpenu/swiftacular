@@ -1,4 +1,4 @@
-
+---
 #
 # Create rings - NOTE: Is being delegated to the swift proxy(s)
 #
@@ -9,31 +9,31 @@
 #
 # This is necessary in case the cluster is halted.
 #
-- name: check if account.ring.gz already exists
+- name: Check if account.ring.gz already exists
   #stat: path=/etc/swift/{{ item }}.ring.gz
-  command: ls /etc/swift/account.ring.gz
+  ansible.builtin.command: ls /etc/swift/account.ring.gz
   register: rings_exist
   ignore_errors: true
   changed_when: rings_exist.rc > 0
 
-- name: do facts module to get latest information
-  setup:
+- name: Do facts module to get latest information
+  ansible.builtin.setup:
 
-- debug: msg="{{ rings_exist.rc }}"
-
-- name: print the string with interpreted variables
+- ansible.builtin.debug:
+    msg: "{{ rings_exist.rc }}"
+- name: Print the string with interpreted variables
   ansible.builtin.debug:
-    msg: swift-ring-builder account.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6002R{{ ansible_ens9.ipv4.address }}:6002/{{ disk_prefix }}{{ item|int - 1 }} 100 
+    msg: swift-ring-builder account.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6002R{{ ansible_ens9.ipv4.address }}:6002/{{
+      disk_prefix }}{{ item | int - 1 }} 100
   delegate_to: "{{ swift_proxy_server }}"
   vars:
     ansible_ssh_user: vagrant
     ansible_ssh_private_key_file: /opt/swiftacular/.vagrant/machines/swift-proxy-01/virtualbox/private_key
   with_sequence: count={{ disks }}
 
-
-- name: build account ring
-  command: swift-ring-builder account.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6002R{{ ansible_ens9.ipv4.address }}:6002/{{ disk_prefix }}{{ item|int - 1 }} 100
-           chdir=/etc/swift
+- name: Build account ring
+  ansible.builtin.command: swift-ring-builder account.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6002R{{ ansible_ens9.ipv4.address
+    }}:6002/{{ disk_prefix }}{{ item|int - 1 }} 100 chdir=/etc/swift
   delegate_to: "{{ swift_proxy_server }}"
   vars:
     ansible_ssh_user: vagrant
@@ -42,17 +42,17 @@
   when: rings_exist.rc > 0
 #  when: losetup.rc >0 and rings_exist.rc > 0
 
-- name: build container ring
-  command: swift-ring-builder container.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6001R{{ ansible_ens9.ipv4.address }}:6001/{{ disk_prefix }}{{ item|int - 1 }} 100
-           chdir=/etc/swift
+- name: Build container ring
+  ansible.builtin.command: swift-ring-builder container.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6001R{{ ansible_ens9.ipv4.address
+    }}:6001/{{ disk_prefix }}{{ item|int - 1 }} 100 chdir=/etc/swift
   delegate_to: "{{ swift_proxy_server }}"
   with_sequence: count={{ disks }}
   when: rings_exist.rc > 0
 #  when: losetup.rc >0 and rings_exist.rc > 0
 
-- name: build object ring
-  command: swift-ring-builder object.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6000R{{ ansible_ens9.ipv4.address }}:6000/{{ disk_prefix }}{{ item|int - 1 }} 100
-           chdir=/etc/swift
+- name: Build object ring
+  ansible.builtin.command: swift-ring-builder object.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6000R{{ ansible_ens9.ipv4.address
+    }}:6000/{{ disk_prefix }}{{ item|int - 1 }} 100 chdir=/etc/swift
   delegate_to: "{{ swift_proxy_server }}"
   with_sequence: count={{ disks }}
   when: rings_exist.rc > 0

@@ -1,5 +1,4 @@
 ---
-
 - name: Install development tools and Python packages
   ansible.builtin.dnf:
     name:
@@ -7,33 +6,33 @@
       - python3-devel
       - python3-PyMySQL
     state: present
-  become: yes
+  become: true
 
 - name: Install dnf-plugins-core for repository management
   ansible.builtin.dnf:
     name: dnf-plugins-core
     state: present
-  become: yes
+  become: true
 
 - name: Enable CRB (CodeReady Builder) repository
   ansible.builtin.command:
     cmd: dnf config-manager --enable crb
-  become: yes
+  become: true
   changed_when: true
 
 - name: Install OpenStack Epoxy release package
   ansible.builtin.dnf:
     name: centos-release-openstack-epoxy
     state: present
-  become: yes
+  become: true
 
 - name: Update all packages excluding problematic dependencies
   ansible.builtin.dnf:
-    name: '*'
+    name: "*"
     state: latest
     update_cache: true
 
-  become: yes
+  become: true
 
 - name: Install MariaDB server and development packages
   ansible.builtin.dnf:
@@ -41,7 +40,7 @@
       - mariadb-server
       - mariadb-devel
     state: present
-  become: yes
+  become: true
 
 - name: Install OpenStack Swift and core dependencies
   ansible.builtin.dnf:
@@ -49,34 +48,33 @@
       - openstack-swift
       - rsync
     state: present
-  become: yes
+  become: true
 
 - name: Start and enable MariaDB service
   ansible.builtin.systemd:
     name: mariadb
     state: started
-    enabled: yes
-  become: yes
+    enabled: true
+  become: true
 
-- name: create keystone directories  # Test
-  command: mkdir -p /etc/keystone /var/log/keystone
-
-- name: copy over /etc/keystone/logging.conf
-  copy: src=redhat_logging.conf dest=/etc/keystone/logging.conf mode=0640 #owner=keystone group=keystone
+- name: Create keystone directories # Test
+  ansible.builtin.command: mkdir -p /etc/keystone /var/log/keystone
+- name: Copy over /etc/keystone/logging.conf
+  ansible.builtin.copy: src=redhat_logging.conf dest=/etc/keystone/logging.conf mode=0640
   notify: restart keystone
 
-- name: create empty /var/log/keystone/error.log and access.log
-  command: touch /var/log/keystone/{{ item }}.log creates=/var/log/keystone/{{ item }}.log
+- name: Create empty /var/log/keystone/error.log and access.log
+  ansible.builtin.command: touch /var/log/keystone/{{ item }}.log creates=/var/log/keystone/{{ item }}.log
   with_items:
     - error
     - access
 
-- name: ensure error.log and access.log are writable by keystone
-  file: path=/var/log/keystone/{{ item }}.log state=file #owner=keystone group=keystone
+- name: Ensure error.log and access.log are writable by keystone
+  ansible.builtin.file: path=/var/log/keystone/{{ item }}.log state=file
   with_items:
     - error
     - access
 
-- name: ensure keystone can write to /var/log/keystone
-  file: path=/var/log/keystone recurse=yes #owner=keystone group=keystone
+- name: Ensure keystone can write to /var/log/keystone
+  ansible.builtin.file: path=/var/log/keystone recurse=yes
   notify: restart keystone

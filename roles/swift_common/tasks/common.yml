@@ -1,7 +1,5 @@
 ---
-
-- name: ensure /etc/swift exists
-  file: path=/etc/swift owner=swift group=swift mode=0750 state=directory
-
-- name: copy over swift.conf file
-  template: src=swift.conf.j2 dest=/etc/swift/swift.conf owner=swift group=swift mode=0600
+- name: Ensure /etc/swift exists
+  ansible.builtin.file: path=/etc/swift owner=swift group=swift mode=0750 state=directory
+- name: Copy over swift.conf file
+  ansible.builtin.template: src=swift.conf.j2 dest=/etc/swift/swift.conf owner=swift group=swift mode=0600

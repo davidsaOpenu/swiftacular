@@ -1,19 +1,18 @@
 ---
-
 - name: Display all variables/facts known for a host
-  debug:
+  ansible.builtin.debug:
     var: hostvars[inventory_hostname]
 
 #
 # Debian
 #
 
-- include_tasks: debian.yml
+- ansible.builtin.include_tasks: debian.yml
   when: ansible_os_family == 'Debian'
 
 #
 # Redhat
 #
 
-- include_tasks: redhat.yml
+- ansible.builtin.include_tasks: redhat.yml
   when: ansible_os_family == 'RedHat'

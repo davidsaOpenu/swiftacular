@@ -83,7 +83,7 @@ ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts set
 
 # Install jsonnet on localhost
 ansible-playbook -i 'localhost,' -c local jsonnet_install.yml
- 
+
 
 # Iterate over dashboard pairs and create each dashboard
 for dashboard in "${!dashboards[@]}"; do
@@ -96,5 +96,3 @@ done
 run_playbook "deploy_swift_cluster.yml" "Deploy Swift Cluster"
 
 run_playbook "setup_workload_test.yml" "Setup Workload Test"
-
-

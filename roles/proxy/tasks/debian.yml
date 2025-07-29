@@ -1,7 +1,6 @@
 ---
-
-- name: install required proxy packages
-  apt: name={{ item }} state=installed update_cache=yes cache_valid_time=3600
+- name: Install required proxy packages
+  ansible.builtin.apt: name={{ item }} state=installed update_cache=yes cache_valid_time=3600
   with_items: ubuntu_packages
 
-- include_tasks: debian_memcached_config.yml
+- ansible.builtin.include_tasks: debian_memcached_config.yml

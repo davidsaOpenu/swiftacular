@@ -6,6 +6,6 @@
          return True
 -    return False
 +    return True
- 
- 
+
+
  def make_shard_ranges(broker, shard_data, shards_account_prefix):

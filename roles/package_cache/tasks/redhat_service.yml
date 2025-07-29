@@ -1,4 +1,3 @@
 ---
-
-- name: ensure squid is running
-  service: name=squid state=started enabled=yes
+- name: Ensure squid is running
+  ansible.builtin.service: name=squid state=started enabled=yes

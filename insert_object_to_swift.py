@@ -10,7 +10,7 @@ def get_connection_info(user, password, auth_url):
     resp = requests.post(auth_url, headers={'Content-Type':'application/json'},json ={ "auth": {"identity": {"methods": ["password"],"password": {"user": {"name": user,"domain": { "id": "default" },"password": password}}}}})
     token = resp.headers["X-Subject-Token"]
     endpoint = [endpoint for endpoint in [catalog_endpoints for catalog_endpoints in  resp.json()['token']['catalog'] if catalog_endpoints['type'] == "object-store"][0]['endpoints'] if endpoint['interface'] =='public'][0]['url']
-    return token, endpoint 
+    return token, endpoint
 
 def main():
     token, endpoint = get_connection_info(user, password, auth_url)
