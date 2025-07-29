@@ -2,6 +2,18 @@
 
 set -euo pipefail
 
+
+# Build list of --exclude flags from .gitignore using git check-ignore
+EXCLUDES=$(git check-ignore -v **/* 2>/dev/null | cut -f2- | sort -u | sed 's/^/--exclude /' || true)
+
+# Run ansible-lint with exclusions
+if ! ansible-lint $EXCLUDES; then
+    echo "ansible-lint failed. Please fix the issues above before continuing."
+    exit 1
+else
+    echo "ansible-lint passed. Continuing with script..."
+fi
+
 # Array of dashboard JSON files and their UIDs
 declare -A dashboards
 dashboards["swiftdbinfo.jsonnet"]="swiftdbinfo"
