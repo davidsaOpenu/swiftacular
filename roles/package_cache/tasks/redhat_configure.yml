@@ -3,9 +3,14 @@
 #   command: setenforce 0
 
 - name: Set a cache_dir in squid.conf step 1
-  ansible.builtin.lineinfile: dest=/etc/squid/squid.conf line="cache_dir ufs /var/spool/squid 7000 16 256" insertafter="^#cache_dir"
+  ansible.builtin.lineinfile:
+    dest: /etc/squid/squid.conf
+    line: "cache_dir ufs /var/spool/squid 7000 16 256"
+    insertafter: "^#cache_dir"
 - name: Set a cache_dir in squid.conf step 2
-  ansible.builtin.lineinfile: dest=/etc/squid/squid.conf line="maximum_object_size 512000 KB"
+  ansible.builtin.lineinfile:
+    dest: /etc/squid/squid.conf
+    line: "maximum_object_size 512000 KB"
 - name: Restart service squid, in all cases
   ansible.builtin.service:
     name: squid

@@ -1,9 +1,9 @@
 ---
-- hosts: authentication
-
+- name: Cleanup authentication database
+  hosts: authentication
   tasks:
   # works for both MySQL and MariaDB
-    - name: remove keystone mysql/mariadb database
-      mysql_db:
+    - name: Remove keystone mysql/mariadb database
+      community.mysql.mysql_db:
         name: keystone
         state: absent

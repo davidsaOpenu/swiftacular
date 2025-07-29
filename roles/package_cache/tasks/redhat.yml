@@ -1,4 +1,9 @@
 ---
-- ansible.builtin.include_tasks: redhat_install.yml
-- ansible.builtin.include_tasks: redhat_configure.yml
-- ansible.builtin.include_tasks: redhat_service.yml
+- name: Install package cache components
+  ansible.builtin.include_tasks: redhat_install.yml
+
+- name: Configure package cache
+  ansible.builtin.include_tasks: redhat_configure.yml
+
+- name: Manage package cache service
+  ansible.builtin.include_tasks: redhat_service.yml

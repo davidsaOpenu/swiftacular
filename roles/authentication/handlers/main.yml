@@ -7,12 +7,14 @@
 # Debian
 #
 
-- ansible.builtin.import_tasks: debian.yml
+- name: Play debian.yml
+  ansible.builtin.import_tasks: debian.yml
   when: ansible_os_family == 'Debian'
 
 #
 # Redhat
 #
 
-- ansible.builtin.import_tasks: redhat.yml
+- name: Play redhat.com
+  ansible.builtin.import_tasks: redhat.yml
   when: ansible_os_family == 'RedHat'

@@ -1,3 +1,20 @@
 ---
-
 # debian
+- name: Stop ntpd
+  ansible.builtin.service:
+    name: ntp
+    state: stopped
+
+- name: Sync time with NTP server
+  community.general.ntpdate:
+    server: "{{ time_server }}"
+
+- name: Start ntpd
+  ansible.builtin.service:
+    name: ntp
+    state: started
+    enabled: true
+
+- name: Apply system timezone
+  community.general.timezone:
+    name: "{{ timezone_area }}/{{ timezone_city }}"
