@@ -4,9 +4,14 @@
 #
 
 - name: Copy over keystone.conf from template
-  ansible.builtin.template: src=keystone_new.conf.j2 dest=/etc/keystone/keystone.conf owner=root group=root mode=0644
+  ansible.builtin.template:
+    src: keystone_new.conf.j2
+    dest: /etc/keystone/keystone.conf
+    owner: root
+    group: root
+    mode: "0644"
   notify:
-    - restart keystone
+    - Restart keystone
 
 - name: Check if there is a /etc/keystone/ssl/certs/keystone.pem file
   ansible.builtin.command: ls /etc/keystone/ssl/certs/keystone.pem
@@ -15,7 +20,9 @@
   changed_when: keystone_pem_missing.rc > 0
 
 - name: Remove /etc/keystone/ssl if there is not a keystone.pem file
-  ansible.builtin.file: path=/etc/keystone/ssl state=absent
+  ansible.builtin.file:
+    path: /etc/keystone/ssl
+    state: absent
   when: keystone_pem_missing.rc > 0
   changed_when: keystone_pem_missing.rc > 0
 
@@ -139,7 +146,7 @@
     state: present
   become: true
   notify:
-    - restart keystone
+    - Restart keystone
 
 # Test keystone-manage before running setup commands
 - name: Test keystone-manage command
@@ -161,7 +168,7 @@
   register: credential_result
   failed_when: credential_result.rc != 0
   notify:
-    - restart keystone
+    - Restart keystone
 
 - name: Run keystone database migration
   ansible.builtin.command: keystone-manage db_sync

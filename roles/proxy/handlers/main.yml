@@ -1,5 +1,9 @@
 ---
 - name: Restart memcached
-  ansible.builtin.service: name=memcached state=restarted
+  ansible.builtin.service:
+    name: memcached
+    state: restarted
 - name: Restart proxy-server
-  ansible.builtin.service: name=swift-proxy state=restarted
+  ansible.builtin.service:
+    name: swift-proxy
+    state: restarted

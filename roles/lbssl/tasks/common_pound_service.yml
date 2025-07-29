@@ -1,3 +1,5 @@
 ---
 - name: Ensure pound is running
-  ansible.builtin.service: name=pound state=running
+  ansible.builtin.service:
+    name: pound
+    state: running

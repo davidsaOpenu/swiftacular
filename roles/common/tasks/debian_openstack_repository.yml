@@ -1,6 +1,8 @@
 ---
 - name: Install precise openstack havana apt repository
-  ansible.builtin.apt_repository: repo='deb http://ubuntu-cloud.archive.canonical.com/ubuntu precise-updates/havana main' state=present
+  ansible.builtin.apt_repository:
+    repo: "deb http://ubuntu-cloud.archive.canonical.com/ubuntu precise-updates/havana main"
+    state: present
   register: new_repo
   when: ansible_distribution_release == "precise"
 

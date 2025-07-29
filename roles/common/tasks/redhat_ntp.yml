@@ -8,7 +8,9 @@
 - name: Set timezone
   ansible.builtin.command: timedatectl set-timezone UTC
 - name: Enable cronyd on rhel8
-  ansible.builtin.service: name=chronyd state=started
+  ansible.builtin.service:
+    name: chronyd
+    state: started
 - name: Install SELinux Python bindings
   ansible.builtin.dnf:
     name: python3-libselinux
@@ -21,4 +23,6 @@
     var: ansible_facts.interfaces
 
 - name: The network or subnet address from which the clients are allowed to connect.
-  ansible.builtin.lineinfile: dest=/etc/chrony.conf line="allow {{ ansible_ens6.ipv4.network }}"
+  ansible.builtin.lineinfile:
+    dest: /etc/chrony.conf
+    line: "allow {{ ansible_ens6.ipv4.network }}"
