@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 # Check for required commands
 for cmd in python vagrant ansible-playbook ansible-galaxy; do
