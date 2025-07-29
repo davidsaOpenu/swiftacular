@@ -3,15 +3,19 @@
 # Debian
 #
 
-- ansible.builtin.include_tasks: debian.yml
+- name: Debian related tasks for the storage role
+  ansible.builtin.include_tasks: debian.yml
   when: ansible_os_family == 'Debian'
 
 #
 # Redhat
 #
 
-- ansible.builtin.include_tasks: redhat.yml
+- name: RedHat related tasks for the storage role
+  ansible.builtin.include_tasks: redhat.yml
   when: ansible_os_family == 'RedHat'
 
-- ansible.builtin.include_tasks: common.yml
-- ansible.builtin.include_tasks: common_build_rings.yml
+- name: Common tasks for the storage role
+  ansible.builtin.include_tasks: common.yml
+- name: Build ring related tasks for the storage role
+  ansible.builtin.include_tasks: common_build_rings.yml

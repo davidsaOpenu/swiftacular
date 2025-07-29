@@ -1,5 +1,5 @@
 ---
 
-ubuntu_packages:
+common_ubuntu_packages:
   - ubuntu-cloud-keyring
   - python-pycurl

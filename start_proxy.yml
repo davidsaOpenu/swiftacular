@@ -3,37 +3,51 @@
 # Create files necessary to start the proxy and also start it
 #
 
-- name: rebalance rings
-  command: swift-ring-builder {{ item }}.builder rebalance creates=/etc/swift/{{ item }}.ring.gz chdir=/etc/swift
+- name: Rebalance rings
+  ansible.builtin.command:
+    chdir: /etc/swift
+    cmd: swift-ring-builder {{ item }}.builder rebalance
+    creates: /etc/swift/{{ item }}.ring.gz
   register: rebalance
   with_items:
     - account
     - object
     - container
+# noqa no-handler
 
 # This will fetch from all proxies, if there are more than one and put the rings files in the same spot, which is Ok but not perfect
-- name: grab resulting *.ring.gz files and put them on all proxy and storage nodes
-  fetch: dest=fetch/{{ item }}.ring.gz flat=yes src=/etc/swift/{{ item }}.ring.gz
+- name: Grab resulting *.ring.gz files and put them on all proxy and storage nodes # noqa no-handler
+  ansible.builtin.fetch:
+    src: /etc/swift/{{ item }}.ring.gz
+    dest: fetch/{{ item }}.ring.gz
+    flat: "yes"
   when: rebalance.changed
   with_items:
     - account
     - object
     - container
 
-- name: start swift-proxy on proxy nodes
-  service: name=swift-proxy state=started
+- name: Start swift-proxy on proxy nodes (Debian)
+  ansible.builtin.service:
+    name: swift-proxy
+    state: started
+    enabled: true
   when: ansible_os_family == 'Debian'
 
-- name: start swift-proxy on proxy nodes
-  service: name=openstack-swift-proxy state=started
+- name: Start swift-proxy on proxy nodes (RedHat)
+  ansible.builtin.service:
+    name: openstack-swift-proxy
+    state: started
+    enabled: true
   when: ansible_os_family == 'RedHat'
 
-- name: check if object-expirer is running
-  command: swift-init object-expirer status
+- name: Check if object-expirer is running
+  ansible.builtin.command: swift-init object-expirer status
   register: expirer_status
   failed_when: false
   changed_when: false
 
-- name: start object-expirer on proxy nodes
-  command: swift-init object-expirer start
+- name: Start object-expirer on proxy nodes # noqa no-changed-when
+  ansible.builtin.command: swift-init object-expirer start
   when: expirer_status.rc != 0
+  changed_when: expirer_status.rc != 0

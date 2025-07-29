@@ -1,6 +1,9 @@
 ---
 # redhat
 
-- ansible.builtin.include_tasks: redhat_package_cache.yml
-- ansible.builtin.include_tasks: redhat_ntp.yml
-- ansible.builtin.include_tasks: redhat_openstack_repository.yml
+- name: Play redhat_package_cache.yml
+  ansible.builtin.include_tasks: redhat_package_cache.yml
+- name: Play redhat_ntp.yml
+  ansible.builtin.include_tasks: redhat_ntp.yml
+- name: Play redhat_openstack_repository.yml
+  ansible.builtin.include_tasks: redhat_openstack_repository.yml

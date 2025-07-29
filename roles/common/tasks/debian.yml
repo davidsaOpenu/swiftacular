@@ -4,13 +4,23 @@
 #
 
 - name: Ensure portmap is not running
-  ansible.builtin.service: name=portmap state=stopped enabled=no
-  ignore_errors: true
+  ansible.builtin.service:
+    name: portmap
+    state: stopped
+    enabled: false
+  register: portmap_service
+  failed_when: >
+    portmap_service.failed and
+    ('Could not find the requested service' not in portmap_service.msg)
+
 
 #
 # NTP
 #
 
-- ansible.builtin.include_tasks: debian_ntp.yml
-- ansible.builtin.include_tasks: debian_package_cache.yml
-- ansible.builtin.include_tasks: debian_openstack_repository.yml
+- name: Play debian_ntp.yml
+  ansible.builtin.include_tasks: debian_ntp.yml
+- name: Play debian_package_cache.yml
+  ansible.builtin.include_tasks: debian_package_cache.yml
+- name: Play debian_openstack_repository.yml
+  ansible.builtin.include_tasks: debian_openstack_repository.yml
