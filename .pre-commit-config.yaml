@@ -16,4 +16,9 @@ repos:
     rev: v25.6.1
     hooks:
       - id: ansible-lint
-        args: [--fix]
+        name: ansible-lint (gitignore aware)
+        entry: bash -c 'git ls-files "*.yml" "*.yaml" | xargs ansible-lint --fix'
+        language: system
+        pass_filenames: false
+        files: \.(yml|yaml)$
+        additional_dependencies: [] # Clear any existing dependencies
