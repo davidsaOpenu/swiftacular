@@ -1,0 +1,171 @@
+# Ansible Playbook for Compiling Ceph and Verifying RGW
+# ------------------------------------------------------
+# This playbook automates the entire process outlined in the guide.
+# It is designed to be run locally on the Ubuntu 22.04 VM.
+#
+# How to Run:
+# 1. Install Ansible: sudo apt update && sudo apt install ansible -y
+# 2. Save this file as 'ceph_playbook.yml' in the '/home/stack/' directory.
+# 3. Switch to the stack user: su - stack
+# 4. To run only the compilation part:
+#    ansible-playbook ceph_playbook.yml --tags compile --ask-become-pass
+# 5. To run only the verification part (after compilation is done):
+#    ansible-playbook ceph_playbook.yml --tags verify --ask-become-pass
+# 6. To run the entire process:
+#    ansible-playbook ceph_playbook.yml --ask-become-pass
+
+- name: Compile Ceph and Verify RGW
+  hosts: localhost
+  connection: local
+  vars:
+    # Global variables for easy modification
+    # HARDCODED to use the 'stack' user's home directory for consistency
+    # with the devstack environment and manual steps.
+    project_base_dir: "/home/stack/projects"
+    ceph_src_dir: "{{ project_base_dir }}/ceph"
+    ceph_build_dir: "{{ ceph_src_dir }}/build"
+    ceph_conf_file: "{{ ceph_build_dir }}/ceph.conf"
+
+  tasks:
+    # ===================================================================
+    # PART 1: COMPILATION TASKS
+    # ===================================================================
+    - name: Part 1 - Compilation
+      tags: compile
+      block:
+        - name: "Ensure base packages are installed (git, python)"
+          become: yes
+          apt:
+            name: ['git', 'python3']
+            state: present
+            update_cache: yes
+
+        - name: "Create projects directory"
+          file:
+            path: "{{ project_base_dir }}"
+            state: directory
+            mode: '0755'
+
+        - name: "Clone Ceph repository"
+          git:
+            repo: 'https://github.com/ceph/ceph.git'
+            dest: "{{ ceph_src_dir }}"
+            version: main
+            force: yes # Discard any local changes to ensure a clean repository state
+          # This task is idempotent - it will not re-clone if the directory already exists
+
+        - name: "Initialize and update Git submodules"
+          command: git submodule update --init --recursive
+          args:
+            chdir: "{{ ceph_src_dir }}"
+            creates: "{{ ceph_src_dir }}/src/rocksdb/CMakeLists.txt" # Check if a key submodule exists to determine if submodules are initialized
+
+        - name: "Install Ceph build dependencies"
+          become: yes
+          command: ./install-deps.sh
+          args:
+            chdir: "{{ ceph_src_dir }}"
+
+        - name: "Configure the build with CMake (disabling tests)"
+          command: ./do_cmake.sh -DWITH_TESTS=OFF
+          args:
+            chdir: "{{ ceph_src_dir }}"
+            creates: "{{ ceph_build_dir }}/build.ninja" # This file is created by do_cmake.sh
+
+        - name: "Compile Ceph using Ninja"
+          command: ninja -j2
+          args:
+            chdir: "{{ ceph_build_dir }}"
+            creates: "{{ ceph_build_dir }}/bin/ceph" # Check if the final build artifact exists
+
+    # ===================================================================
+    # PART 2: VERIFICATION TASKS
+    # ===================================================================
+    - name: Part 2 - Verification
+      tags: verify
+      block:
+        - name: "Run verification steps and ensure cleanup"
+          block:
+            - name: "Start the vstart development cluster"
+              shell: "MON=1 OSD=1 MGR=1 MDS=0 RGW=1 ../src/vstart.sh -d -n --without-dashboard"
+              args:
+                chdir: "{{ ceph_build_dir }}"
+              register: vstart_output
+
+            - name: "Wait for the cluster to become healthy"
+              command: "./bin/ceph -c {{ ceph_conf_file }} status"
+              args:
+                chdir: "{{ ceph_build_dir }}"
+              register: ceph_status
+              until: "'HEALTH_OK' in ceph_status.stdout or 'HEALTH_WARN' in ceph_status.stdout"
+              retries: 10
+              delay: 5
+
+            - name: "Create required RGW pools"
+              command: "{{ ceph_build_dir }}/bin/ceph -c {{ ceph_conf_file }} osd pool create {{ item }}"
+              loop:
+                - default.rgw.buckets.data
+                - default.rgw.buckets.index
+                - default.rgw.control
+                - default.rgw.meta
+                - default.rgw.log
+              ignore_errors: yes # Ignore errors if the pool already exists
+
+            - name: "Extract S3 Access Key from vstart output"
+              set_fact:
+                s3_access_key: "{{ vstart_output.stdout | regex_search('access key:\\s*(\\S+)', '\\1') | first }}"
+
+            - name: "Extract S3 Secret Key from vstart output"
+              set_fact:
+                s3_secret_key: "{{ vstart_output.stdout | regex_search('secret key:\\s*(\\S+)', '\\1') | first }}"
+
+            - name: "Install s3cmd tool"
+              become: yes
+              apt:
+                name: s3cmd
+                state: present
+
+            - name: "Configure s3cmd with correct credentials and settings"
+              blockinfile:
+                path: "{{ ansible_env.HOME }}/.s3cfg"
+                create: yes
+                mode: '0600'
+                block: |
+                  [default]
+                  access_key = {{ s3_access_key }}
+                  secret_key = {{ s3_secret_key }}
+                  host_base = localhost:8000
+                  host_bucket = localhost:8000/%(bucket)s
+                  use_https = False
+                  signature_v2 = True
+
+            - name: "Create a test bucket using s3cmd"
+              command: "s3cmd mb s3://test-bucket"
+              register: mb_result
+              changed_when: "'created' in mb_result.stdout"
+
+            - name: "Create a test file"
+              copy:
+                content: "Ceph RGW is working via Ansible!"
+                dest: "/tmp/ceph_test_file.txt"
+
+            - name: "Upload test object using s3cmd"
+              command: "s3cmd put /tmp/ceph_test_file.txt s3://test-bucket/my-ansible-object"
+
+            - name: "Verify object exists with s3cmd"
+              command: "s3cmd ls s3://test-bucket"
+              register: s3_ls_result
+              failed_when: "'my-ansible-object' not in s3_ls_result.stdout"
+
+            - name: "Verify object exists at the low level with rados"
+              command: "{{ ceph_build_dir }}/bin/rados -c {{ ceph_conf_file }} -p default.rgw.buckets.data ls"
+              register: rados_ls_result
+              failed_when: "'my-ansible-object' not in rados_ls_result.stdout"
+
+          always:
+            - name: "Stop the vstart cluster (cleanup)"
+              command: ../src/stop.sh
+              args:
+                chdir: "{{ ceph_build_dir }}"
+              # This task will run even if verification steps fail, ensuring the cluster is stopped.
+
