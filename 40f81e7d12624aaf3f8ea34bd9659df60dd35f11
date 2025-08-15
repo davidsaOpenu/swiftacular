@@ -16,6 +16,29 @@
       "message": "recheck",
       "revId": "40f81e7d12624aaf3f8ea34bd9659df60dd35f11",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "42497948_bbd136ad",
+        "filename": "ceph_playbook.yml",
+        "patchSetId": 2
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2025-08-15T14:10:45Z",
+      "side": 1,
+      "message": "storage",
+      "range": {
+        "startLine": 12,
+        "startChar": 9,
+        "endLine": 12,
+        "endChar": 12
+      },
+      "revId": "40f81e7d12624aaf3f8ea34bd9659df60dd35f11",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     }
   ]
 }
