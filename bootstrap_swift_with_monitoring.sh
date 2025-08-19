@@ -1,89 +1,54 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -Eeuo pipefail
+cd "$(dirname "$0")"
 
-set -e
+# 1) Ensure required Ansible collections (idempotent)
+ansible-galaxy collection install "git+https://github.com/performancecopilot/ansible-pcp.git,v2.3.0"
 
-# Array of dashboard JSON files and their UIDs
-declare -A dashboards
-dashboards["swiftdbinfo.jsonnet"]="swiftdbinfo"
-dashboards["pcp-redis-host-overview.jsonnet"]="pcp-host"
+echo "start"
 
-grafana_ip="192.168.100.150"
-
-# Function to run ansible-playbook and log the time
-run_playbook() {
-  local playbook=$1
-  local description=$2
-
-  echo "*********************************************************************************************"
-  echo "Running playbook $description..."
-  echo "*********************************************************************************************"
-
-  local start_time=$(date +%s%3N)  # Get start time in epoch milliseconds
-
-  ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook
-
-  local end_time=$(date +%s%3N)  # Get end time in epoch milliseconds
-  local duration=$((end_time - start_time))  # Duration in milliseconds
-
-  local duration_seconds=$((duration / 1000))
-  local minutes=$((duration_seconds / 60))
-  local seconds=$((duration_seconds % 60))
-
-  echo "$description completed in $minutes minutes and $seconds seconds."
-
-  # Generate Grafana link with epoch milliseconds
-  for dashboard in "${!dashboards[@]}"; do
-    uid=${dashboards[$dashboard]}
-    local grafana_link="http://${grafana_ip}:3000/d/${uid}/?from=${start_time}&to=${end_time}"
-    echo "Grafana Dashboard for $description: $grafana_link"
-  done
-}
-
-# Check if vagrant-libvirt plugin is installed
-if ! vagrant plugin list | grep -q 'vagrant-libvirt'; then
-    echo "Installing vagrant-libvirt plugin..."
-    vagrant plugin install vagrant-libvirt
-else
-    echo "vagrant-libvirt plugin is already installed."
-fi
-
-./vagrant_box.sh
-
-# Install community.general module
-ansible-galaxy collection install community.general
-
-# Install community.mysql
-ansible-galaxy collection install community.mysql
-
-# Install performancecopilot.metrics collection
-# Explicitly get v2.3.0. ansible-galaxy collection install performancecopilot.metrics
-# installs lates 2.4.0 without redis roles.
-# TODO: install latest, address the issue.
-ansible-galaxy collection install git+https://github.com/performancecopilot/ansible-pcp.git,v2.3.0
-
-# Run the playbooks with timing and logging
-echo start
+# 2) Bring up Vagrant environment
 vagrant up
 
+# 3) Generate dynamic Ansible inventory from Vagrant ssh-config
+#    This avoids hard-coding IPs/keys that change each run.
+vagrant ssh-config > .vagrant/ssh-config
 
-cp group_vars/all.example group_vars/all
+cat > hosts <<'INV'
+[storage]
+# The block below is auto-filled by the next awk; do not edit manually.
+INV
 
-ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts setup-swift-monitoring.yml
+awk '
+  BEGIN { }
+  /^Host / && $2 != "*" { host=$2; next }
+  /HostName/ { ip=$2; next }
+  /User / { user=$2; next }
+  /Port / { port=$2; next }
+  /IdentityFile/ { key=$2; next }
+  /^$/ {
+    if (host ~ /^swift-storage-/ && ip) {
+      printf "%s ansible_host=%s ansible_port=%s ansible_user=%s ansible_ssh_private_key_file=%s ansible_ssh_common_args='\''-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'\'' ansible_python_interpreter=/usr/bin/python3\n",
+             host, ip, (port?port:22), (user?user:"vagrant"), key
+    }
+    host=ip=user=port=key=""
+  }
+' .vagrant/ssh-config >> hosts
 
-# Install jsonnet on localhost
-ansible-playbook -i 'localhost,' -c local jsonnet_install.yml
- 
+echo "Generated inventory:"
+cat hosts
 
-# Iterate over dashboard pairs and create each dashboard
-for dashboard in "${!dashboards[@]}"; do
-  uid=${dashboards[$dashboard]}
-  python monitoring/grafana/configure_grafana.py create-dashboard ${grafana_ip}:3000 admin admin "monitoring/grafana/dashboards/${dashboard}" "${uid}"
-  echo "Grafana Dashboard for ${dashboard}: http://${grafana_ip}:3000/d/${uid}/"
-done
+# 4) Ensure group_vars/all exists (if your repo provides an example)
+if [[ -f group_vars/all.example && ! -f group_vars/all ]]; then
+  cp group_vars/all.example group_vars/all
+fi
 
-# Deploy Swift Cluster
-run_playbook "deploy_swift_cluster.yml" "Deploy Swift Cluster"
+# 5) Run the full Ceph automation (compile + verify)
+./run_ceph_automation.sh
 
-run_playbook "setup_workload_test.yml" "Setup Workload Test"
+# 6) (Optional) Monitoring bootstrap — keep commented unless you need it.
+# ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts setup-swift-monitoring.yml
+# ansible-playbook -i 'localhost,' -c local jsonnet_install.yml
+# python monitoring/grafana/configure_grafana.py create-dashboard "${grafana_ip}:3000" admin admin "monitoring/grafana/dashboards/..." "UID"
 
-
+echo "done"
