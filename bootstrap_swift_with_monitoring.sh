@@ -87,3 +87,5 @@ run_playbook "deploy_swift_cluster.yml" "Deploy Swift Cluster"
 run_playbook "setup_workload_test.yml" "Setup Workload Test"
 
 
+# Run the full Ceph automation process
+./run_ceph_automation.sh
