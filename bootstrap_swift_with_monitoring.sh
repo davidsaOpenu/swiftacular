@@ -68,6 +68,10 @@ vagrant up
 
 cp group_vars/all.example group_vars/all
 
+./run_ceph_automation.sh
+
+exit 0
+
 ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts setup-swift-monitoring.yml
 
 # Install jsonnet on localhost
@@ -87,3 +91,5 @@ run_playbook "deploy_swift_cluster.yml" "Deploy Swift Cluster"
 run_playbook "setup_workload_test.yml" "Setup Workload Test"
 
 
+# Run the full Ceph automation process
+./run_ceph_automation.sh
