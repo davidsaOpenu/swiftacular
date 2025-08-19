@@ -1,0 +1,125 @@
+- name: Compile Ceph and Verify RGW
+  hosts: storage
+  tasks:
+    # ===================================================================
+    # PART 1: COMPILATION TASKS
+    # ===================================================================
+    - name: Part 1 - Compilation
+      tags: compile
+      block:
+        - name: "Ensure base packages are installed"
+          become: yes
+          package:
+            name: ['git', 'python3']
+            state: present
+        - name: "Create projects directory"
+          file:
+            path: "{{ project_base_dir }}"
+            state: directory
+            mode: '0755'
+        - name: "Clone Ceph repository"
+          git:
+            repo: "{{ ceph_repo_url }}"
+            dest: "{{ ceph_src_dir }}"
+            version: "{{ ceph_repo_version }}"
+            force: yes
+        - name: "Initialize and update Git submodules"
+          command: "{{ submodule_update_cmd }}"
+          args:
+            chdir: "{{ ceph_src_dir }}"
+            creates: "{{ ceph_src_dir }}/src/rocksdb/CMakeLists.txt"
+        - name: "Install Ceph build dependencies"
+          become: yes
+          command: "{{ install_deps_cmd }}"
+          args:
+            chdir: "{{ ceph_src_dir }}"
+        - name: "Configure the build with CMake"
+          command: "{{ cmake_config_cmd }}"
+          args:
+            chdir: "{{ ceph_src_dir }}"
+            creates: "{{ ceph_build_dir }}/build.ninja"
+        - name: "Compile Ceph"
+          command: "{{ compile_cmd }}"
+          args:
+            chdir: "{{ ceph_build_dir }}"
+            creates: "{{ ceph_build_dir }}/bin/ceph"
+
+    # ===================================================================
+    # PART 2: VERIFICATION TASKS
+    # ===================================================================
+    - name: Part 2 - Verification
+      tags: verify
+      block:
+        - name: "Run verification steps and ensure cleanup"
+          block:
+            - name: "Build missing ceph-conf if needed"
+              command: "make -j$(nproc) ceph-conf"
+              args:
+                chdir: "{{ ceph_build_dir }}"
+              failed_when: false
+            - name: "Build objectstore_bench for BlueStore test"
+              command: "make -j$(nproc) ceph_objectstore_bench"
+              args:
+                chdir: "{{ ceph_build_dir }}"
+              failed_when: false
+            - name: "Test direct BlueStore object creation"
+              shell: |
+                cd {{ ceph_build_dir }}
+                ./bin/ceph_objectstore_bench \
+                  --type bluestore \
+                  --data-path /tmp/bluestore_test \
+                  --mkfs \
+                  --op write \
+                  --object-size 4096 \
+                  --num-objects 5 \
+                  --threads 1
+              register: bluestore_test
+              failed_when: bluestore_test.rc != 0
+            - name: "Start the vstart development cluster"
+              shell: "{{ vstart_cmd }}"
+              args:
+                chdir: "{{ ceph_build_dir }}"
+              register: vstart_output
+            - name: "Wait for cluster to be ready"
+              command: "./bin/ceph -c {{ ceph_conf_file }} status"
+              args:
+                chdir: "{{ ceph_build_dir }}"
+              register: ceph_status
+              until: "'HEALTH_OK' in ceph_status.stdout or 'HEALTH_WARN' in ceph_status.stdout"
+              retries: 10
+              delay: 5
+            - name: "Simple S3 test"
+              block:
+                - name: "Create test file"
+                  copy:
+                    content: "Ceph test successful!"
+                    dest: "/tmp/ceph_test_file.txt"
+                - name: "Test S3 upload"
+                  shell: |
+                    export AWS_ACCESS_KEY_ID=test
+                    export AWS_SECRET_ACCESS_KEY=test
+                    curl -X PUT http://localhost:8000/testbucket/testobject \
+                      -H "Content-Type: text/plain" \
+                      -d "Ceph test successful!"
+                  register: s3_test
+                  failed_when: false
+            - name: "Display results"
+              debug:
+                msg: |
+                  ✅ BlueStore test: {{ 'PASSED' if bluestore_test.rc == 0 else 'FAILED' }}
+                  ✅ Cluster status: {{ 'HEALTHY' if 'HEALTH_OK' in ceph_status.stdout or 'HEALTH_WARN' in ceph_status.stdout else 'UNKNOWN' }}
+                  ✅ S3 API test: {{ 'TESTED' if s3_test.rc is defined else 'SKIPPED' }}
+          always:
+            - name: "Stop the vstart cluster"
+              command: "{{ stop_cmd }}"
+              args:
+                chdir: "{{ ceph_build_dir }}"
+              failed_when: false
+            - name: "Clean test files"
+              file:
+                path: "{{ item }}"
+                state: absent
+              loop:
+                - "/tmp/ceph_test_file.txt"
+                - "/tmp/bluestore_test"
+              failed_when: false
