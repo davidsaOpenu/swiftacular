@@ -1,0 +1,26 @@
+# --- General Configuration ---
+project_base_dir: "/home/stack/projects"
+
+# --- Source Control ---
+ceph_repo_url: 'https://github.com/ceph/ceph.git'
+ceph_repo_version: main
+
+# --- Paths ---
+ceph_src_dir: "{{ project_base_dir }}/ceph"
+ceph_build_dir: "{{ ceph_src_dir }}/build"
+ceph_conf_file: "{{ ceph_build_dir }}/ceph.conf"
+
+# --- Commands ---
+submodule_update_cmd: "git submodule update --init --recursive"
+install_deps_cmd: "./install-deps.sh"
+cmake_config_cmd: "./do_cmake.sh -DWITH_TESTS=OFF"
+compile_cmd: "ninja -j2"
+vstart_cmd: "MON=1 OSD=1 MGR=1 MDS=0 RGW=1 ../src/vstart.sh -d -n --without-dashboard"
+stop_cmd: "../src/stop.sh"
+
+# --- Verification Details ---
+rgw_port: 8000
+s3_endpoint: "http://localhost:{{ rgw_port }}"
+s3_test_bucket: "test-bucket"
+s3_test_object: "my-ansible-object"
+rados_data_pool: "default.rgw.buckets.data"
