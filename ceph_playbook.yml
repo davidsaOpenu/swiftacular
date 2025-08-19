@@ -1,0 +1,219 @@
+- name: Compile Ceph and Verify RGW
+  hosts: storage
+  tasks:
+    # ===================================================================
+    # PART 1: COMPILATION TASKS
+    # ===================================================================
+    - name: Part 1 - Compilation
+      tags: compile
+      block:
+        - name: "Ensure base packages are installed"
+          become: yes
+          package:
+            name: ['git', 'python3']
+            state: present
+        - name: "Create projects directory"
+          file:
+            path: "{{ project_base_dir }}"
+            state: directory
+            mode: '0755'
+        - name: "Clone Ceph repository"
+          git:
+            repo: "{{ ceph_repo_url }}"
+            dest: "{{ ceph_src_dir }}"
+            version: "{{ ceph_repo_version }}"
+            force: yes
+        - name: "Initialize and update Git submodules"
+          command: "{{ submodule_update_cmd }}"
+          args:
+            chdir: "{{ ceph_src_dir }}"
+            creates: "{{ ceph_src_dir }}/src/rocksdb/CMakeLists.txt"
+        - name: "Install Ceph build dependencies"
+          become: yes
+          command: "{{ install_deps_cmd }}"
+          args:
+            chdir: "{{ ceph_src_dir }}"
+        - name: "Configure the build with CMake"
+          command: "{{ cmake_config_cmd }}"
+          args:
+            chdir: "{{ ceph_src_dir }}"
+            creates: "{{ ceph_build_dir }}/build.ninja"
+        - name: "Compile Ceph"
+          command: "{{ compile_cmd }}"
+          args:
+            chdir: "{{ ceph_build_dir }}"
+            creates: "{{ ceph_build_dir }}/bin/ceph"
+
+    # ===================================================================
+    # PART 2: VERIFICATION TASKS (CI-hardened)
+    # ===================================================================
+    - name: Part 2 - Verification
+      tags: verify
+      block:
+        # ---------- CI prerequisites (quiet, idempotent) ----------
+        - name: "Ensure runtime tools are installed (awscli, curl, ninja, cmake)"
+          become: yes
+          package:
+            name: "{{ base_packages | default(['awscli','curl','ninja-build','cmake']) }}"
+            state: present
+          failed_when: false  
+    
+        - name: "Verify aws cli exists"
+          command: "bash -lc 'command -v aws'"
+          register: aws_cmd
+          changed_when: false
+          failed_when: aws_cmd.rc != 0
+          vars:
+            ansible_command_timeout: 120
+    
+        - name: "Verify curl exists"
+          command: "bash -lc 'command -v curl'"
+          register: curl_cmd
+          changed_when: false
+          failed_when: curl_cmd.rc != 0
+    
+        # ---------- Ceph local utils and bench binary ----------
+        - name: "Build ceph-conf if needed"
+          command: "make -j$(nproc) ceph-conf"
+          args: { chdir: "{{ ceph_build_dir }}" }
+          failed_when: false
+    
+        - name: "Explicitly build bench targets (handle both names)"
+          shell: |
+            set -euo pipefail
+            ninja -C "{{ ceph_build_dir }}" -j"$(nproc)" ceph_objectstore_bench || true
+            ninja -C "{{ ceph_build_dir }}" -j"$(nproc)" objectstore_bench || true
+          register: bench_build
+          changed_when: bench_build.rc == 0
+          failed_when: false
+    
+        - name: "Detect objectstore bench binary path"
+          shell: |
+            set -euo pipefail
+            cd "{{ ceph_build_dir }}"
+            if [ -x ./bin/ceph_objectstore_bench ]; then
+              echo ./bin/ceph_objectstore_bench
+            elif [ -x ./bin/objectstore_bench ]; then
+              echo ./bin/objectstore_bench
+            else
+              echo "MISSING" && exit 2
+            fi
+          args: { chdir: "{{ ceph_build_dir }}" }
+          register: bench_path
+          changed_when: false
+          failed_when: bench_path.rc != 0
+    
+        # ---------- BlueStore bench (clean & run) ----------
+        - name: "Prepare BlueStore bench data path (clean & recreate)"
+          block:
+            - file: { path: "/tmp/bluestore_test", state: absent }
+            - file: { path: "/tmp/bluestore_test", state: directory, mode: "0755" }
+    
+        - name: "Run BlueStore bench write test"
+          shell: |
+            set -euo pipefail
+            "{{ bench_path.stdout }}" --type bluestore \
+              --data-path /tmp/bluestore_test \
+              --mkfs \
+              --op write \
+              --object-size 4096 \
+              --num-objects 5 \
+              --threads 1
+          args: { chdir: "{{ ceph_build_dir }}" }
+          register: bluestore_test
+          failed_when: bluestore_test.rc != 0
+    
+        # ---------- Dev cluster bring-up ----------
+        - name: "Start the vstart development cluster (with RGW)"
+          shell: "{{ vstart_cmd }}"
+          args: { chdir: "{{ ceph_build_dir }}" }
+          register: vstart_output
+          changed_when: "'done' in (vstart_output.stdout | default('')) or vstart_output.rc == 0"
+          failed_when: false
+    
+        - name: "Wait for Ceph to reach HEALTH_OK/WARN"
+          command: "./bin/ceph -c {{ ceph_conf_file }} status"
+          args: { chdir: "{{ ceph_build_dir }}" }
+          register: ceph_status
+          until: "'HEALTH_OK' in ceph_status.stdout or 'HEALTH_WARN' in ceph_status.stdout"
+          retries: 30
+          delay: 6
+    
+        # ---------- RGW user + endpoint health ----------
+        - name: "Create/Update RGW demo user (uid=test)"
+          shell: |
+            set -euo pipefail
+            ./bin/radosgw-admin -c "{{ ceph_conf_file }}" user create \
+              --uid=test --display-name=test --access-key=test --secret-key=test \
+            || ./bin/radosgw-admin -c "{{ ceph_conf_file }}" user modify \
+              --uid=test --access-key=test --secret-key=test
+          args: { chdir: "{{ ceph_build_dir }}" }
+          register: rgw_user
+          changed_when: "'created' in (rgw_user.stdout | default('')) or 'updated' in (rgw_user.stdout | default(''))"
+          failed_when: false
+    
+        - name: "Wait for RGW endpoint to serve HTTP (2xx/3xx)"
+          shell: "curl -s -o /dev/null -w '%{http_code}' {{ s3_endpoint }}/"
+          register: rgw_health
+          until: "(rgw_health.stdout | int) >= 200 and (rgw_health.stdout | int) < 400"
+          retries: 40
+          delay: 3
+    
+        # ---------- S3 ops (use environment instead of inline exports) ----------
+        - name: "S3 operations (create bucket, put object, head-object)"
+          block:
+            - name: "Create S3 bucket (idempotent)"
+              shell: |
+                set -euo pipefail
+                aws --endpoint-url "{{ s3_endpoint }}" s3api create-bucket --bucket "{{ s3_test_bucket }}" || true
+              register: s3_mkbucket
+              changed_when: "'Location' in (s3_mkbucket.stdout | default(''))"
+              failed_when: false
+    
+            - name: "Create local test file for upload"
+              copy:
+                content: "Ceph test successful!"
+                dest: "/tmp/ceph_test_file.txt"
+    
+            - name: "Upload object to S3"
+              shell: |
+                set -euo pipefail
+                aws --endpoint-url "{{ s3_endpoint }}" s3 cp /tmp/ceph_test_file.txt "s3://{{ s3_test_bucket }}/{{ s3_test_object }}"
+              register: s3_put
+              failed_when: s3_put.rc != 0
+    
+            - name: "HEAD the uploaded object to verify"
+              shell: |
+                set -euo pipefail
+                aws --endpoint-url "{{ s3_endpoint }}" s3api head-object --bucket "{{ s3_test_bucket }}" --key "{{ s3_test_object }}"
+              register: s3_head
+              failed_when: s3_head.rc != 0
+          environment:
+            AWS_ACCESS_KEY_ID: "test"
+            AWS_SECRET_ACCESS_KEY: "test"
+    
+        # ---------- Summary ----------
+        - name: "Display verification results"
+          debug:
+            msg: |
+              ✅ BlueStore bench: {{ 'PASSED' if bluestore_test.rc == 0 else 'FAILED' }}
+              ✅ Ceph cluster: {{ 'HEALTHY' if 'HEALTH_OK' in ceph_status.stdout or 'HEALTH_WARN' in ceph_status.stdout else 'UNKNOWN' }}
+              ✅ RGW endpoint: HTTP {{ rgw_health.stdout | default('N/A') }}
+              ✅ S3 upload: {{ 'PASSED' if (s3_put.rc | default(1)) == 0 else 'FAILED' }}
+              ✅ S3 head-object: {{ 'PASSED' if (s3_head.rc | default(1)) == 0 else 'FAILED' }}
+    
+      always:
+        - name: "Stop the vstart cluster"
+          command: "{{ stop_cmd }}"
+          args: { chdir: "{{ ceph_build_dir }}" }
+          failed_when: false
+    
+        - name: "Clean test artifacts"
+          file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - "/tmp/ceph_test_file.txt"
+            - "/tmp/bluestore_test"
+          failed_when: false
+
