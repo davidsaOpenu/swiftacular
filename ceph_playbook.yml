@@ -1,0 +1,263 @@
+---
+- name: Compile Ceph and Verify RGW
+  hosts: storage
+  gather_facts: yes
+
+  vars:
+    # --- Paths & repo ---
+    project_base_dir: "/home/stack/projects"
+    ceph_repo_url: "https://github.com/ceph/ceph.git"
+    ceph_repo_version: "main"
+    ceph_src_dir: "{{ project_base_dir }}/ceph"
+    ceph_build_dir: "{{ ceph_src_dir }}/build"
+    ceph_conf_file: "{{ ceph_build_dir }}/ceph.conf"
+
+    # --- RGW/S3 test ---
+    rgw_port: 8000
+    s3_endpoint: "http://127.0.0.1:{{ rgw_port }}"
+    s3_test_bucket: "test-bucket"
+    s3_test_object: "my-ansible-object"
+
+    # --- Commands ---
+    submodule_update_cmd: "git submodule update --init --recursive"
+
+  tasks:
+    #####################################################################
+    # PART 1: COMPILATION
+    #####################################################################
+    - name: Part 1 - Compilation
+      tags: [compile]
+      block:
+        - name: Prepare repos on Enterprise Linux (enable CRB + EPEL)
+          become: yes
+          when: ansible_facts.os_family == "RedHat"
+          block:
+            - name: Install dnf-plugins-core (for config-manager)
+              ansible.builtin.package:
+                name: dnf-plugins-core
+                state: present
+
+            - name: Enable CRB (CodeReady Builder) on EL9+
+              ansible.builtin.command: dnf config-manager --set-enabled crb
+              register: crb_result
+              changed_when: crb_result.rc == 0
+              failed_when: false
+
+            - name: Install EPEL release
+              ansible.builtin.package:
+                name: epel-release
+                state: present
+              failed_when: false
+
+            - name: Refresh dnf metadata
+              ansible.builtin.command: dnf -y makecache
+              changed_when: false
+
+        - name: Ensure base packages are installed
+          become: yes
+          ansible.builtin.package:
+            name:
+              - git
+              - python3
+              - ninja-build
+              - cmake
+            state: present
+
+        - name: Create projects directory
+          ansible.builtin.file:
+            path: "{{ project_base_dir }}"
+            state: directory
+            mode: "0755"
+
+        - name: Clone Ceph repository
+          ansible.builtin.git:
+            repo: "{{ ceph_repo_url }}"
+            version: "{{ ceph_repo_version }}"
+            dest: "{{ ceph_src_dir }}"
+            force: yes
+
+        - name: Initialize and update Git submodules (idempotent)
+          ansible.builtin.command: "{{ submodule_update_cmd }}"
+          args:
+            chdir: "{{ ceph_src_dir }}"
+          changed_when: false
+
+        - name: Install Ceph build dependencies
+          become: yes
+          ansible.builtin.shell: |
+            set -euo pipefail
+            ./install-deps.sh
+          args:
+            chdir: "{{ ceph_src_dir }}"
+
+        - name: Configure the build with CMake (idempotent)
+          ansible.builtin.shell: |
+            set -euo pipefail
+            mkdir -p "{{ ceph_build_dir }}"
+            cd "{{ ceph_build_dir }}"
+            ../do_cmake.sh -DWITH_RADOSGW=ON -DWITH_TESTS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -GNinja
+          args:
+            chdir: "{{ ceph_src_dir }}"
+            creates: "{{ ceph_build_dir }}/build.ninja"
+
+        - name: Compile Ceph (force full build)
+          ansible.builtin.shell: |
+            set -euo pipefail
+            ninja -C "{{ ceph_build_dir }}" -j"$(nproc)"
+          register: compile_out
+          changed_when: compile_out.rc == 0
+
+        - name: Ensure core client binaries exist (rados, radosgw)
+          block:
+            - name: Stat rados
+              ansible.builtin.stat:
+                path: "{{ ceph_build_dir }}/bin/rados"
+              register: rados_bin
+            - name: Stat radosgw
+              ansible.builtin.stat:
+                path: "{{ ceph_build_dir }}/bin/radosgw"
+              register: radosgw_bin
+            - name: Fail if binaries missing
+              ansible.builtin.fail:
+                msg: "Required binaries missing: rados={{ rados_bin.stat.exists }}, radosgw={{ radosgw_bin.stat.exists }}"
+              when: not rados_bin.stat.exists or not radosgw_bin.stat.exists
+
+    #####################################################################
+    # PART 2: VERIFICATION
+    #####################################################################
+    - name: Part 2 - Verification
+      tags: [verify]
+      block:
+        - name: Ensure runtime tools are installed (awscli, curl, ninja, cmake)
+          become: yes
+          block:
+            - name: Install via OS packages
+              ansible.builtin.package:
+                name:
+                  - curl
+                  - ninja-build
+                  - cmake
+                  - awscli
+                state: present
+          rescue:
+            - name: Ensure pip is present (fallback path)
+              become: yes
+              ansible.builtin.package:
+                name: python3-pip
+                state: present
+            - name: Install awscli via pip (fallback)
+              become: yes
+              ansible.builtin.pip:
+                name: awscli
+                executable: pip3
+
+        - name: Build ceph-conf if needed (non-fatal)
+          ansible.builtin.shell: |
+            set -euo pipefail
+            ninja -C "{{ ceph_build_dir }}" -j"$(nproc)" ceph-conf
+          register: cephconf_build
+          failed_when: false
+          changed_when: cephconf_build.rc == 0
+
+        - name: Start the vstart development cluster (with RGW)
+          ansible.builtin.shell: |
+            set -euo pipefail
+            MON=1 OSD=1 MDS=0 MGR=1 RGW=1 ../src/vstart.sh -n -x --bluestore
+          args:
+            chdir: "{{ ceph_build_dir }}"
+          register: vstart_output
+          failed_when: false
+          changed_when: "'done' in (vstart_output.stdout | default('')) or vstart_output.rc == 0"
+
+        - name: Wait for cluster ready via rados df (no Python bindings)
+          ansible.builtin.command: "./bin/rados -c {{ ceph_conf_file }} df"
+          args:
+            chdir: "{{ ceph_build_dir }}"
+          register: rados_df
+          until: rados_df.rc == 0
+          retries: 60
+          delay: 5
+
+        - name: Optional: ceph status (non-fatal, for logs only)
+          ansible.builtin.command: "./bin/ceph -c {{ ceph_conf_file }} status"
+          args:
+            chdir: "{{ ceph_build_dir }}"
+          register: ceph_status_optional
+          failed_when: false
+          changed_when: false
+
+        - name: Create/Update RGW demo user (uid=test)
+          ansible.builtin.shell: |
+            set -euo pipefail
+            ./bin/radosgw-admin -c "{{ ceph_conf_file }}" user create \
+              --uid=test --display-name=test --access-key=test --secret-key=test \
+            || ./bin/radosgw-admin -c "{{ ceph_conf_file }}" user modify \
+              --uid=test --access-key=test --secret-key=test
+          args:
+            chdir: "{{ ceph_build_dir }}"
+          register: rgw_user
+          changed_when: "'created' in (rgw_user.stdout | default('')) or 'updated' in (rgw_user.stdout | default(''))"
+          failed_when: false
+
+        - name: Wait for RGW endpoint to serve HTTP (2xx/3xx)
+          ansible.builtin.shell: "curl -s -o /dev/null -w '%{http_code}' {{ s3_endpoint }}/"
+          args:
+            chdir: "{{ ceph_build_dir }}"
+          register: rgw_health
+          until: "(rgw_health.stdout | int) >= 200 and (rgw_health.stdout | int) < 400"
+          retries: 40
+          delay: 3
+
+        - name: S3 operations (create bucket, put object, head-object)
+          block:
+            - name: Create S3 bucket (idempotent)
+              ansible.builtin.shell: |
+                set -euo pipefail
+                aws --endpoint-url "{{ s3_endpoint }}" s3api create-bucket --bucket "{{ s3_test_bucket }}" || true
+              register: s3_mkbucket
+              changed_when: "'Location' in (s3_mkbucket.stdout | default(''))"
+              failed_when: false
+
+            - name: Create local test file for upload
+              ansible.builtin.copy:
+                content: "Ceph test successful!"
+                dest: "/tmp/ceph_test_file.txt"
+
+            - name: Upload object to S3
+              ansible.builtin.shell: |
+                set -euo pipefail
+                aws --endpoint-url "{{ s3_endpoint }}" s3 cp /tmp/ceph_test_file.txt "s3://{{ s3_test_bucket }}/{{ s3_test_object }}"
+              register: s3_put
+
+            - name: HEAD the uploaded object to verify
+              ansible.builtin.shell: |
+                set -euo pipefail
+                aws --endpoint-url "{{ s3_endpoint }}" s3api head-object --bucket "{{ s3_test_bucket }}" --key "{{ s3_test_object }}"
+              register: s3_head
+          environment:
+            AWS_ACCESS_KEY_ID: "test"
+            AWS_SECRET_ACCESS_KEY: "test"
+
+        - name: Display verification summary
+          ansible.builtin.debug:
+            msg: |
+              ✅ rados df: {{ 'PASSED' if rados_df.rc == 0 else 'FAILED' }}
+              ✅ RGW HTTP code: {{ rgw_health.stdout | default('N/A') }}
+              ✅ S3 upload: {{ 'PASSED' if (s3_put.rc | default(1)) == 0 else 'FAILED' }}
+              ✅ S3 head-object: {{ 'PASSED' if (s3_head.rc | default(1)) == 0 else 'FAILED' }}
+      always:
+        - name: Stop the vstart cluster
+          ansible.builtin.shell: |
+            set -euo pipefail
+            ../src/stop.sh || true
+          args:
+            chdir: "{{ ceph_build_dir }}"
+          failed_when: false
+
+        - name: Clean test artifacts
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - "/tmp/ceph_test_file.txt"
+          failed_when: false
