@@ -1,6 +1,7 @@
 import argparse
 import json
 import subprocess
+import shutil
 from grafana_client import GrafanaApi
 
 # Initialize the Grafana API client
@@ -45,18 +46,32 @@ def delete_default_pcp_datasource(client: GrafanaApi):
     except Exception as e:
         print(f"Failed to delete default PCP datasource: {e}")
 
-
 def run_jsonnet_with_imports(jsonnet_file: str):
+    """
+    Run jsonnet using shutil.which to find the executable.
+    """
+    jsonnet_path = shutil.which('jsonnet')
+
+    if not jsonnet_path:
+        print("Jsonnet executable not found. Ensure it's installed and in your PATH.")
+        return None
+
     try:
         result = subprocess.run(
-            ['jsonnet', "-J", "vendor", jsonnet_file], capture_output=True, text=True
+            [jsonnet_path, "-J", "vendor", jsonnet_file],
+            capture_output=True,
+            text=True
         )
+
         if result.returncode == 0:
             return result.stdout
         else:
             print(f"Error: {result.stderr}")
-    except FileNotFoundError:
-        print("Jsonnet executable not found. Ensure it's installed and in your PATH.")
+            return None
+
+    except Exception as e:
+        print(f"Error running jsonnet: {e}")
+        return None
 
 # Create dashboard
 def create_dashboard(client: GrafanaApi, dashboard_json, uid: str):
