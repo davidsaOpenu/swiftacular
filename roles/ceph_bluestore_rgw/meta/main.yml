@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  author: you
+  description: Build Ceph (incl. BlueStore) and run RGW dev endpoint with Swift verification
+  license: MIT
+  min_ansible_version: "2.12"
+dependencies: []
