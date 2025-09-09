@@ -1,0 +1,28 @@
+---
+- name: STORAGE - Ceph RGW dev (verify only)
+  hosts: all
+  gather_facts: true
+  connection: local
+
+  vars:
+    # build/paths
+    ceph_src_dir: "/home/yarinm/ceph"
+    ceph_build_dir: "/home/yarinm/ceph/build"
+
+    # what to run
+    compile: false        # we already built; change to true only if you want the role to compile
+    verify: true
+
+    # RGW networking
+    rgw_bind_ip: "127.0.0.1"
+    rgw_host: "STORAGE"
+    rgw_port: 8000
+
+    # Swift demo user
+    swift_user: "test"
+    swift_subuser: "tester"
+    swift_secret: "testing"
+
+  roles:
+    - role: ceph_bluestore_rgw
+

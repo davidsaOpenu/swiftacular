@@ -1,0 +1,38 @@
+# --- defaults/main.yml ---
+# Paths / branch
+ceph_src_dir: /home/yarinm/ceph
+ceph_build_dir: /home/yarinm/ceph/build
+ceph_branch: main
+
+
+# Base packages (Debian/Ubuntu)
+base_packages:
+- git
+- cmake
+- ninja-build
+- build-essential
+- pkg-config
+- python3
+- python3-venv
+- python3-pip
+- curl
+- jq
+- iproute2
+
+
+# Flow control
+compile: false # you already compiled; keep false to skip (faster)
+verify: true # yes, start and verify RGW
+force_start: false
+
+
+# RGW / networking
+rgw_bind_ip: "127.0.0.1"
+rgw_host: "STORAGE" # mapped to 127.0.0.1 in /etc/hosts by the tasks
+rgw_port: 8000
+
+
+# Swift demo user
+swift_user: "test"
+swift_subuser: "tester"
+swift_secret: "testing"

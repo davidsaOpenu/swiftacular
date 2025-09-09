@@ -1,0 +1,451 @@
+---
+# roles/ceph_bluestore_rgw/tasks/main.yml
+
+# ---------- Bootstrap vars & defaults ----------
+- name: Derive role variables with sensible defaults
+  set_fact:
+    ceph_src_dir: "{{ ceph_src_dir | default(ansible_env.HOME + '/ceph') }}"
+    ceph_build_dir: "{{ ceph_build_dir | default((ceph_src_dir | default(ansible_env.HOME + '/ceph')) + '/build') }}"
+    ceph_branch: "{{ ceph_branch | default('main') }}"
+    rgw_host: "{{ rgw_host | default('STORAGE') }}"
+    rgw_bind_ip: "{{ rgw_bind_ip | default('127.0.0.1') }}"
+    rgw_port: "{{ rgw_port | default(8000) }}"
+    swift_user: "{{ swift_user | default('test') }}"
+    swift_subuser: "{{ swift_subuser | default('tester') }}"
+    swift_secret: "{{ swift_secret | default('testing') }}"
+    compile: "{{ compile | default(true) }}"
+    verify: "{{ verify | default(true) }}"
+    # Paths for Ceph python bindings & libs (used at runtime)
+    ceph_py_path: "{{ ceph_build_dir }}/lib/cython_modules/lib:{{ ceph_src_dir }}/src/pybind"
+    ceph_ld_path: "{{ ceph_build_dir }}/lib:{{ ceph_build_dir }}/lib/cython_modules/lib"
+  tags: [always]
+
+# ---------- Base tools ----------
+- name: Ensure base tools (Debian/Ubuntu)
+  apt:
+    update_cache: true
+    name:
+      - git
+      - curl
+      - jq
+      - ninja-build
+      - build-essential
+      - cmake
+      - pkg-config
+      - python3-dev
+  become: true
+  when: ansible_os_family == "Debian"
+  tags: [compile]
+
+# ---------- Autodetect build presence ----------
+- name: Check if build directory exists
+  stat:
+    path: "{{ ceph_build_dir }}"
+  register: st_build
+  tags: [compile]
+
+- name: Check if radosgw binary exists
+  stat:
+    path: "{{ ceph_build_dir }}/bin/radosgw"
+  register: st_rgw_bin
+  tags: [compile]
+
+- name: Auto-enable compile if build or radosgw missing
+  set_fact:
+    compile: true
+  when: (not st_build.stat.exists) or (not st_rgw_bin.stat.exists)
+  tags: [compile]
+
+# ---------- Fetch & configure Ceph (idempotent) ----------
+- name: Clone Ceph repository (idempotent)
+  git:
+    repo: "https://github.com/ceph/ceph.git"
+    dest: "{{ ceph_src_dir }}"
+    version: "{{ ceph_branch }}"
+    depth: 1
+    force: false
+    update: true
+  when: compile | bool
+  tags: [compile]
+
+- name: Run install-deps.sh (Ceph)
+  command: ./install-deps.sh
+  args:
+    chdir: "{{ ceph_src_dir }}"
+  become: true
+  changed_when: false
+  when: compile | bool
+  tags: [compile]
+
+- name: Configure CMake (do_cmake.sh) if not configured
+  command: >
+    ./do_cmake.sh
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo
+    -DWITH_RADOSGW=ON
+    -DWITH_MGR_DASHBOARD_FRONTEND=OFF
+    -DWITH_CEPHFS=OFF
+    -DWITH_LIBCEPHFS=OFF
+    -DWITH_FUSE=OFF
+    -DWITH_TESTS=OFF
+    -DBUILD_TESTING=OFF
+  args:
+    chdir: "{{ ceph_src_dir }}"
+    creates: "{{ ceph_build_dir }}/CMakeCache.txt"
+  when: compile | bool
+  tags: [compile]
+
+# ---------- Build (RGW + utilities) when compile=true ----------
+- name: Build Ceph (RGW + required utilities) with progress
+  shell: |
+    set -e
+    cd "{{ ceph_build_dir }}"
+    stdbuf -oL -eL ninja -j"$(nproc)" \
+      ceph-mon ceph-osd ceph-mgr radosgw \
+      ceph ceph-conf ceph-authtool rados radosgw-admin \
+      monmaptool osdmaptool crushtool
+  args:
+    chdir: "{{ ceph_build_dir }}"
+  environment:
+    NINJA_STATUS: "[%f/%t %p%%] "
+  when: compile | bool
+  tags: [compile]
+
+# ---------- Make sure Python bindings exist ----------
+- name: Check for built rados Python module
+  shell: |
+    shopt -s nullglob
+    ls "{{ ceph_build_dir }}"/lib/cython_modules/lib/rados*.so 2>/dev/null | head -n1 || true
+  register: py_rados_so
+  changed_when: false
+  failed_when: false
+  tags: [verify, compile]
+
+- name: Build cython Python modules if missing (rados/cephfs)
+  shell: |
+    set -e
+    cd "{{ ceph_build_dir }}"
+    if ninja -t targets all | grep -q "^cython_modules:"; then
+      stdbuf -oL -eL ninja -j"$(nproc)" cython_modules
+    elif ninja -t targets all | grep -q "^pybind:"; then
+      stdbuf -oL -eL ninja -j"$(nproc)" pybind
+    else
+      stdbuf -oL -eL ninja -j"$(nproc)" python-common python-rados python-cephfs || true
+    fi
+  args:
+    chdir: "{{ ceph_build_dir }}"
+  environment:
+    NINJA_STATUS: "[%f/%t %p%%] "
+  when: (py_rados_so.stdout | length) == 0
+  tags: [verify, compile]
+
+# ---------- Runtime prep ----------
+- name: Ensure STORAGE resolves locally if not already
+  lineinfile:
+    path: /etc/hosts
+    line: "127.0.0.1 STORAGE"
+    state: present
+    create: true
+  become: true
+  tags: [verify]
+
+- name: Stop any prior dev cluster & cleanup (idempotent)
+  shell: |
+    set -e
+    MON=1 MGR=1 OSD=3 MDS=1 RGW=1 ../src/stop.sh || true
+    pkill -f 'ceph-mon|ceph-osd|ceph-mgr|ceph-mds|radosgw' || true
+    rm -rf out dev
+  args:
+    chdir: "{{ ceph_build_dir }}"
+  changed_when: false
+  failed_when: false
+  tags: [verify]
+
+# ---------- Start dev cluster (vstart) ----------
+- name: Probe if RGW port already listening
+  wait_for:
+    host: "127.0.0.1"
+    port: "{{ rgw_port }}"
+    state: started
+    timeout: 1
+  register: rgw_port_probe
+  failed_when: false
+  changed_when: false
+  when: verify | bool
+  tags: [verify]
+
+- name: Decide if we need to start RGW (based on probe)
+  set_fact:
+    rgw_needs_start: "{{ ('Timeout' in (rgw_port_probe.msg | default(''))) | bool }}"
+  when: verify | bool
+  tags: [verify]
+
+- name: Ensure required CLI tools exist (auto-build missing)
+  shell: |
+    set -e
+    cd "{{ ceph_build_dir }}"
+    need="ceph ceph-conf ceph-authtool rados radosgw-admin monmaptool osdmaptool crushtool ceph-mon ceph-osd ceph-mgr"
+    missing=""
+    for t in $need; do
+      [ -x "bin/$t" ] || missing="$missing $t"
+    done
+    if [ -n "$missing" ]; then
+      echo "Building:$missing"
+      stdbuf -oL -eL ninja -j"$(nproc)" $missing
+      echo "Built:$missing"
+    else
+      echo "AllPresent"
+    fi
+  args:
+    chdir: "{{ ceph_build_dir }}"
+  environment:
+    NINJA_STATUS: "[%f/%t %p%%] "
+  register: build_missing
+  changed_when: "'Built:' in build_missing.stdout"
+  failed_when: false
+  when: verify | bool and rgw_needs_start | bool
+  tags: [verify]
+
+- name: Start dev cluster (MON=1, OSD=1, MDS=0, RGW=1) with BlueStore
+  shell: |
+    set -e
+    MON=1 OSD=1 MDS=0 RGW=1 ../src/vstart.sh -n -d -x -b -i "{{ rgw_bind_ip }}" --rgw_port "{{ rgw_port }}"
+  args:
+    chdir: "{{ ceph_build_dir }}"
+    creates: "{{ ceph_build_dir }}/out/radosgw.{{ rgw_port }}.pid"
+  environment:
+    PATH: "{{ ceph_build_dir }}/bin:{{ ansible_env.PATH }}"
+    PYTHONPATH: "{{ ceph_py_path }}"
+    LD_LIBRARY_PATH: "{{ ceph_ld_path }}:{{ ansible_env.LD_LIBRARY_PATH | default('') }}"
+    RGW: "1"
+  when: verify | bool and rgw_needs_start | bool
+  tags: [verify]
+
+- name: Wait for RGW TCP port
+  wait_for:
+    host: "127.0.0.1"
+    port: "{{ rgw_port }}"
+    state: started
+    delay: 0
+    timeout: 60
+  when: verify | bool
+  tags: [verify]
+
+- name: Wait for RGW HTTP response
+  uri:
+    url: "http://{{ rgw_host }}:{{ rgw_port }}/"
+    status_code: [200, 403, 404, 405]
+    timeout: 60
+    validate_certs: false
+  register: rgw_http
+  retries: 30
+  delay: 1
+  until: rgw_http is succeeded
+  when: verify | bool
+  tags: [verify]
+
+# ---------- RGW logging knobs ----------
+- name: Enable RGW ops logs (helpful for auditing)
+  command: >
+    {{ ceph_build_dir }}/bin/ceph
+    -c {{ ceph_build_dir }}/ceph.conf
+    -k {{ ceph_build_dir }}/keyring
+    config set client.rgw rgw_enable_ops_log true
+  environment:
+    PYTHONPATH: "{{ ceph_py_path }}"
+    LD_LIBRARY_PATH: "{{ ceph_ld_path }}:{{ ansible_env.LD_LIBRARY_PATH | default('') }}"
+  changed_when: false
+  failed_when: false
+  when: verify | bool
+  tags: [verify]
+
+- name: Enable RGW ops log to RADOS
+  command: >
+    {{ ceph_build_dir }}/bin/ceph
+    -c {{ ceph_build_dir }}/ceph.conf
+    -k {{ ceph_build_dir }}/keyring
+    config set client.rgw rgw_ops_log_rados true
+  environment:
+    PYTHONPATH: "{{ ceph_py_path }}"
+    LD_LIBRARY_PATH: "{{ ceph_ld_path }}:{{ ansible_env.LD_LIBRARY_PATH | default('') }}"
+  changed_when: false
+  failed_when: false
+  when: verify | bool
+  tags: [verify]
+
+# ---------- Swift user provisioning ----------
+- name: Check if Swift user exists
+  command: >
+    {{ ceph_build_dir }}/bin/radosgw-admin user info
+    --uid {{ swift_user }}
+  args:
+    chdir: "{{ ceph_build_dir }}"
+  register: swift_user_info
+  failed_when: false
+  changed_when: false
+  when: verify | bool
+  tags: [verify]
+
+- name: Create Swift user if missing
+  command: >
+    {{ ceph_build_dir }}/bin/radosgw-admin user create
+    --uid {{ swift_user }} --display-name {{ swift_user }}
+  args:
+    chdir: "{{ ceph_build_dir }}"
+  when: verify | bool and (swift_user_info.rc | int) != 0
+  register: swift_user_create
+  changed_when: true
+  failed_when: false
+  tags: [verify]
+
+- name: Check if Swift subuser exists
+  command: >
+    {{ ceph_build_dir }}/bin/radosgw-admin subuser get
+    --uid {{ swift_user }}
+    --subuser "{{ swift_user }}:{{ swift_subuser }}"
+  args:
+    chdir: "{{ ceph_build_dir }}"
+  register: swift_subuser_info
+  failed_when: false
+  changed_when: false
+  when: verify | bool
+  tags: [verify]
+
+- name: Create Swift subuser if missing
+  command: >
+    {{ ceph_build_dir }}/bin/radosgw-admin subuser create
+    --uid {{ swift_user }}
+    --subuser "{{ swift_user }}:{{ swift_subuser }}"
+    --access=full
+  args:
+    chdir: "{{ ceph_build_dir }}"
+  when: verify | bool and (swift_subuser_info.rc | int) != 0
+  register: swift_subuser_create
+  changed_when: true
+  failed_when: false
+  tags: [verify]
+
+- name: Ensure Swift key (secret)
+  command: >
+    {{ ceph_build_dir }}/bin/radosgw-admin key create
+    --subuser "{{ swift_user }}:{{ swift_subuser }}"
+    --key-type swift
+    --secret "{{ swift_secret }}"
+  args:
+    chdir: "{{ ceph_build_dir }}"
+  failed_when: false
+  changed_when: false
+  when: verify | bool
+  tags: [verify]
+
+# ---------- Swift auth + demo CRUD ----------
+- name: Get Swift token & storage URL (auth/1.0 then v1.0)
+  shell: |
+    set -e
+    auth() {
+      curl -is -H "X-Auth-User: {{ swift_user }}:{{ swift_subuser }}" -H "X-Auth-Key: {{ swift_secret }}" "http://{{ rgw_host }}:{{ rgw_port }}$1" || true
+    }
+    hdrs="$(auth /auth/1.0)"
+    token="$(printf "%s" "$hdrs" | awk -F': ' 'tolower($1)=="x-auth-token"{gsub("\r","",$2);print $2}')"
+    url="$(printf "%s" "$hdrs" | awk -F': ' 'tolower($1)=="x-storage-url"{gsub("\r","",$2);print $2}')"
+    if [ -z "$token" ] || [ -z "$url" ]; then
+      hdrs="$(auth /auth/v1.0)"
+      token="$(printf "%s" "$hdrs" | awk -F': ' 'tolower($1)=="x-auth-token"{gsub("\r","",$2);print $2}')"
+      url="$(printf "%s" "$hdrs" | awk -F': ' 'tolower($1)=="x-storage-url"{gsub("\r","",$2);print $2}')"
+    fi
+    echo "TOKEN=$token"
+    echo "XURL=$url"
+  register: swift_auth
+  changed_when: false
+  when: verify | bool
+  tags: [verify]
+
+- name: Extract token and URL
+  set_fact:
+    swift_token: "{{ (swift_auth.stdout_lines | select('search','^TOKEN=') | first | regex_replace('^TOKEN=','')) | default('') }}"
+    swift_xurl: "{{ (swift_auth.stdout_lines | select('search','^XURL=') | first | regex_replace('^XURL=','')) | default('') }}"
+  when: verify | bool
+  tags: [verify]
+
+- name: Ensure demo container exists
+  uri:
+    url: "{{ swift_xurl }}/ansible-demo"
+    method: PUT
+    headers: { X-Auth-Token: "{{ swift_token }}" }
+    status_code: [201,202,204]
+  register: create_container
+  retries: 3
+  delay: 1
+  until: create_container.status in [201,202,204]
+  when: verify | bool and swift_xurl | length > 0
+  tags: [verify]
+
+- name: Upload demo object
+  shell: |
+    echo "hello from RGW $(date -Is)" > /tmp/hello.txt
+    curl -sS -o /dev/null -w "%{http_code}" \
+      -X PUT -H "X-Auth-Token: {{ swift_token }}" \
+      -T /tmp/hello.txt "{{ swift_xurl }}/ansible-demo/hello.txt"
+  register: put_obj
+  changed_when: put_obj.stdout is search("^(200|201|202)$")
+  failed_when: put_obj.stdout is not search("^(200|201|202)$")
+  when: verify | bool and swift_xurl | length > 0
+  tags: [verify]
+
+- name: List container (should include hello.txt)
+  uri:
+    url: "{{ swift_xurl }}/ansible-demo"
+    headers: { X-Auth-Token: "{{ swift_token }}" }
+    return_content: true
+  register: list_container
+  changed_when: false
+  when: verify | bool and swift_xurl | length > 0
+  tags: [verify]
+
+- name: Delete demo object (ok if already deleted)
+  uri:
+    url: "{{ swift_xurl }}/ansible-demo/hello.txt"
+    method: DELETE
+    headers: { X-Auth-Token: "{{ swift_token }}" }
+    status_code: [204,404]
+  register: delete_obj
+  changed_when: delete_obj.status == 204
+  when: verify | bool and swift_xurl | length > 0
+  tags: [verify]
+
+- name: Show bucket index (omap) first entries
+  command: "{{ ceph_build_dir }}/bin/radosgw-admin bi list --bucket ansible-demo --max-entries 10"
+  args:
+    chdir: "{{ ceph_build_dir }}"
+  register: bi_list
+  changed_when: false
+  failed_when: false
+  when: verify | bool
+  tags: [verify]
+
+# ---------- Assert BlueStore ----------
+- name: Assert BlueStore is in use
+  shell: >
+    {{ ceph_build_dir }}/bin/ceph
+    -c {{ ceph_build_dir }}/ceph.conf
+    -k {{ ceph_build_dir }}/keyring
+    osd metadata 0 | grep -iq 'osd_objectstore.*bluestore'
+  args:
+    chdir: "{{ ceph_build_dir }}"
+  environment:
+    PYTHONPATH: "{{ ceph_py_path }}"
+    LD_LIBRARY_PATH: "{{ ceph_ld_path }}:{{ ansible_env.LD_LIBRARY_PATH | default('') }}"
+  changed_when: false
+  when: verify | bool
+  tags: [verify]
+
+# ---------- Summary ----------
+- name: Verification summary
+  debug:
+    msg:
+      - "RGW endpoint: http://{{ rgw_host }}:{{ rgw_port }}"
+      - "X-Storage-Url: {{ swift_xurl | default('') }}"
+      - "Container listing: {{ (list_container.content | default('')).strip() }}"
+      - "BI list (truncated): {{ (bi_list.stdout | default('')).splitlines()[:10] }}"
+  when: verify | bool
+  tags: [verify]
+
