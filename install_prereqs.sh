@@ -8,6 +8,27 @@ fi
 
 USERNAME="stack"
 
+OS_ID=""
+VERSION_ID=""
+
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    OS_ID=${ID}
+    VERSION_ID=${VERSION_ID:-}
+elif [ -f /etc/lsb-release ]; then
+    . /etc/lsb-release
+    OS_ID=${DISTRIB_ID}
+    VERSION_ID=${DISTRIB_RELEASE:-}
+fi
+
+if [ -z "$OS_ID" ]; then
+    echo "Unsupported OS: Cannot determine distribution."
+    exit 1
+fi
+
+# normalize OS_ID to lowercase for case-insensitive matching
+OS_ID=$(echo "$OS_ID" | tr '[:upper:]' '[:lower:]')
+
 check_success() {
     if [ $? -ne 0 ]; then
         echo "Error: $1 failed."
@@ -23,11 +44,11 @@ ensure_user_exists() {
     if user_exists "$USERNAME"; then
         echo "User $USERNAME already exists."
     else
-        adduser "$USERNAME"
-        check_success "!!"
+        useradd -m "$USERNAME"
+        check_success "Failed to add user $USERNAME."
 
-        echo "swiftaucular" | passwd "$USERNAME" --stdin
-        check_success "!!"
+        echo "$USERNAME:swiftaucular" | chpasswd
+        check_success "Failed to set password for $USERNAME."
     fi
 }
 
@@ -73,7 +94,7 @@ install_for_fedora() {
                    zlib-devel \
                    ruby-devel \
                    rsync
-    ccheck_success "!!"
+    check_success "!!"
 
     # Install Vagrant
     dnf install -y vagrant
@@ -92,7 +113,7 @@ install_for_fedora() {
 
 install_for_ubuntu() {
     apt-get update
-    check_success "apt-get update"
+    check_success "!!"
     apt-get install -y \
         qemu-kvm \
         libvirt-dev \
@@ -109,7 +130,8 @@ install_for_ubuntu() {
         software-properties-common \
         pkg-config \
         golang-go \
-        pcp
+        pcp \
+        wget
     check_success "!!"
 
     # https://docs.ansible.com/ansible/latest/installation_guide/installation_distros.html#installing-ansible-on-ubuntu
@@ -117,13 +139,13 @@ install_for_ubuntu() {
     check_success "!!"
     add-apt-repository --yes --update ppa:ansible/ansible
     check_success "!!"
-    apt install ansible
+    apt install -y ansible
     check_success "!!"
 
     grep -qxF 'export PATH=$HOME/.local/bin:$PATH' ~/.bashrc || echo 'export PATH=$HOME/.local/bin:$PATH' >> ~/.bashrc
 
     wget https://releases.hashicorp.com/vagrant/2.4.0/vagrant_2.4.0-1_amd64.deb
-    sudo apt install ./vagrant_2.4.0-1_amd64.deb
+    apt install ./vagrant_2.4.0-1_amd64.deb
     check_success "!!"
 
     # Avoid Permission denied ~/swiftacular/.vagrant/bundler error
@@ -131,10 +153,40 @@ install_for_ubuntu() {
     check_success "!!"
 }
 
-ensure_user_exists
+install_for_arch() {
+    pacman -Syu --noconfirm
+    check_success "pacman -Syu"
+    pacman -S --noconfirm --needed \
+        qemu-desktop \
+        libvirt \
+        pcp \
+        libxml2 \
+        libxslt \
+        zlib \
+        ruby \
+        rsync \
+        base-devel \
+        ansible \
+        python-resolvelib \
+        go \
+        wget \
+        python-pip \
+        unzip \
+        git
+    check_success "!!"
 
-OS_ID=$(grep -oP '^ID=\K.*' /etc/os-release | tr -d '"')
-VERSION_ID=$(grep -oP '^VERSION_ID=\K.*' /etc/os-release | tr -d '"')
+    if ! command -v vagrant &> /dev/null; then
+        echo "--------------------------------------------------------------------"
+        echo "Vagrant not found."
+        echo "Please install it as a regular user using an AUR helper like yay:"
+        echo "  yay -S vagrant"
+        echo "After installation, please re-run this script."
+        echo "--------------------------------------------------------------------"
+        exit 1
+    fi
+}
+
+ensure_user_exists
 
 case "$OS_ID" in
   fedora)
@@ -151,8 +203,11 @@ case "$OS_ID" in
     fi
     install_for_ubuntu
     ;;
+  arch)
+    install_for_arch
+    ;;
   *)
-    echo "Unsupported OS: $OS_ID $VERSION_ID. Only Fedora 40 and Ubuntu 22.04 are supported."
+    echo "Unsupported OS: $OS_ID $VERSION_ID. Only Fedora 42, Ubuntu 22.04 and Arch are supported."
     exit 1
     ;;
 esac

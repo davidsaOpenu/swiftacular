@@ -2,6 +2,14 @@
 
 set -e
 
+# Check for required commands
+for cmd in python vagrant ansible-playbook ansible-galaxy; do
+  if ! command -v $cmd &> /dev/null; then
+    echo "$cmd could not be found. Please install it."
+    exit 1
+  fi
+done
+
 # Array of dashboard JSON files and their UIDs
 declare -A dashboards
 dashboards["swiftdbinfo.jsonnet"]="swiftdbinfo"
