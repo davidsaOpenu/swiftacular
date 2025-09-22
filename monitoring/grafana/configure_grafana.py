@@ -1,6 +1,6 @@
 import argparse
 import json
-import os
+import shutil
 import subprocess
 from grafana_client import GrafanaApi
 
@@ -46,23 +46,11 @@ def delete_default_pcp_datasource(client: GrafanaApi):
     except Exception as e:
         print(f"Failed to delete default PCP datasource: {e}")
 
-# TODO: Quick and dirty. Proper solution put jsonnet on graphana VM
-def find_jsonnet():
-    home = os.path.expanduser('~')
-    search_paths = [
-        os.path.join(home, '.local', 'bin', 'jsonnet'),
-    ]
-
-    for path in search_paths:
-        if os.path.exists(path) and os.path.isfile(path):
-            return path
-    return None
-
 def run_jsonnet_with_imports(jsonnet_file: str):
     """
     Run jsonnet using shutil.which to find the executable.
     """
-    jsonnet_path = find_jsonnet()
+    jsonnet_path = shutil.which('jsonnet')
 
     if not jsonnet_path:
         print("Jsonnet executable not found. Ensure it's installed and in your PATH.")
