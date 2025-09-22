@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # for s in keystone-01 proxy-01 storage-01 storage-02 storage-03 lbssl-01; do
 for s in keystone-01 proxy-01 storage-01 storage-02 storage-03; do

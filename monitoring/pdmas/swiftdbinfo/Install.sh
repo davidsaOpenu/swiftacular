@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 . $PCP_DIR/etc/pcp.env
 . $PCP_SHARE_DIR/lib/pmdaproc.sh
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ansible -m shell -a "swift-ring-builder /etc/swift/account.builder" swift-proxy-01
 ansible -m shell -a "swift-ring-builder /etc/swift/container.builder" swift-proxy-01
