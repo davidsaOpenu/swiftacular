@@ -99,9 +99,28 @@
 
 - name: Setup Grafana
   hosts: grafana
-  roles:
-    - role: performancecopilot.metrics.redis
-    - role: performancecopilot.metrics.grafana
+  tasks:
+    - name: Run performancecopilot.metrics roles
+      block:
+        - name: Run redis role
+          ansible.builtin.include_role:
+            name: performancecopilot.metrics.redis
+
+        - name: Run grafana role
+          ansible.builtin.include_role:
+            name: performancecopilot.metrics.grafana
+      rescue:
+        # same task as in performancecopilot.metrics.grafana but with retries to avoid
+        # intermittent failures on a congested CI server
+        - name: More retries to ensure graphing service is running and enabled on boot
+          ansible.builtin.service:
+            name: grafana-server
+            state: started
+            enabled: true
+          register: grafana_start
+          retries: 3
+          delay: 30
+          until: grafana_start is succeeded
 
 - name: Add echarts to Grafana
   hosts: grafana
