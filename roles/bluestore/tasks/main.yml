@@ -1,0 +1,26 @@
+---
+- name: Copy compile_and_test.sh script to target host
+  ansible.builtin.copy:
+    src: compile_and_test.sh
+    dest: /tmp/compile_and_test.sh
+    mode: "0755"
+    owner: "{{ ansible_user | default('root') }}"
+    group: "{{ ansible_user | default('root') }}"
+
+- name: Execute compile_and_test.sh script
+  ansible.builtin.command: /tmp/compile_and_test.sh
+  register: script_output
+  changed_when: script_output.rc == 0
+  failed_when: script_output.rc != 0
+  async: 7200
+  poll: 10
+
+- name: Display script output
+  ansible.builtin.debug:
+    msg: |
+      Script execution completed with return code: {{ script_output.rc }}
+      STDOUT:
+      {{ script_output.stdout | join('\n') }}
+      STDERR:
+      {{ script_output.stderr | join('\n') }}
+  when: script_output is defined

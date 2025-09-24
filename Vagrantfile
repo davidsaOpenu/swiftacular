@@ -1,18 +1,17 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
-
 nodes = {
-  'swift-package-cache' => [1, 20],
-  'swift-keystone'      => [1, 50],
-  # 'swift-lbssl'       => [1, 30],
-  'swift-proxy'         => [1, 100],
-  'swift-storage'       => [3, 200],
-  'grafana'             => [1, 150],
+  # 'swift-package-cache' => [1, 20],
+  # 'swift-keystone'      => [1, 50],
+  # # 'swift-lbssl'       => [1, 30],
+  # 'swift-proxy'         => [1, 100],
+  # 'swift-storage'       => [3, 200],
+  # 'grafana'             => [1, 150],
+  'bluestore'           => [1, 250],
 }
 
 # Select box based on ENV variable
 selected_box = ENV['VM_BOX'] || "centos"
-
 box_config = {
   "centos" => {
     box:     "eurolinux-vagrant/centos-stream-9",
@@ -42,8 +41,6 @@ Vagrant.configure("2") do |config|
   nodes.each do |prefix, (count, ip_start)|
     count.times do |i|
       hostname = "%s-%02d" % [prefix, (i + 1)]
-
-
       config.vm.define "#{hostname}" do |box|
         box.vm.provision "shell", privileged: false, inline: <<-SHELL
           if [ -f /etc/os-release ]; then
@@ -57,7 +54,12 @@ Vagrant.configure("2") do |config|
         box.vm.hostname = "#{hostname}.example.com"
 
         box.vm.provider :libvirt do |v|
-          v.memory = 1024 #3072
+          if prefix == 'bluestore'
+            v.memory = 20480  # 20 GB
+          else
+            v.memory = 2048   # 2 GB for other VMs
+          end
+          v.cpus = `nproc`.to_i
         end
 
         # ------- Networks

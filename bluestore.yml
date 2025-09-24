@@ -1,0 +1,6 @@
+---
+- name: Compile ceph and run objectstore tests
+  hosts: bluestore
+  remote_user: vagrant
+  roles:
+    - bluestore

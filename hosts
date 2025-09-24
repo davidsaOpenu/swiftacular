@@ -33,6 +33,10 @@ swift-storage-03 ansible_ssh_host=192.168.100.202 ansible_ssh_private_key_file=.
 [grafana]
 grafana-01 ansible_ssh_host=192.168.100.150 ansible_ssh_private_key_file=./.vagrant/machines/grafana-01/libvirt/private_key
 
+[bluestore]
+bluestore-01 ansible_ssh_host=192.168.100.250 ansible_ssh_private_key_file=./.vagrant/machines/bluestore-01/libvirt/private_key
+
+
 [mainnodes]
 swift-storage-[01:03]
 swift-proxy-[01:01]
