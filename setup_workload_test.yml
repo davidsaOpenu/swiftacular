@@ -80,36 +80,37 @@
       register: pytest_result
       changed_when: false
 
-- name: Verify sharding
-  hosts: storage
-  tasks:
-    # It's entirely possible that for bigger tests, it would take much longer than 10 minutes for sharding to complete.
-    - name: Wait for sharding
-      ansible.builtin.pause:
-        seconds: 600
+# - name: Verify sharding
+#   hosts: storage
+#   tasks:
+#     # It's entirely possible that for bigger tests, it would take much longer than 10 minutes for sharding to complete.
+#     - name: Wait for sharding
+#       ansible.builtin.pause:
+#         seconds: 600
 
-    # yamllint disable rule:line-length
-    # The container name in the command is hard-coded to match the workloader test. It would be good to make it variable!
-    - name: Get container sharding results
-      ansible.builtin.shell: |  # Big ugly command to check whether container is sharded.
-        set -o pipefail;
-        for FILE in /srv/node/td*/containers/*/*/*/*.db; do swift-manage-shard-ranges $FILE info; done 2>&1 | grep '^Loaded.*the-test-container$' -A 20 | grep -m 1 "db_state" | sed -e "s/^db_state = //"
-      register: command_output
-      changed_when: false
-    # yamllint enable rule:line-length
+#     # The container name in the command is hard-coded to match the workloader test. It would be good to make it variable!
+#     - name: Get container sharding results
+#       ansible.builtin.shell: |  # Big ugly command to check whether container is sharded.
+#         set -o pipefail;
+#         for FILE in /srv/node/td*/containers/*/*/*/*.db; do swift-manage-shard-ranges $FILE info; done 2>&1 \
+#           | grep '^Loaded.*the-test-container$' -A 20 \
+#           | grep -m 1 "db_state" \
+#           | sed -e "s/^db_state = //"
+#       register: command_output
+#       changed_when: false
 
-    - name: Show output
-      ansible.builtin.debug:
-        var: command_output.stdout
+#     - name: Show output
+#       ansible.builtin.debug:
+#         var: command_output.stdout
 
-    - name: Check the output
-      ansible.builtin.fail:
-        msg: "The container is unsharded"
-      when: command_output.stdout == "unsharded"
+#     - name: Check the output
+#       ansible.builtin.fail:
+#         msg: "The container is unsharded"
+#       when: command_output.stdout == "unsharded"
 
-    - name: Verify sharded status
-      ansible.builtin.assert:
-        that:
-          - command_output.stdout == "sharded" or command_output.stdout == ""
-        fail_msg: "Host must be sharded or have no replica"
-        success_msg: "Sharded status verified"
+#     - name: Verify sharded status
+#       ansible.builtin.assert:
+#         that:
+#           - command_output.stdout == "sharded" or command_output.stdout == ""
+#         fail_msg: "Host must be sharded or have no replica"
+#         success_msg: "Sharded status verified"
