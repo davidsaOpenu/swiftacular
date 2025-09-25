@@ -50,6 +50,23 @@
       "message": "02:09:53  swift-storage-03           : ok\u003d11   changed\u003d3    unreachable\u003d1    failed\u003d0    skipped\u003d1    rescued\u003d0    ignored\u003d0 \n\nrechecking",
       "revId": "1365a5e6ae134fee131aa29dd56e58dece52bb0d",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "87594615_2f35f495",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2025-09-25T09:29:26Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "1365a5e6ae134fee131aa29dd56e58dece52bb0d",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     }
   ]
 }
