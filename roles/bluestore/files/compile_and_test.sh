@@ -143,8 +143,8 @@ run_objectstore_tests() {
 
     cd "ceph/build/bin"
 
-    ceph_test_objectstore
-    unittest_bluestore_types
+    ./ceph_test_objectstore
+    ./unittest_bluestore_types
 
     cd ../../..
 }
