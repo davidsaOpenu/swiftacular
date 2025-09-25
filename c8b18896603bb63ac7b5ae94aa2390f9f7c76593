@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "c8b18896603bb63ac7b5ae94aa2390f9f7c76593",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ca4ed0aa_c41c9f53",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2025-09-25T09:22:06Z",
+      "side": 1,
+      "message": "Hi Adrian, there are also additional 14 changes in this chain.",
+      "revId": "c8b18896603bb63ac7b5ae94aa2390f9f7c76593",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     }
   ]
 }
