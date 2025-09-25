@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "87cf333e5dc259c83dbea46090eecea061da0d49",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a70c5fa1_680ba7b7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2025-09-25T09:26:31Z",
+      "side": 1,
+      "message": "let\u0027s just rebase it on top of the https://review.gerrithub.io/c/davidsaOpenu/swiftacular/+/1223212 that will be easer :-) otherwize +2",
+      "revId": "87cf333e5dc259c83dbea46090eecea061da0d49",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     }
   ]
 }
