@@ -7,7 +7,7 @@ nodes = {
   'swift-proxy'         => [1, 100],
   'swift-storage'       => [3, 200],
   'grafana'             => [1, 150],
-  'bluestore'           => [1, 250],
+  # 'bluestore'           => [1, 250],
 }
 
 # Select box based on ENV variable
