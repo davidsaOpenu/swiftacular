@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "85b0213e2d0e484e63f9701284d93ecefb3cf0ee",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "04db59f9_7ecddcb2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2025-09-25T09:31:17Z",
+      "side": 1,
+      "message": "00:31:35  \n00:31:35  PLAY [Install jsonnet and jb (Jsonnet Bundler) from source for a regular user] ***\n00:31:35  \n00:31:35  TASK [Clone jsonnet repository from GitHub into user\u0027s home directory] *********\n00:31:38  ok: [localhost]\n00:31:38  \n00:31:38  TASK [Build jsonnet using make (non-root user)] ********************************\n00:31:38  ok: [localhost]\n00:31:38  \n00:31:38  TASK [Add jsonnet to the user\u0027s local bin directory] ***************************\n00:31:39  ok: [localhost]\n00:31:39  \n00:31:39  TASK [Download jb binary with wget (reliable workaround)] **********************\n00:31:39  ok: [localhost]\n00:31:39  \n00:31:39  TASK [Ensure jb binary is executable] ******************************************\n00:31:39  ok: [localhost]\n00:31:39  \n00:31:39  TASK [Ensure ~/.local/bin is in the user\u0027s PATH] *******************************\n00:31:40  changed: [localhost]\n00:31:40  \n00:31:40  TASK [Install jsonnet packages from jsonnetfile.json] **************************\n00:31:52  changed: [localhost]\n00:31:52  \n00:31:52  PLAY RECAP *********************************************************************\n00:31:52  localhost                  : ok\u003d7    changed\u003d2    unreachable\u003d0    failed\u003d0    skipped\u003d0    rescued\u003d0    ignored\u003d0   \n00:31:52  \n00:31:52  Jsonnet executable not found. Ensure it\u0027s installed and in your PATH.\n00:31:52  Traceback (most recent call last):\n00:31:52    File \"/var/lib/jenkins/workspace/swiftacular/swiftacular/monitoring/grafana/configure_grafana.py\", line 131, in \u003cmodule\u003e\n00:31:52      main()\n00:31:52    File \"/var/lib/jenkins/workspace/swiftacular/swiftacular/monitoring/grafana/configure_grafana.py\", line 124, in main\n00:31:52      dashboard_json \u003d json.loads(run_jsonnet_with_imports(args.json_file_path))\n00:31:52    File \"/usr/lib/python3.10/json/__init__.py\", line 339, in loads\n00:31:52      raise TypeError(f\u0027the JSON object must be str, bytes or bytearray, \u0027\n00:31:52  TypeError: the JSON object must be str, bytes or bytearray, not NoneType",
+      "revId": "85b0213e2d0e484e63f9701284d93ecefb3cf0ee",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     }
   ]
 }
