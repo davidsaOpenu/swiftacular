@@ -18,7 +18,7 @@ repos:
       - id: ansible-lint
         name: ansible-lint (gitignore aware)
         entry: bash -c 'git ls-files "*.yml" "*.yaml" | xargs ansible-lint --fix'
-        language: system
+        language: python
         pass_filenames: false
         files: \.(yml|yaml)$
         additional_dependencies: [] # Clear any existing dependencies
