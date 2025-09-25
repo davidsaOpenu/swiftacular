@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "3289398bb1da53be7e281867c8dfab63f8f76358",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6eb03f51_6df27e7f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2025-09-25T23:14:06Z",
+      "side": 1,
+      "message": "verified: https://review.gerrithub.io/c/davidsaOpenu/swiftacular/+/1223254",
+      "revId": "3289398bb1da53be7e281867c8dfab63f8f76358",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     }
   ]
 }
