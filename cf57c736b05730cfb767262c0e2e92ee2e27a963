@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d6a14e47_4b5e7e16",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2025-09-25T23:13:20Z",
+      "side": 1,
+      "message": "verified: https://review.gerrithub.io/c/davidsaOpenu/swiftacular/+/1223254",
+      "revId": "cf57c736b05730cfb767262c0e2e92ee2e27a963",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
