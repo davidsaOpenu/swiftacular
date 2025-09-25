@@ -19,13 +19,13 @@
 - name: Stop proxy services and cleanup builder files
   hosts: proxy
   tasks:
-    - name: Stop swift-proxy on proxy nodes
+    - name: Stop swift-proxy on proxy nodes - RedHat
       ansible.builtin.service:
         name: openstack-swift-proxy
         state: stopped
       when: ansible_os_family == 'RedHat'
 
-    - name: Stop swift-proxy on proxy nodes
+    - name: Stop swift-proxy on proxy nodes - Debian
       ansible.builtin.service:
         name: swift-proxy
         state: stopped
