@@ -17,6 +17,7 @@ ansible-galaxy collection install community.mysql --force
 # installs lates 2.4.0 without redis roles.
 # TODO: install latest, address the issue.
 ansible-galaxy collection install git+https://github.com/performancecopilot/ansible-pcp.git,v2.3.0 --force
+ansible-galaxy collection install ansible.posix --force
 
 # Pre-commit checks
 tox
