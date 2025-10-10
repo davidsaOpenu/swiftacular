@@ -26,7 +26,7 @@ Vagrant.configure("2") do |config|
     v.qemu_use_session = false
   end
 
-  config.vm.provision "shell", path: "$orig_dir/$SCRIPT_PATH"
+  config.vm.provision "shell", privileged: false, path: "$orig_dir/$SCRIPT_PATH"
 end
 EOF
 
