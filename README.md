@@ -40,7 +40,7 @@ $ cd swiftacular
 # Install prerequisites on the host
 $ ./install_prereqs.sh
 # Prepare storage nodes with precompiled bluestore
-$ ./scripts/scripts/compile_and_test_bluestore.sh --ceph
+$ ./scripts/compile_and_test_bluestore.sh --ceph
 # Deploy Swift and monitoring dashboards
 $ ./bootstrap_swift_with_monitoring.sh
 ```
