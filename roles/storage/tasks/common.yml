@@ -25,7 +25,7 @@
   with_sequence: count={{ disks }}
 
 - name: Create disk files
-  ansible.builtin.command: truncate -s 1GB /srv/node/disk-{{ disk_prefix }}{{ item | int - 1 }}
+  ansible.builtin.command: truncate -s {{ loop_disk_size }}GB /srv/node/disk-{{ disk_prefix }}{{ item | int - 1 }}
   with_sequence: count={{ disks }}
   args:
     creates: /srv/node/disk-{{ disk_prefix }}{{ item | int - 1 }}

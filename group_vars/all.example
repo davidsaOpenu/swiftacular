@@ -26,7 +26,7 @@ partition_power: 12
 replicas: 2
 min_part_hours: 1
 # Size of the sparse image to be mounted *in gigabytes*
-loop_disk_size: 500
+loop_disk_size: 5
 
 #
 # Swift hash settings
