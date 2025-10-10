@@ -7,7 +7,6 @@ nodes = {
   'swift-proxy'         => [1, 100],
   'swift-storage'       => [3, 200],
   'grafana'             => [1, 150],
-  # 'bluestore'           => [1, 250],
 }
 
 # Select box based on ENV variable
@@ -17,9 +16,15 @@ box_config = {
     box:     "eurolinux-vagrant/centos-stream-9",
     box_url: "https://app.vagrantup.com/eurolinux-vagrant/boxes/centos-stream-9/versions/9.0.28/providers/libvirt.box"
   },
+  "centos-ceph" => {
+    box:     "eurolinux-vagrant/centos-stream-9-ceph",
+  },
   "ubuntu" => {
     box:     "generic/ubuntu2204",
     box_url: "https://vagrantcloud.com/generic/boxes/ubuntu2204/versions/4.3.12/providers/libvirt/amd64/vagrant.box",
+  },
+  "ubuntu-ceph" => {
+    box:     "generic/ubuntu2204-ceph",
   }
 }
 
@@ -28,8 +33,8 @@ unless box_config[selected_box]
 end
 
 Vagrant.configure("2") do |config|
-  config.vm.box     = box_config[selected_box][:box]
-  config.vm.box_url = box_config[selected_box][:box_url]
+  # Disable default synced folder to prevent NFS usage
+  config.vm.synced_folder ".", "/vagrant", disabled: true
 
   config.vm.provider :libvirt do |libvirt|
     # false = Use system session (qemu:///system)
@@ -42,6 +47,27 @@ Vagrant.configure("2") do |config|
     count.times do |i|
       hostname = "%s-%02d" % [prefix, (i + 1)]
       config.vm.define "#{hostname}" do |box|
+        # Use -ceph variant for storage nodes
+        if prefix == 'swift-storage'
+          ceph_box = "#{selected_box}-ceph"
+          if box_config[ceph_box]
+            box.vm.box     = box_config[ceph_box][:box]
+            box.vm.box_url = box_config[ceph_box][:box_url] if box_config[ceph_box][:box_url]
+          else
+            abort "Ceph variant '#{ceph_box}' not available for storage nodes. Please use 'centos' or 'ubuntu' as VM_BOX."
+          end
+        else
+          box.vm.box     = box_config[selected_box][:box]
+          box.vm.box_url = box_config[selected_box][:box_url] if box_config[selected_box][:box_url]
+        end
+
+        # Configure synced folders - storage nodes don't need them, others use rsync
+        if prefix == 'swift-storage'
+          # Keep disabled for storage nodes
+        else
+          box.vm.synced_folder ".", "/vagrant", type: "rsync", rsync__exclude: ['.git/', '.vagrant/']
+        end
+
         box.vm.provision "shell", privileged: false, inline: <<-SHELL
           if [ -f /etc/os-release ]; then
             . /etc/os-release
@@ -54,11 +80,7 @@ Vagrant.configure("2") do |config|
         box.vm.hostname = "#{hostname}.example.com"
 
         box.vm.provider :libvirt do |v|
-          if prefix == 'bluestore'
-            v.memory = 20480  # 20 GB
-          else
-            v.memory = 2048   # 2 GB for other VMs
-          end
+          v.memory = 2048
           v.cpus = `nproc`.to_i
         end
 

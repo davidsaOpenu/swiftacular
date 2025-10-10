@@ -39,6 +39,8 @@ This repository will create a virtualized OpenStack Swift cluster using Vagrant,
 $ cd swiftacular
 # Install prerequisites on the host
 $ ./install_prereqs.sh
+# Prepare storage nodes with precompiled bluestore
+$ ./scripts/scripts/compile_and_test_bluestore.sh --ceph
 # Deploy Swift and monitoring dashboards
 $ ./bootstrap_swift_with_monitoring.sh
 ```
@@ -87,7 +89,7 @@ https://portal.cloud.hashicorp.com/vagrant/discover?providers=libvirt&query=24.0
 
 Minimal Host Requirements:
 CPU: 6 vCPUs
-RAM: 16 GB
+RAM: 24 GB
 Disk: ~120 GB
 
 Recommended Host Requirements:
@@ -104,6 +106,15 @@ Seven Vagrant-based virtual machines are used for this playbook:
 * __lbssl__ - One SSL termination server that will be used to proxy connections to the Swift Proxy server
 * __swift-proxy__ - One Swift proxy server
 * __swift-storage__ - Three Swift storage nodes
+
+
+Also, running
+
+```bash
+scripts/compile_and_test_bluestore.sh --ceph
+```
+
+creates a VM with 20 GB of ram for bluestore compilation. The VM is destroyed later.
 
 ## Networking setup
 
