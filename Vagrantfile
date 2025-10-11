@@ -80,7 +80,7 @@ Vagrant.configure("2") do |config|
         box.vm.hostname = "#{hostname}.example.com"
 
         box.vm.provider :libvirt do |v|
-          v.memory = 2048
+          v.memory = 16384
           v.cpus = `nproc`.to_i
         end
 
