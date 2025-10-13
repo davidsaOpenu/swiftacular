@@ -28,6 +28,7 @@ grafana.dashboard.new(
     '$datasource',
     'label_values(swift_db_name)',
     refresh='load',
+    sort=1,
   )
 )
 
