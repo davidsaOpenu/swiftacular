@@ -671,6 +671,131 @@ grafana.dashboard.new(
     h: 7,
   }
 )
+.addPanel(
+  grafana.row.new(
+    title='XFS Allocations'
+  ), gridPos={
+    x: 0,
+    y: 119,
+    w: 24,
+    h: 1,
+  }
+)
+.addPanel(
+  grafana.graphPanel.new(
+    'XFS Extent Allocations',
+    datasource='$datasource',
+    format='ops',
+  )
+  .addTargets([
+    { expr: 'xfs.perdev.allocs.alloc_extent{hostname == "$host"}', legendFormat: 'alloc', format: 'time_series' },
+    { expr: 'xfs.perdev.allocs.free_extent{hostname == "$host"}', legendFormat: 'free', format: 'time_series' },
+  ]), gridPos={
+    x: 0,
+    y: 120,
+    w: 12,
+    h: 7,
+  }
+)
+.addPanel(
+  grafana.graphPanel.new(
+    'XFS Block Allocations',
+    datasource='$datasource',
+    format='ops',
+  )
+  .addTargets([
+    { expr: 'xfs.perdev.allocs.alloc_block{hostname == "$host"}', legendFormat: 'alloc', format: 'time_series' },
+    { expr: 'xfs.perdev.allocs.free_block{hostname == "$host"}', legendFormat: 'free', format: 'time_series' },
+  ]), gridPos={
+    x: 12,
+    y: 120,
+    w: 12,
+    h: 7,
+  }
+)
+.addPanel(
+  grafana.row.new(
+    title='XFS Allocation B-Tree'
+  ), gridPos={
+    x: 0,
+    y: 127,
+    w: 24,
+    h: 1,
+  }
+)
+.addPanel(
+  grafana.graphPanel.new(
+    'Allocation B-Tree Lookups/Comparisons',
+    datasource='$datasource',
+    format='ops',
+  )
+  .addTargets([
+    { expr: 'xfs.perdev.alloc_btree.lookup{hostname == "$host"}', legendFormat: 'lookup', format: 'time_series' },
+    { expr: 'xfs.perdev.alloc_btree.compare{hostname == "$host"}', legendFormat: 'compare', format: 'time_series' },
+  ]), gridPos={
+    x: 0,
+    y: 128,
+    w: 12,
+    h: 7,
+  }
+)
+.addPanel(
+  grafana.graphPanel.new(
+    'Allocation B-Tree Record Ins/Del',
+    datasource='$datasource',
+    format='ops',
+  )
+  .addTargets([
+    { expr: 'xfs.perdev.alloc_btree.insrec{hostname == "$host"}', legendFormat: 'insert', format: 'time_series' },
+    { expr: 'xfs.perdev.alloc_btree.delrec{hostname == "$host"}', legendFormat: 'delete', format: 'time_series' },
+  ]), gridPos={
+    x: 12,
+    y: 128,
+    w: 12,
+    h: 7,
+  }
+)
+.addPanel(
+  grafana.row.new(
+    title='XFS Inode Flushing'
+  ), gridPos={
+    x: 0,
+    y: 135,
+    w: 24,
+    h: 1,
+  }
+)
+.addPanel(
+  grafana.graphPanel.new(
+    'Inode Flushes',
+    datasource='$datasource',
+    format='ops',
+  )
+  .addTargets([
+    { expr: 'xfs.perdev.iflush_count{hostname == "$host"}', legendFormat: 'flushes', format: 'time_series' },
+  ]), gridPos={
+    x: 0,
+    y: 136,
+    w: 12,
+    h: 7,
+  }
+)
+.addPanel(
+  grafana.graphPanel.new(
+    'Inode Cluster Flushes',
+    datasource='$datasource',
+    format='ops',
+  )
+  .addTargets([
+    { expr: 'xfs.perdev.icluster_flushcnt{hostname == "$host"}', legendFormat: 'count', format: 'time_series' },
+    { expr: 'xfs.perdev.icluster_flushinode{hostname == "$host"}', legendFormat: 'inodes', format: 'time_series' },
+  ]), gridPos={
+    x: 12,
+    y: 136,
+    w: 12,
+    h: 7,
+  }
+)
 + {
   revision: 3,
 }
