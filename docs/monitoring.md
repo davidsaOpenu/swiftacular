@@ -64,7 +64,7 @@ By default, `swiftdbinfo` does not track Swift expired objects databases. This c
 The `swiftdbinfo.object.dist` metric returns the distribution of sizes of objects in the database by returning the number of objects in each size category. The size categories/buckets can be configured in the configuration section of `monitoring/pmdas/swiftdbinfo/pmdaswiftdbinfo.py`. The default buckets are:
 
 - 0-1 KB
-- 0-10 KB
+- 1-10 KB
 - 10-100 KB
 - 100 KB - 1 MB
 - 1 MB - 10 MB
