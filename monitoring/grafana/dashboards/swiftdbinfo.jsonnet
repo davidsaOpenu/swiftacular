@@ -15,7 +15,8 @@ local vars = {
     + g.dashboard.variable.query.withDatasourceFromVariable(self.datasource)
     + g.dashboard.variable.query.selectionOptions.withMulti()
     + g.dashboard.variable.query.selectionOptions.withIncludeAll()
-    + g.dashboard.variable.query.withRefresh('time'),
+    + g.dashboard.variable.query.withRefresh('time')
+    + { sort: 1 },
 };
 
 g.dashboard.new('Swift DB info')
