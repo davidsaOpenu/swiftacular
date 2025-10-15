@@ -8,6 +8,8 @@ MEAN_SIZE = 1 * 1024 # 1 KB
 MAX_SIZE = 10 * 1024 # 10 KB
 MIN_SIZE = 512 # 512 Bytes
 STDEV_SIZE = 1 * 1024 # 1 KB
+LARGE_FILE_SIZE = int(1.1 * 1024 * 1024 * 1024) # 1.1 GB
+LARGE_STDEV_SIZE = 0
 RETENTION_TIME = 24 * 60 * 60 # 24 hours
 
 PROXY_BASE_URL = 'http://192.168.100.50:5000'
@@ -58,6 +60,12 @@ def test_tiny_workload(connection, container):
     run_workload_test(MEAN_SIZE, MAX_SIZE, MIN_SIZE, STDEV_SIZE,
                      RETENTION_TIME, upload_interval=0, total_uploads=2,
                      batch_size=100, connection=connection, container=container)
+
+
+def test_large_object_workload(connection, container):
+    run_workload_test(LARGE_FILE_SIZE, LARGE_FILE_SIZE, LARGE_FILE_SIZE, LARGE_STDEV_SIZE,
+                     RETENTION_TIME, upload_interval=0, total_uploads=1,
+                     batch_size=1, connection=connection, container=container)
 
 
 # Continuously and slowly upload files without stopping, e.g. a live server that accepts occasional files from many clients
