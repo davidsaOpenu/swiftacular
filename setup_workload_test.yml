@@ -74,7 +74,7 @@
 
     # We're currently only running the tiny test. It would be good to run everything!
     - name: Run workload tests
-      ansible.builtin.command: /usr/bin/python -m pytest test_workload.py::test_tiny_workload -svx
+      ansible.builtin.command: /usr/bin/python -m pytest "test_workload.py::test_tiny_workload" "test_workload.py::test_large_object_workload" -svx
       args:
         chdir: /home/vagrant/workload_tests
       register: pytest_result
