@@ -60,37 +60,37 @@ run_playbook() {
   done
 }
 
-# Check if vagrant-libvirt plugin is installed
-if ! vagrant plugin list | grep -q 'vagrant-libvirt'; then
-    echo "Installing vagrant-libvirt plugin..."
-    vagrant plugin install vagrant-libvirt
-else
-    echo "vagrant-libvirt plugin is already installed."
-fi
+# # Check if vagrant-libvirt plugin is installed
+# if ! vagrant plugin list | grep -q 'vagrant-libvirt'; then
+#     echo "Installing vagrant-libvirt plugin..."
+#     vagrant plugin install vagrant-libvirt
+# else
+#     echo "vagrant-libvirt plugin is already installed."
+# fi
 
-./vagrant_box.sh
+# ./vagrant_box.sh
 
-# Run the playbooks with timing and logging
-echo start
-vagrant up
-
-
-cp group_vars/all.example group_vars/all
-
-ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts setup-swift-monitoring.yml
-
-# Install jsonnet on localhost
-ansible-playbook -i 'localhost,' -c local jsonnet_install.yml
+# # Run the playbooks with timing and logging
+# echo start
+# vagrant up
 
 
-# Iterate over dashboard pairs and create each dashboard
-for dashboard in "${!dashboards[@]}"; do
-  uid=${dashboards[$dashboard]}
-  python monitoring/grafana/configure_grafana.py create-dashboard ${grafana_ip}:3000 admin admin "monitoring/grafana/dashboards/${dashboard}" "${uid}"
-  echo "Grafana Dashboard for ${dashboard}: http://${grafana_ip}:3000/d/${uid}/"
-done
+# cp group_vars/all.example group_vars/all
 
-# Deploy Swift Cluster
-run_playbook "deploy_swift_cluster.yml" "Deploy Swift Cluster"
+# ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts setup-swift-monitoring.yml
+
+# # Install jsonnet on localhost
+# ansible-playbook -i 'localhost,' -c local jsonnet_install.yml
+
+
+# # Iterate over dashboard pairs and create each dashboard
+# for dashboard in "${!dashboards[@]}"; do
+#   uid=${dashboards[$dashboard]}
+#   python monitoring/grafana/configure_grafana.py create-dashboard ${grafana_ip}:3000 admin admin "monitoring/grafana/dashboards/${dashboard}" "${uid}"
+#   echo "Grafana Dashboard for ${dashboard}: http://${grafana_ip}:3000/d/${uid}/"
+# done
+
+# # Deploy Swift Cluster
+# run_playbook "deploy_swift_cluster.yml" "Deploy Swift Cluster"
 
 run_playbook "setup_workload_test.yml" "Setup Workload Test"

@@ -52,6 +52,55 @@
       ansible.builtin.command: swift-init container-sharder start
       changed_when: true
 
+- name: Memory disk patch
+  hosts: storage
+  become: true
+  tasks:
+    - name: Copy the mem_disk patch file to the target host
+      ansible.builtin.copy:
+        src: mem_disk.patch
+        dest: /tmp/mem_disk.patch
+        mode: "0644"
+
+    - name: Install patch package
+      ansible.builtin.dnf:
+        name: patch
+        state: present
+
+    - name: Check if mem_disk patch is already applied
+      ansible.builtin.shell: |
+        set -o pipefail
+        patch --dry-run -p2 < /tmp/mem_disk.patch
+      args:
+        chdir: /usr/lib/python3.9/site-packages/swift/obj
+        executable: /bin/bash
+      register: patch_check
+      failed_when: false
+      changed_when: false
+
+    - name: Apply mem_disk patch
+      ansible.builtin.shell: |
+        set -o pipefail
+        patch -p2 < /tmp/mem_disk.patch
+      args:
+        chdir: /usr/lib/python3.9/site-packages/swift/obj
+        executable: /bin/bash
+      when: patch_check.rc == 0
+      register: patch_output
+      changed_when: "'patching file' in patch_output.stdout"
+
+    - name: Stop object services
+      ansible.builtin.command: swift-init object* stop
+      register: stop_obj_services
+      changed_when:
+        - stop_obj_services.rc == 0
+      failed_when: false
+      become: true
+
+    - name: Start object services
+      ansible.builtin.command: swift-init object-auditor object-updater object-server  start
+      changed_when: true
+
 - name: Workload tests
   hosts: package_cache
   become: true
