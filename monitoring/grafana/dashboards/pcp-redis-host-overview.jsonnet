@@ -574,31 +574,12 @@ grafana.dashboard.new(
   grafana.graphPanel.new(
     'Number of Missed Inode Operations',
     datasource='$datasource',
-    format='percentunit',
-    min=0,
-    max=1,
+    format='none',
   )
   .addTargets([
     { expr: 'xfs.perdev.inode_ops.ig_missed{hostname == "$host"}', legendFormat: '$instance', format: 'time_series' },
   ]), gridPos={
     x: 0,
-    y: 98,
-    w: 12,
-    h: 7,
-  }
-)
-.addPanel(
-  grafana.graphPanel.new(
-    'Number of Missed Inode Operations',
-    datasource='$datasource',
-    format='percentunit',
-    min=0,
-    max=1,
-  )
-  .addTargets([
-    { expr: 'xfs.perdev.inode_ops.ig_missed{hostname == "$host"}', legendFormat: '$instance', format: 'time_series' },
-  ]), gridPos={
-    x: 12,
     y: 98,
     w: 12,
     h: 7,
