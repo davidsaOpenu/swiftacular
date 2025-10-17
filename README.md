@@ -37,11 +37,9 @@ This repository will create a virtualized OpenStack Swift cluster using Vagrant,
 ```bash
 # Clone swiftaucular repo
 $ cd swiftacular
-# Install prerequisites on the host
+# Install prerequisites on the host (requires sudo)
 $ ./install_prereqs.sh
-# Prepare storage nodes with precompiled bluestore
-$ ./scripts/compile_and_test_bluestore.sh --ceph
-# Deploy Swift and monitoring dashboards
+# Provision VMs, deploy Swift and monitoring dashboards 
 $ ./bootstrap_swift_with_monitoring.sh
 ```
 
