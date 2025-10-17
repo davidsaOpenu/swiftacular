@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Check for required commands
-for cmd in python vagrant ansible-playbook ansible-galaxy; do
+for cmd in python ansible-playbook ansible-galaxy; do
   if ! command -v $cmd &> /dev/null; then
     echo "$cmd could not be found. Please install it."
     exit 1
@@ -59,21 +59,6 @@ run_playbook() {
     echo "Grafana Dashboard for $description: $grafana_link"
   done
 }
-
-# Check if vagrant-libvirt plugin is installed
-if ! vagrant plugin list | grep -q 'vagrant-libvirt'; then
-    echo "Installing vagrant-libvirt plugin..."
-    vagrant plugin install vagrant-libvirt
-else
-    echo "vagrant-libvirt plugin is already installed."
-fi
-
-./vagrant_box.sh
-
-# Run the playbooks with timing and logging
-echo start
-vagrant up
-
 
 cp group_vars/all.example group_vars/all
 
