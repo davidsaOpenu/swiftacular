@@ -75,6 +75,12 @@
         sudo ./Install.sh
       changed_when: false # noqa no-changed-when
 
+    - name: Restart pmcd to pick up new pdma
+      ansible.builtin.systemd:
+        name: pmcd
+        state: restarted
+      become: true
+
     - name: Enable and configure persistent logging for custom pdma
       ansible.builtin.blockinfile:
         path: /var/lib/pcp/config/pmlogger/config.default

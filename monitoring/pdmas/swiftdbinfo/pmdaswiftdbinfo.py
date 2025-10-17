@@ -46,7 +46,7 @@ class DB:
 OBJECT_COUNT_QUERY = """SELECT COUNT(*) AS TotalNumberOfObjects
 FROM object;"""
 
-kbyteUnits = pmUnits(1, 0, 0, cpmapi.PM_SPACE_KBYTE, 0, 0)
+byteUnits = pmUnits(1, 0, 0, cpmapi.PM_SPACE_BYTE, 0, 0)
 countUnits = pmUnits(0, 0, 1, 0, 0, cpmapi.PM_COUNT_ONE)
 zeroUnits = pmUnits(0, 0, 0, 0, 0, 0)
 
@@ -70,7 +70,7 @@ class EtcdPMDA(PMDA):
             PM_TYPE_U64,
             self.db_instances_indom,
             PM_SEM_INSTANT,
-            kbyteUnits
+            byteUnits
         ))
         self.add_metric(name + '.object.count', pmdaMetric(
             PMDA.pmid(0, 1),
