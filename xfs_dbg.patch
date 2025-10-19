@@ -1,0 +1,211 @@
+diff --git a/swift/obj/diskfile.py b/swift/obj/diskfile.py
+index 3181eee3b..0f253b95d 100644
+--- a/swift/obj/diskfile.py
++++ b/swift/obj/diskfile.py
+@@ -77,6 +77,26 @@ from swift.common.storage_policy import (
+     get_policy_string, split_policy_string, PolicyError, POLICIES,
+     REPL_POLICY, EC_POLICY)
+ 
++# Enhanced logging configuration for disk operations
++DISKFILE_LOG_FILE = '/home/vagrant/diskfile_operations.log'
++diskfile_logger = logging.getLogger('swift.diskfile.operations')
++diskfile_logger.setLevel(logging.INFO)
++file_handler = logging.FileHandler(DISKFILE_LOG_FILE)
++file_handler.setLevel(logging.INFO)
++formatter = logging.Formatter(
++    '%(asctime)s - %(levelname)s - [%(funcName)s] - %(message)s',
++    datefmt='%Y-%m-%d %H:%M:%S'
++)
++file_handler.setFormatter(formatter)
++if not diskfile_logger.handlers:
++    diskfile_logger.addHandler(file_handler)
++
++def log_operation(operation, **kwargs):
++    """Centralized logging function for disk operations."""
++    log_parts = [f"{operation}"]
++    for key, value in kwargs.items():
++        log_parts.append(f"{key}: {value}")
++    diskfile_logger.info(" | ".join(log_parts))
+ 
+ PICKLE_PROTOCOL = 2
+ DEFAULT_RECLAIM_AGE = timedelta(weeks=1).total_seconds()
+@@ -259,6 +279,9 @@ def write_metadata(fd, metadata, xattr_size=65536):
+             metastr = metastr[xattr_size:]
+             key += 1
+         xattr.setxattr(fd, METADATA_CHECKSUM_KEY, metastr_md5)
++        log_operation("METADATA_WRITE",
++                      file=_get_filename(fd),
++                      keys=list(metadata.keys()))       
+     except IOError as e:
+         # errno module doesn't always have both of these, hence the ugly
+         # check
+@@ -1257,13 +1280,6 @@ class BaseDiskFileManager(object):
+         raise NotImplementedError
+ 
+     def _get_hashes(self, *args, **kwargs):
+-        """
+-        Base entry-point to non-tpool'd __get_hashes
+-
+-        See __get_hashes for params
+-
+-        :returns: (int, dict) tuple, i.e. (num_hashed, sanitized_suffix_hashes)
+-        """
+         hashed, hashes = self.__get_hashes(*args, **kwargs)
+         hashes.pop('updated', None)
+         hashes.pop('valid', None)
+@@ -1838,6 +1854,13 @@ class BaseDiskFileWriter(object):
+ 
+         try:
+             self._fd, self._tmppath = self._get_tempfile()
++            log_operation("WRITE_START",
++                          object=self._name,
++                          datadir=self._datadir,
++                          tmppath=self._tmppath or "O_TMPFILE",
++                          size=self._size or "unknown",
++                          device=self._diskfile._device_path,
++                          extension=self._extension)            
+         except OSError as err:
+             if err.errno in (errno.ENOSPC, errno.EDQUOT):
+                 # No more inodes in filesystem
+@@ -1901,7 +1924,12 @@ class BaseDiskFileWriter(object):
+             written = os.write(self._fd, chunk)
+             self._upload_size += written
+             chunk = chunk[written:]
+-
++        if len(chunk) > 1024 * 1024:
++            log_operation("CHUNK_WRITE",
++                          object=self._name,
++                          chunk_size=len(chunk),
++                          total_written=self._upload_size,
++                          device=self._diskfile._device_path)
+         # For large files sync every 512MB (by default) written
+         diff = self._upload_size - self._last_sync
+         if diff >= self._bytes_per_sync:
+@@ -1931,6 +1959,7 @@ class BaseDiskFileWriter(object):
+         # From the Department of the Redundancy Department, make sure we call
+         # drop_cache() after fsync() to avoid redundant work (pages all
+         # clean).
++        device = self._diskfile._device_path.split('/')[-1] if self._diskfile._device_path else "unknown"
+         drop_buffer_cache(self._fd, 0, self._upload_size)
+         self.manager.invalidate_hash(dirname(self._datadir))
+         # After the rename/linkat completes, this object will be available for
+@@ -1942,7 +1971,16 @@ class BaseDiskFileWriter(object):
+             # It was an unnamed temp file created by open() with O_TMPFILE
+             link_fd_to_path(self._fd, target_path,
+                             self._diskfile._dirs_created)
+-
++        log_operation("WRITE_SUCCESS",
++                      object=self._name,
++                      file=target_path,
++                      disk=device,
++                      device_path=self._diskfile._device_path,
++                      size=self._upload_size,
++                      etag=self._chunks_etag.hexdigest(),
++                      timestamp=metadata.get('X-Timestamp', 'N/A'),
++                      content_type=metadata.get('Content-Type', 'N/A'))
++           
+         # Check if the partition power will/has been increased
+         new_target_path = None
+         if self.next_part_power:
+@@ -1955,6 +1993,10 @@ class BaseDiskFileWriter(object):
+                         'Relinking %s to %s due to next_part_power set',
+                         target_path, new_target_path)
+                     relink_paths(target_path, new_target_path)
++                    log_operation("RELINK",
++                                  from_file=target_path,
++                                  to_file=new_target_path,
++                                  disk=device)
+                 except OSError as exc:
+                     self.manager.logger.exception(
+                         'Relinking %s to %s failed: %s',
+@@ -2018,6 +2060,8 @@ class BaseDiskFileWriter(object):
+         :param timestamp: object put timestamp, an instance of
+                           :class:`~swift.common.utils.Timestamp`
+         """
++        log_operation("COMMIT", object=self._name,
++                      timestamp=timestamp, device=self._diskfile._device_path)
+         pass
+ 
+     def _part_power_cleanup(self, cur_path, new_path):
+@@ -2127,6 +2171,13 @@ class BaseDiskFileReader(object):
+         self._md5_of_sent_bytes = None
+         self._suppress_file_closing = False
+         self._quarantined_dir = None
++        device = device_path.split('/')[-1] if device_path else "unknown"
++        log_operation("READ_START",
++                      file=data_file,
++                      disk=device,
++                      device_path=device_path,
++                      size=obj_size,
++                      etag=etag)
+ 
+     @property
+     def manager(self):
+@@ -2176,6 +2227,12 @@ class BaseDiskFileReader(object):
+                     self._read_to_eof = True
+                     self._drop_cache(self._fp.fileno(), dropped_cache,
+                                      self._bytes_read - dropped_cache)
++                    device = self._device_path.split('/')[-1] if self._device_path else "unknown"
++                    log_operation("READ_COMPLETE",
++                                  file=self._data_file,
++                                  disk=device,
++                                  bytes_read=self._bytes_read,
++                                  device_path=self._device_path)
+                     break
+         finally:
+             if not self._suppress_file_closing:
+@@ -2349,6 +2406,13 @@ class BaseDiskFileReader(object):
+             self._data_file, msg))
+         self._logger.increment('quarantines')
+         self._quarantine_hook(msg)
++        device = self._device_path.split('/')[-1] if self._device_path else "unknown"
++        log_operation("QUARANTINE",
++                      file=self._data_file,
++                      disk=device,
++                      reason=msg,
++                      quarantine_dir=self._quarantined_dir,
++                      device_path=self._device_path)
+ 
+     def _handle_close_quarantine(self):
+         """Check if file needs to be quarantined"""
+@@ -2629,6 +2693,14 @@ class BaseDiskFile(object):
+                     "Failed to open %s: %s" % (file_info['data_file'], e))
+         # This method must populate the internal _metadata attribute.
+         self._metadata = self._metadata or {}
++        device = self._device_path.split('/')[-1] if self._device_path else "unknown"
++        log_operation("OPEN_SUCCESS",
++                      object=self._name,
++                      file=self._data_file,
++                      disk=device,
++                      device_path=self._device_path,
++                      size=self._metadata.get('Content-Length', 'unknown'),
++                      timestamp=self._metadata.get('X-Timestamp', 'N/A'))
+         return self
+ 
+     def __enter__(self):
+@@ -3065,9 +3137,19 @@ class BaseDiskFile(object):
+         """
+         # this is dumb, only tests send in strings
+         timestamp = Timestamp(timestamp)
++        device = self._device_path.split('/')[-1] if self._device_path else "unknown"
++        log_operation("DELETE_START",
++                      object=self._name,
++                      disk=device,
++                      device_path=self._device_path,
++                      datadir=self._datadir,
++                      timestamp=timestamp)
+         with self.create(extension='.ts') as deleter:
+             deleter.put({'X-Timestamp': timestamp.internal})
+-
++        log_operation("DELETE_COMPLETE",
++                      object=self._name,
++                      disk=device,
++                      timestamp=timestamp)
+ 
+ class DiskFileReader(BaseDiskFileReader):
+     pass
+@@ -3858,3 +3940,4 @@ class ECDiskFileManager(BaseDiskFileManager):
+ 
+         hash_per_fi = self._hash_suffix_dir(path, policy)
+         return dict((fi, md5.hexdigest()) for fi, md5 in hash_per_fi.items())
++
