@@ -211,7 +211,7 @@ def benchmark_xattr_set_get(files_dir: Path, attr_sizes: list, iterations: int =
                 # Measure setxattr
                 t1 = time.perf_counter_ns()
                 xattr.setxattr(fd, name, val)
-                # os.fsync(fd) 
+                # os.fsync(fd)
                 t2 = time.perf_counter_ns()
                 total_set += (t2 - t1)
 
@@ -278,7 +278,7 @@ if __name__ == '__main__':
             4*1024*1024,   # 4 MB
             8*1024*1024    # 8 MB
         ]
-        
+
         block_size = 4*1024
         target_files = 1000
         threads = 1

@@ -63,7 +63,7 @@ public:
         };
         vector<const char*> args;
         cct = global_init(&defaults, args, CEPH_ENTITY_TYPE_OSD,
-                          CODE_ENVIRONMENT_UTILITY, 
+                          CODE_ENVIRONMENT_UTILITY,
                           CINIT_FLAG_NO_DEFAULT_CONFIG_FILE);
         common_init_finish(cct.get());
         spg_t pgid(pg_t(0, 0), shard_id_t::NO_SHARD);
@@ -98,12 +98,12 @@ public:
         if (fd < 0) return -1;
         ::ftruncate(fd, 10LL*1024*1024*1024); # 2 GB
         ::close(fd);
-        
+
         store = new BlueStore(cct.get(), base_path);
         if (store->mkfs() < 0) return -1;
         if (store->mount() < 0) return -1;
         mounted = true;
-        
+
         ch = store->create_new_collection(cid);
         ObjectStore::Transaction t;
         t.create_collection(cid, 0);
@@ -158,16 +158,16 @@ int main(int argc, char** argv) {
         cerr << "Usage: " << argv[0] << " <command> <bs_name> [args]" << std::endl;
         return 1;
     }
-    
+
     string command = argv[1];
     string bs_name = argv[2];
-    
+
     if (!ensure_base_directory()) return 1;
     string bluestore_path = resolve_bluestore_path(bs_name);
-    
+
     try {
         BlueStoreUtil util(bluestore_path);
-        
+
         if (command == "create") {
             return util.create() == 0 ? 0 : 1;
         } else if (command == "write") {

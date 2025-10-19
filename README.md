@@ -47,7 +47,7 @@ $ ./scripts/compile_and_test_bluestore.sh --ceph
 # Provision VMs
 $ ./2_provision_VMs.sh
 
-# Deploy Swift and monitoring dashboards 
+# Deploy Swift and monitoring dashboards
 $ ./3_deploy_swift_with_monitoring.sh
 ```
 
