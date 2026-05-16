@@ -41,8 +41,8 @@ $ cd swiftacular
 # Install prerequisites on the host (requires sudo)
 $ ./1_install_prereqs.sh
 
-# Prepare storage nodes with precompiled bluestore
-$ ./scripts/compile_and_test_bluestore.sh --ceph
+# Prepare vagrant boxes with precompiled bluestore to be used as a storage nodes
+$ ./vagrant_box.sh --ceph
 
 # Provision VMs
 $ ./2_provision_VMs.sh
@@ -117,7 +117,7 @@ Seven Vagrant-based virtual machines are used for this playbook:
 Also, running
 
 ```bash
-scripts/compile_and_test_bluestore.sh --ceph
+vagrant_box.sh --ceph
 ```
 
 creates a VM with 20 GB of ram for bluestore compilation. The VM is destroyed later.
