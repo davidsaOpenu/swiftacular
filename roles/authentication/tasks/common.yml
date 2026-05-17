@@ -119,7 +119,7 @@
   become: true
 
 - name: Create keystone database
-  community.mysql.mysql_db:
+  ansible.mysql.mysql_db:
     name: keystone
     state: present
     login_unix_socket: /var/lib/mysql/mysql.sock
@@ -127,7 +127,7 @@
   register: keystone_db_created
 
 - name: Create keystone mysql user for localhost
-  community.mysql.mysql_user:
+  ansible.mysql.mysql_user:
     name: keystone
     password: "{{ keystone_mysql_password }}"
     priv: "keystone.*:ALL"
@@ -137,7 +137,7 @@
   become: true
 
 - name: Create keystone mysql user for remote access
-  community.mysql.mysql_user:
+  ansible.mysql.mysql_user:
     name: keystone
     password: "{{ keystone_mysql_password }}"
     priv: "keystone.*:ALL"

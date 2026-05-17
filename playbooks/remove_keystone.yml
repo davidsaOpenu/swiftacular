@@ -4,6 +4,6 @@
   tasks:
   # works for both MySQL and MariaDB
     - name: Remove keystone mysql/mariadb database
-      community.mysql.mysql_db:
+      ansible.mysql.mysql_db:
         name: keystone
         state: absent
