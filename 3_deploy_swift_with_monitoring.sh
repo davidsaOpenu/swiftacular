@@ -41,7 +41,7 @@ run_playbook() {
 
   local start_time=$(date +%s%3N)  # Get start time in epoch milliseconds
 
-  ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook
+  ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook #-e "swift_backend=memory"
 
   local end_time=$(date +%s%3N)  # Get end time in epoch milliseconds
   local duration=$((end_time - start_time))  # Duration in milliseconds

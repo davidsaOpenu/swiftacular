@@ -9,7 +9,11 @@ workers = 2
 pipeline = object-server
 
 [app:object-server]
+{% if swift_backend is defined and swift_backend == 'memory' %}
+use = egg:swift#mem_object
+{% else %}
 use = egg:swift#object
+{% endif %}
 
 [object-replicator]
 
