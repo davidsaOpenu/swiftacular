@@ -1,6 +1,8 @@
 ---
+# Package installation (python3-libselinux also installed in install_packages_on_nodes.yml)
 - name: Install SELinux Python bindings
   ansible.builtin.dnf:
     name: python3-libselinux
     state: present
   become: true
+  tags: [packages]

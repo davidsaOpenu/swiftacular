@@ -1,17 +1,10 @@
 ---
-- name: Install python3-libselinux on all hosts
-  hosts:
-    - all
-  gather_facts: true
-  tasks:
-    - name: Install python3-libselinux
-      ansible.builtin.dnf:
-        name: python3-libselinux
-        state: present
+# Note: python3-libselinux installation moved to install_packages_on_nodes.yml
 
 # setsebool -P swift_can_network 1
 - name: Configure SELinux for Swift
   hosts: all
+  tags: [configure]
   tasks:
     - name: Let us port bind
       ansible.posix.seboolean:
@@ -21,17 +14,20 @@
 
 - name: Setup package cache
   hosts: package_cache
+  tags: [configure]
   roles:
     - package_cache
 
 - name: Apply common configuration
   hosts:
     - all
+  tags: [configure]
   roles:
     - common
 
 - name: Redirect ansible network interface names
   hosts: all
+  tags: [configure]
   tasks:
     - name: Redirection ansible_ethN
       ansible.builtin.set_fact:
@@ -51,11 +47,13 @@
     - proxy
     - storage
     - package_cache
+  tags: [configure]
   roles:
     - swift_common
 
 - name: Redirect ansible network interface names (second time)
   hosts: all
+  tags: [configure]
   tasks:
     - name: Redirection ansible_ethN twice
       ansible.builtin.set_fact:
@@ -67,18 +65,21 @@
 - name: Configure Swift client
   hosts:
     - swiftclient
+  tags: [configure]
   roles:
     - swiftclient
 
 - name: Configure authentication
   hosts:
     - authentication
+  tags: [configure]
   roles:
     - authentication
 
 - name: Configure proxy servers
   hosts:
     - proxy
+  tags: [configure]
   roles:
     - proxy
 
@@ -89,6 +90,7 @@
 #
 - name: Redirect ansible network interface names (third time)
   hosts: all
+  tags: [configure]
   tasks:
     - name: Redirection ansible_ethN again
       ansible.builtin.set_fact:
@@ -101,6 +103,7 @@
   hosts:
     - storage
   serial: 1
+  tags: [configure]
   roles:
     - storage
 
@@ -112,6 +115,7 @@
 - name: Start proxy services
   hosts:
     - proxy
+  tags: [configure]
   #  vars_file:
   #  - include_tasks: vars/{{ansible_os_family}}.yml
   tasks:
@@ -121,6 +125,7 @@
 - name: Start storage services
   hosts:
     - storage
+  tags: [configure]
   #  vars_file:
   #  - include_tasks: vars/{{ansible_os_family}}.yml
   tasks:
@@ -130,6 +135,7 @@
 - name: Restore SELinux enforcement
   hosts:
     - all
+  tags: [configure]
   tasks:
     - name: Restore selinux state
       ansible.posix.selinux:

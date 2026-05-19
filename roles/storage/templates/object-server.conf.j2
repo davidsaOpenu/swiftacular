@@ -11,6 +11,8 @@ pipeline = object-server
 [app:object-server]
 {% if swift_backend is defined and swift_backend == 'memory' %}
 use = egg:swift#mem_object
+{% elif swift_backend is defined and swift_backend == 'bs' %}
+use = egg:swift#bs_object
 {% else %}
 use = egg:swift#object
 {% endif %}
