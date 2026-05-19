@@ -1,0 +1,83 @@
+---
+# Task file for applying a single patch - simple executor with no conditionals
+# Called from apply_patches.yml with loop
+# Assumes the decision to apply has already been made
+
+- name: "Copy patch file: {{ patch.patch_file }}"
+  ansible.builtin.copy:
+    src: "swift_patches/{{ patch.patch_file }}"
+    dest: "/tmp/{{ patch.patch_file }}"
+    mode: "0644"
+
+- name: "Check if patch is already applied: {{ patch.patch_file }}"
+  ansible.builtin.shell: |
+    set -o pipefail
+    patch --dry-run -p{{ patch.patch_level }} < /tmp/{{ patch.patch_file }}
+  args:
+    chdir: "{{ patch.target_dir }}"
+    executable: /bin/bash
+  register: patch_check
+  failed_when: false
+  changed_when: false
+
+- name: "Show patch check result: {{ patch.patch_file }}"
+  ansible.builtin.debug:
+    msg: |
+      Patch: {{ patch.patch_file }}
+      Target: {{ patch.target_dir }}
+      Return code: {{ patch_check.rc }}
+      {% if patch_check.rc == 0 %}
+      Status: Can be applied (not yet applied)
+      {% elif patch_check.rc == 1 %}
+      Status: Already applied or reversed
+      {% else %}
+      Status: ERROR - Cannot apply patch!
+      {% endif %}
+      Stdout: {{ patch_check.stdout | default('') }}
+      Stderr: {{ patch_check.stderr | default('') }}
+
+- name: "Fail if patch cannot be applied: {{ patch.patch_file }}"
+  ansible.builtin.fail:
+    msg: |
+      ERROR: Patch {{ patch.patch_file }} cannot be applied!
+      Return code: {{ patch_check.rc }}
+      Target directory: {{ patch.target_dir }}
+      Patch level: -p{{ patch.patch_level }}
+
+      Stdout:
+      {{ patch_check.stdout | default('(empty)') }}
+
+      Stderr:
+      {{ patch_check.stderr | default('(empty)') }}
+
+      This usually means:
+      - Wrong target directory
+      - Wrong patch level (-p{{ patch.patch_level }})
+      - Files already exist or were modified
+      - Patch file is corrupted
+
+      Debug on the target machine:
+        cd {{ patch.target_dir }}
+        patch --dry-run -p{{ patch.patch_level }} < /tmp/{{ patch.patch_file }}
+  when: patch_check.rc not in [0, 1]
+
+- name: "Apply patch: {{ patch.patch_file }}"
+  ansible.builtin.shell: |
+    set -o pipefail
+    patch -p{{ patch.patch_level }} < /tmp/{{ patch.patch_file }}
+  args:
+    chdir: "{{ patch.target_dir }}"
+    executable: /bin/bash
+  when: patch_check.rc == 0
+  register: patch_result
+  changed_when: "'patching file' in patch_result.stdout"
+
+- name: "Patch already applied: {{ patch.patch_file }}"
+  ansible.builtin.debug:
+    msg: "⊘ Patch {{ patch.name }} is already applied (skipped)"
+  when: patch_check.rc == 1
+
+- name: "Patch applied successfully: {{ patch.patch_file }}" # noqa: no-handler
+  ansible.builtin.debug:
+    msg: "✓ Patch {{ patch.name }} applied successfully"
+  when: patch_result.changed | default(false)

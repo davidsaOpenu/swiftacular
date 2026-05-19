@@ -1,23 +1,30 @@
 ---
+# Repository setup (must run before package installation)
 - name: Update DNF package cache
   ansible.builtin.dnf:
     update_cache: true
+  tags: [packages, configure]
 
 - name: Enable CRB repository
   ansible.builtin.command:
     cmd: dnf config-manager --enable crb
   changed_when: false # noqa no-changed-when
+  tags: [packages, configure]
 
 - name: Install centos-release-openstack-epoxy
   ansible.builtin.dnf:
     name: centos-release-openstack-epoxy
     state: present
+  tags: [packages, configure]
 
 - name: Update package cache after adding OpenStack repository
   ansible.builtin.dnf:
     update_cache: true
+  tags: [packages, configure]
 
-- name: Install required packages for swift_common
+# Package installation
+- name: Install Swift common packages
   ansible.builtin.dnf:
     name: "{{ swift_common_redhat_packages }}"
     state: present
+  tags: [packages]

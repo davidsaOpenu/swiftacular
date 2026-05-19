@@ -1,0 +1,47 @@
+---
+# Install packages on all nodes
+# This playbook runs ONLY the package installation tasks from each role (tagged with 'packages')
+# Run with: ansible-playbook -i hosts install_packages_on_nodes.yml --tags packages
+
+- name: Install common packages on all Swift nodes
+  hosts:
+    - proxy
+    - storage
+    - package_cache
+    - authentication
+    - swiftclient
+  gather_facts: true
+  roles:
+    - common
+
+- name: Install Swift common packages
+  hosts:
+    - proxy
+    - storage
+    - package_cache
+  roles:
+    - swift_common
+
+- name: Install authentication packages
+  hosts:
+    - authentication
+  roles:
+    - authentication
+
+- name: Install proxy packages
+  hosts:
+    - proxy
+  roles:
+    - proxy
+
+- name: Install storage packages
+  hosts:
+    - storage
+  roles:
+    - storage
+
+- name: Install package cache packages
+  hosts:
+    - package_cache
+  roles:
+    - package_cache

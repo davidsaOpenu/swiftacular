@@ -2,6 +2,8 @@
 
 authentication_redhat_packages:
   - openstack-keystone
+  - mariadb-server
+  - mariadb
 
 authentication_ubuntu_packages:
   - keystone

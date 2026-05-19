@@ -1,56 +1,5 @@
 ---
-# Apply patch to sharder.py to ensure sharding is always set to true.
-# Then run workloader and verification.
-
-- name: Sharder patch
-  hosts: storage
-  become: true
-  tasks:
-    - name: Copy the sharder patch file to the target host
-      ansible.builtin.copy:
-        src: sharder.patch
-        dest: /tmp/sharder.patch
-        mode: "0644"
-
-    - name: Install patch package
-      ansible.builtin.dnf:
-        name: patch
-        state: present
-
-    - name: Check if sharder patch is already applied
-      ansible.builtin.shell: |
-        set -o pipefail
-        patch --dry-run -p0 < /tmp/sharder.patch
-      args:
-        chdir: /usr/lib/python3.9/site-packages/swift/container
-        executable: /bin/bash
-      register: patch_check
-      failed_when: false
-      changed_when: false
-
-    - name: Apply sharder patch
-      ansible.builtin.shell: |
-        set -o pipefail
-        patch -p0 < /tmp/sharder.patch
-      args:
-        chdir: /usr/lib/python3.9/site-packages/swift/container
-        executable: /bin/bash
-      when: patch_check.rc == 0
-      register: patch_output
-      changed_when: "'patching file' in patch_output.stdout"
-
-    - name: Stop sharders
-      ansible.builtin.command: swift-init container-sharder stop
-      register: stop_sharders
-      changed_when:
-        - stop_sharders.rc == 0
-        - "'stopping' in stop_sharders.stdout.lower() or 'stopped' in stop_sharders.stdout.lower()"
-      failed_when: false
-      become: true
-
-    - name: Start sharders
-      ansible.builtin.command: swift-init container-sharder start
-      changed_when: true
+# Run workload tests and verification
 
 - name: Workload tests
   hosts: package_cache
@@ -61,6 +10,20 @@
         src: workload_tests
         dest: /home/vagrant/
         mode: "0755"
+
+    - name: Enable CRB repository
+      ansible.builtin.command:
+        cmd: dnf config-manager --enable crb
+      changed_when: false
+
+    - name: Install OpenStack Epoxy release package
+      ansible.builtin.dnf:
+        name: centos-release-openstack-epoxy
+        state: present
+
+    - name: Update package cache
+      ansible.builtin.dnf:
+        update_cache: true
 
     - name: Install pytest using system package manager
       ansible.builtin.dnf:

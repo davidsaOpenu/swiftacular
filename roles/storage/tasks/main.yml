@@ -4,18 +4,35 @@
 #
 
 - name: Debian related tasks for the storage role
-  ansible.builtin.include_tasks: debian.yml
+  ansible.builtin.include_tasks:
+    file: debian.yml
+    apply:
+      tags: [packages, configure]
   when: ansible_os_family == 'Debian'
+  tags: [always]
 
 #
 # Redhat
 #
 
 - name: RedHat related tasks for the storage role
-  ansible.builtin.include_tasks: redhat.yml
+  ansible.builtin.include_tasks:
+    file: redhat.yml
+    apply:
+      tags: [packages, configure]
   when: ansible_os_family == 'RedHat'
+  tags: [always]
 
 - name: Common tasks for the storage role
-  ansible.builtin.include_tasks: common.yml
+  ansible.builtin.include_tasks:
+    file: common.yml
+    apply:
+      tags: [configure]
+  tags: [always]
+
 - name: Build ring related tasks for the storage role
-  ansible.builtin.include_tasks: common_build_rings.yml
+  ansible.builtin.include_tasks:
+    file: common_build_rings.yml
+    apply:
+      tags: [configure]
+  tags: [always]
