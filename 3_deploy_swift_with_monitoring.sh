@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -euo -x pipefail
 
 # Check for required commands
 for cmd in python ansible-playbook ansible-galaxy; do
@@ -10,14 +10,9 @@ for cmd in python ansible-playbook ansible-galaxy; do
   fi
 done
 
-# install ansible collections before running tox
-ansible-galaxy collection install community.general --force
-ansible-galaxy collection install community.mysql --force
-# Explicitly get v2.3.0. ansible-galaxy collection install performancecopilot.metrics
-# installs lates 2.4.0 without redis roles.
-# TODO: install latest, address the issue.
-ansible-galaxy collection install git+https://github.com/performancecopilot/ansible-pcp.git,v2.3.0 --force
-ansible-galaxy collection install ansible.posix --force
+# Install collections from requirements (before running tox)
+ansible-galaxy collection install -r collections_requirements.yml -p library/ansible_collections
+
 
 # Pre-commit checks
 tox
@@ -34,6 +29,7 @@ grafana_ip="192.168.100.150"
 run_playbook() {
   local playbook=$1
   local description=$2
+  local tags=${3:-}  # Optional tags parameter (empty string if not provided)
 
   echo "*********************************************************************************************"
   echo "Running playbook $description..."
@@ -41,7 +37,14 @@ run_playbook() {
 
   local start_time=$(date +%s%3N)  # Get start time in epoch milliseconds
 
-  ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook #-e "swift_backend=memory"
+  # Build the command with optional tags
+  # local cmd="ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook" #default backend
+  local cmd="ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook -e 'swift_backend=bs' -v"
+  if [ -n "$tags" ]; then
+    cmd="$cmd --tags $tags"
+  fi
+
+  eval $cmd
 
   local end_time=$(date +%s%3N)  # Get end time in epoch milliseconds
   local duration=$((end_time - start_time))  # Duration in milliseconds
@@ -75,7 +78,14 @@ for dashboard in "${!dashboards[@]}"; do
   echo "Grafana Dashboard for ${dashboard}: http://${grafana_ip}:3000/d/${uid}/"
 done
 
-# Deploy Swift Cluster
-run_playbook "deploy_swift_cluster.yml" "Deploy Swift Cluster"
+# Install all packages (ensures /usr/lib/python3.9/site-packages/swift/* exists)
+run_playbook "install_packages_on_nodes.yml" "Install Packages" "packages"
 
+# Apply Swift patches (requires Swift packages to be installed)
+run_playbook "apply_patches.yml" "Apply Swift Patches"
+
+# Deploy Swift Cluster (repository setup and configuration)
+run_playbook "deploy_swift_cluster.yml" "Deploy Swift Cluster" "configure"
+
+# Setup and run workload tests
 run_playbook "setup_workload_test.yml" "Setup Workload Test"

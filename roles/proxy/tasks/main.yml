@@ -4,16 +4,28 @@
 #
 
 - name: Debian specific tasks
-  ansible.builtin.include_tasks: debian.yml
+  ansible.builtin.include_tasks:
+    file: debian.yml
+    apply:
+      tags: [packages, configure]
   when: ansible_os_family == 'Debian'
+  tags: [always]
 
 #
 # Redhat
 #
 
 - name: Redhat specific tasks
-  ansible.builtin.include_tasks: redhat.yml
+  ansible.builtin.include_tasks:
+    file: redhat.yml
+    apply:
+      tags: [packages, configure]
   when: ansible_os_family == 'RedHat'
+  tags: [always]
 
 - name: Common tasks
-  ansible.builtin.include_tasks: common.yml
+  ansible.builtin.include_tasks:
+    file: common.yml
+    apply:
+      tags: [configure]
+  tags: [always]

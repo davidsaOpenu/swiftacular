@@ -12,12 +12,14 @@
     mode: "0644"
   notify:
     - Restart keystone
+  tags: [configure]
 
 - name: Check if there is a /etc/keystone/ssl/certs/keystone.pem file
   ansible.builtin.command: ls /etc/keystone/ssl/certs/keystone.pem
   register: keystone_pem_missing
   ignore_errors: true
   changed_when: keystone_pem_missing.rc > 0
+  tags: [configure]
 
 - name: Remove /etc/keystone/ssl if there is not a keystone.pem file
   ansible.builtin.file:
@@ -25,6 +27,7 @@
     state: absent
   when: keystone_pem_missing.rc > 0
   changed_when: keystone_pem_missing.rc > 0
+  tags: [configure]
 
 - name: Install keystone packages (RedHat/CentOS)
   ansible.builtin.dnf:
@@ -36,6 +39,7 @@
     state: present
   when: ansible_os_family == "RedHat"
   become: true
+  tags: [packages]
 
 - name: Install ALL required Python dependencies (RedHat/CentOS)
   ansible.builtin.dnf:
@@ -54,6 +58,7 @@
     state: present
   become: true
   when: ansible_os_family == "RedHat"
+  tags: [packages]
 
 - name: Install keystone packages (Debian/Ubuntu)
   ansible.builtin.apt:
@@ -69,6 +74,7 @@
     update_cache: true
   when: ansible_os_family == "Debian"
   become: true
+  tags: [packages]
 
 - name: Verify cryptography module installation
   ansible.builtin.shell: |

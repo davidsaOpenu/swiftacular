@@ -4,13 +4,21 @@
 #
 
 - name: Play debian.yml
-  ansible.builtin.include_tasks: debian.yml
+  ansible.builtin.include_tasks:
+    file: debian.yml
+    apply:
+      tags: [packages, configure]
   when: ansible_os_family == 'Debian'
+  tags: [always]
 
 #
 # Redhat
 #
 
 - name: Play redhat.yml
-  ansible.builtin.include_tasks: redhat.yml
+  ansible.builtin.include_tasks:
+    file: redhat.yml
+    apply:
+      tags: [packages, configure]
   when: ansible_os_family == 'RedHat'
+  tags: [always]

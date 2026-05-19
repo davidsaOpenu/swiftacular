@@ -4,24 +4,44 @@
 #
 
 - name: Play debian.yml
-  ansible.builtin.include_tasks: debian.yml
+  ansible.builtin.include_tasks:
+    file: debian.yml
+    apply:
+      tags: [packages, configure]
   when: ansible_os_family == 'Debian'
+  tags: [always]
 
 - name: Play redhat.yml
-  ansible.builtin.include_tasks: redhat.yml
+  ansible.builtin.include_tasks:
+    file: redhat.yml
+    apply:
+      tags: [packages, configure]
   when: ansible_os_family == 'RedHat'
+  tags: [always]
 
 #
 # Common
 #
 
 - name: Play common.yml
-  ansible.builtin.include_tasks: common.yml
+  ansible.builtin.include_tasks:
+    file: common.yml
+    apply:
+      tags: [packages, configure]
+  tags: [always]
 
 - name: Play debian_test.yml
-  ansible.builtin.include_tasks: debian_test.yml
+  ansible.builtin.include_tasks:
+    file: debian_test.yml
+    apply:
+      tags: [configure]
   when: ansible_os_family == 'Debian'
+  tags: [always]
 
 - name: Play redhat_test.yml
-  ansible.builtin.include_tasks: redhat_test.yml
+  ansible.builtin.include_tasks:
+    file: redhat_test.yml
+    apply:
+      tags: [configure]
   when: ansible_os_family == 'RedHat'
+  tags: [always]

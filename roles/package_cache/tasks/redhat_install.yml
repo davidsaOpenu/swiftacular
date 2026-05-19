@@ -1,11 +1,14 @@
 ---
+# Package installation
 - name: Install squid to cache rpm packages
   ansible.builtin.dnf:
     name: squid
     state: present
   become: true
+  tags: [packages]
 
 - name: Install pytest using system package manager
   ansible.builtin.dnf:
     name: python3-pytest
     state: present
+  tags: [packages]
