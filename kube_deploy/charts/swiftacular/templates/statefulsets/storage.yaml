@@ -1,0 +1,205 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: storage
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    app: storage
+    {{- include "swiftacular.labels" . | nindent 4 }}
+spec:
+  serviceName: storage-headless
+  replicas: 3
+  selector:
+    matchLabels:
+      app: storage
+  template:
+    metadata:
+      labels:
+        app: storage
+    spec:
+      serviceAccountName: swiftacular
+      # Pin each replica to the worker node labelled with its ordinal index so
+      # PVCs land on the correct node (local-path provisioner is node-local).
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: storage
+              topologyKey: kubernetes.io/hostname
+
+      initContainers:
+        # Gate: block until the ring-builder Job has published the ring files.
+        - name: wait-for-rings
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Swift ring files..."
+              until [ -f /tpl-rings/account.ring.gz ]; do sleep 2; done
+              echo "Ring files present."
+          volumeMounts:
+            - name: rings
+              mountPath: /tpl-rings
+
+        # Render: substitute pod-specific env vars into config templates and
+        # copy ring files into the shared /etc/swift emptyDir.
+        - name: render-config
+          image: {{ include "swiftacular.storageImage" . }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              mkdir -p /etc/swift
+              for tpl in account-server account-replication \
+                         container-server container-replication \
+                         object-server object-replication \
+                         rsyncd; do
+                envsubst < /tpl-conf/${tpl}.conf > /etc/swift/${tpl}.conf
+              done
+              # Symlink ring files to the live ConfigMap mount so the main
+              # container picks up ring updates via Swift's ring_check_interval
+              # without a pod restart.
+              for f in /tpl-rings/*.ring.gz; do
+                ln -sf /var/swift-rings/"$(basename "$f")" /etc/swift/"$(basename "$f")"
+              done
+              cp /tpl-swift/swift.conf /etc/swift/swift.conf
+              echo "Config rendered."
+          env:
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: swift-config
+              mountPath: /etc/swift
+            - name: rings
+              mountPath: /tpl-rings
+            - name: storage-conf
+              mountPath: /tpl-conf
+            - name: swift-conf
+              mountPath: /tpl-swift
+
+      containers:
+        - name: storage
+          image: {{ include "swiftacular.storageImage" . }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - bash
+            - -c
+            - |
+              set -e
+
+              # Format XFS on each disk device if not already formatted
+              {{- range $i := until (int .Values.swift.disksPerNode) }}
+              DISK_PATH="/srv/node/{{ $.Values.swift.diskPrefix }}{{ $i }}"
+              mkdir -p "${DISK_PATH}"
+              {{- end }}
+
+              # Start Redis for PCP timeseries
+              redis-server --daemonize yes --bind 127.0.0.1
+
+              # Start PCP monitoring stack
+              mkdir -p /run/pcp /var/log/pcp/pmcd /var/log/pcp/pmproxy
+              chown -R pcp:pcp /run/pcp /var/log/pcp/pmcd /var/log/pcp/pmproxy
+              rm -f /run/pcp/pmcd.pid /run/pcp/pmcd.socket
+              /usr/lib/pcp/bin/pmcd
+              sleep 2
+              mkdir -p /var/log/pcp/pmlogger/"$(hostname)"
+              /usr/lib/pcp/bin/pmlogger \
+                -c /etc/pcp/pmlogger/swiftacular.conf \
+                /var/log/pcp/pmlogger/"$(hostname)"/"$(date +%Y%m%d.%H%M%S)" &
+              sleep 5
+              rm -f /run/pcp/pmproxy.pid /run/pcp/pmproxy.socket
+              /usr/lib/pcp/bin/pmproxy --timeseries &
+
+              # Start rsync daemon for Swift replication
+              rsync --daemon --config=/etc/swift/rsyncd.conf
+
+              # Start Swift storage daemons
+              swift-init account-server start
+              swift-init container-server start
+              swift-init object-server start
+
+              # Keep container alive via sshd
+              exec /usr/sbin/sshd -D
+          env:
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - containerPort: 22
+              name: ssh
+            - containerPort: 6000
+              name: object
+            - containerPort: 6001
+              name: container
+            - containerPort: 6002
+              name: account
+            - containerPort: 873
+              name: rsync
+            - containerPort: 44322
+              name: pmproxy
+          readinessProbe:
+            exec:
+              command:
+                - swift-init
+                - object-server
+                - status
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command:
+                - swift-init
+                - object-server
+                - status
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+          volumeMounts:
+            - name: swift-config
+              mountPath: /etc/swift
+            - name: rings
+              mountPath: /var/swift-rings
+            - name: pmlogger-conf
+              mountPath: /etc/pcp/pmlogger/swiftacular.conf
+              subPath: swiftacular.conf
+            {{- range $i := until (int .Values.swift.disksPerNode) }}
+            - name: {{ printf "%s%d" $.Values.swift.diskPrefix $i }}
+              mountPath: {{ printf "/srv/node/%s%d" $.Values.swift.diskPrefix $i }}
+            {{- end }}
+
+      volumes:
+        - name: swift-config
+          emptyDir: {}
+        - name: rings
+          configMap:
+            name: swift-rings
+            optional: true
+        - name: storage-conf
+          configMap:
+            name: storage-conf
+        - name: swift-conf
+          configMap:
+            name: swift-conf
+        - name: pmlogger-conf
+          configMap:
+            name: pmlogger-conf
+
+  volumeClaimTemplates:
+    {{- range $i := until (int .Values.swift.disksPerNode) }}
+    - metadata:
+        name: {{ printf "%s%d" $.Values.swift.diskPrefix $i }}
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: {{ $.Values.storage.storageClassName }}
+        resources:
+          requests:
+            storage: {{ $.Values.swift.diskSizeGi }}Gi
+    {{- end }}

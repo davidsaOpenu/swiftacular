@@ -1,0 +1,40 @@
+FROM ubuntu:26.04
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        openssh-server \
+        sudo \
+        supervisor \
+        python3 \
+        python3-apt \
+        gettext-base \
+        netcat-openbsd \
+        ca-certificates \
+        curl \
+        software-properties-common \
+    && rm -rf /var/lib/apt/lists/*
+
+# Ensure sshd runtime directory exists and harden sshd config
+RUN mkdir -p /var/run/sshd \
+    && sed -ri 's/^#?PubkeyAuthentication .*/PubkeyAuthentication yes/'   /etc/ssh/sshd_config \
+    && sed -ri 's/^#?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config \
+    && sed -ri 's/^#?PermitRootLogin .*/PermitRootLogin no/'               /etc/ssh/sshd_config
+
+# Ubuntu 26.04 base image pre-creates a 'ubuntu' user at UID 1000.
+# Remove it so useradd can claim UID 1000 for ansible_user.
+RUN userdel -r ubuntu 2>/dev/null || true
+
+RUN useradd -m -s /bin/bash -u 1000 ansible_user \
+    && echo 'ansible_user ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ansible_user \
+    && chmod 0440 /etc/sudoers.d/ansible_user
+
+# Public key injected at build time; never stored as a secret in image layers.
+ARG ANSIBLE_PUBLIC_KEY
+RUN mkdir -p /home/ansible_user/.ssh \
+    && printf '%s\n' "${ANSIBLE_PUBLIC_KEY}" > /home/ansible_user/.ssh/authorized_keys \
+    && chmod 700  /home/ansible_user/.ssh \
+    && chmod 600  /home/ansible_user/.ssh/authorized_keys \
+    && chown -R ansible_user:ansible_user /home/ansible_user/.ssh
+
+EXPOSE 22
+CMD ["/usr/sbin/sshd", "-D"]
