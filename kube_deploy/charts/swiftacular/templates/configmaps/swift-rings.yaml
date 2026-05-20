@@ -1,0 +1,15 @@
+{{- /*
+  Placeholder ConfigMap for Swift ring files.
+  The ring-builder Job (S5) will overwrite this with real ring gz data via
+  `kubectl apply -f -`. It is created here so storage and proxy pods can mount
+  it as optional:true and block in the wait-for-rings init container rather
+  than failing to schedule.
+*/ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swift-rings
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    {{- include "swiftacular.labels" . | nindent 4 }}
+data: {}
