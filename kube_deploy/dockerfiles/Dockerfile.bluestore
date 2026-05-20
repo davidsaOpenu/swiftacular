@@ -1,0 +1,188 @@
+# BlueStore benchmark tools image — three-stage build.
+#
+# Stage 1  ceph-src    Shallow blobless clone of Ceph Umbrella v21.0.0 (~40 MB).
+# Stage 2  builder     Full build environment; injects our tools into Ceph's
+#                      cmake tree and compiles them (first build ~20-25 min,
+#                      fully cached by Docker after that).
+# Stage 3  runtime     Slim Ubuntu 26.04 image with the two binaries and their
+#                      shared-library dependencies.
+#
+# Ceph Umbrella (v21) is the first Ceph release with official Ubuntu 26.04
+# support. Ubuntu 26.04's Boost 1.90 modular CMake layout, GCC 15, and
+# CMake 4.x are all handled correctly by Umbrella's build system.
+#
+# Build context must be the repo root (handled by build-images.sh).
+
+# ── Stage 1: blobless Ceph source clone ───────────────────────────────────────
+FROM ubuntu:26.04 AS ceph-src
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Blobless shallow clone: tree metadata only on first fetch; all submodules
+# initialized so cmake can configure without missing-directory errors.
+RUN git clone \
+        --depth=1 \
+        --filter=blob:none \
+        --branch v21.0.0 \
+        https://github.com/ceph/ceph.git \
+        /ceph \
+    && cd /ceph \
+    && git submodule update --init --depth=1
+
+# ── Stage 2: compile inside Ceph's cmake build system ─────────────────────────
+FROM ubuntu:26.04 AS builder
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Ceph Umbrella (v21) build dependencies on Ubuntu 26.04.
+# GCC 14 (not Ubuntu 26.04's default GCC 15): Ceph v21 has multiple GCC 15
+#   incompatibilities (consteval stricter rules, macro-in-template ordering,
+#   array-bounds false positives). GCC 14 is available as gcc-14/g++-14 on
+#   Ubuntu 26.04 and compiles Ceph v21 cleanly. Ubuntu 26.04's Boost 1.90 and
+#   cmake 4.x are still used.
+# WITH_SYSTEM_BOOST=ON: Umbrella's CMake properly supports Ubuntu 26.04's
+#   Boost 1.90 modular CMake layout (Boost::system, Boost::thread, etc.).
+# WITH_SYSTEM_ROCKSDB=OFF: use bundled RocksDB; Ubuntu 26.04 ships RocksDB 9.x
+#   whose Cache API split (advanced_cache.h) is incompatible with Ceph's
+#   BinnedLRUCache without invasive patching.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc-14 g++-14 \
+    ca-certificates \
+    cmake \
+    git \
+    ninja-build \
+    pkg-config \
+    python3-dev \
+    cython3 \
+    libaio-dev \
+    libblkid-dev \
+    libboost-all-dev \
+    liblua5.4-dev \
+    nasm \
+    libcap-dev \
+    libcap-ng-dev \
+    libcryptsetup-dev \
+    libexpat1-dev \
+    libfmt-dev \
+    libibverbs-dev \
+    libcurl4-openssl-dev \
+    libkeyutils-dev \
+    libldap-dev \
+    liblz4-dev \
+    libnl-3-dev \
+    libnl-genl-3-dev \
+    libnuma-dev \
+    librdmacm-dev \
+    libsnappy-dev \
+    libspdlog-dev \
+    libsqlite3-dev \
+    libssl-dev \
+    libudev-dev \
+    libzstd-dev \
+    libicu-dev \
+    xfslibs-dev \
+    python3-yaml \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ceph-src /ceph /ceph
+
+# ExternalProject_Add is called unconditionally at src/CMakeLists.txt:341 but
+# include(ExternalProject) only runs inside a conditional block that our cmake
+# flags skip. Prepend the include so it's always in scope.
+RUN sed -i '1s/^/include(ExternalProject)\n/' /ceph/src/CMakeLists.txt
+
+# GCC 15 tightened consteval: StructVChecker::CheckingWrapper is consteval in
+# Ceph v21's DENC headers, but GCC 15 rejects calling it from _denc_friend
+# template instantiations that are not constant-expression contexts. constexpr
+# retains compile-time evaluation when the argument is a literal (it always is).
+RUN grep -rl 'consteval' /ceph/src/include/ \
+    | xargs -r sed -i 's/consteval/constexpr/g'
+
+# Inject our benchmark tools directly into Ceph's tools directory so cmake
+# handles all include paths and transitive link dependencies automatically.
+# Sources live under kube_deploy/ to keep the originals in bs_bench/ and
+# bs_util/ untouched.
+COPY kube_deploy/bs_bench/objectstore_bench.cc /ceph/src/swiftacular-tools/objectstore_bench.cc
+COPY kube_deploy/bs_util/bs_util.cc            /ceph/src/swiftacular-tools/bs_util.cc
+
+# Append targets to the TOP-LEVEL CMakeLists.txt using echo (no heredoc).
+# Appending here — after add_subdirectory(src) already ran — guarantees that
+# os, kv, global, and ceph-common are all defined before cmake sees our targets.
+# Absolute source paths avoid any CMAKE_CURRENT_SOURCE_DIR resolution ambiguity.
+RUN echo '' >> /ceph/CMakeLists.txt \
+ && echo 'foreach(_cephtgt os kv bluestore global ceph-common)' >> /ceph/CMakeLists.txt \
+ && echo '  if(TARGET ${_cephtgt})' >> /ceph/CMakeLists.txt \
+ && echo '    target_compile_options(${_cephtgt} PRIVATE -w)' >> /ceph/CMakeLists.txt \
+ && echo '  endif()' >> /ceph/CMakeLists.txt \
+ && echo 'endforeach()' >> /ceph/CMakeLists.txt \
+ && echo 'foreach(_tool bs_util objectstore_bench)' >> /ceph/CMakeLists.txt \
+ && echo '  add_executable(${_tool} /ceph/src/swiftacular-tools/${_tool}.cc)' >> /ceph/CMakeLists.txt \
+ && echo '  target_compile_options(${_tool} PRIVATE -w)' >> /ceph/CMakeLists.txt \
+ && echo '  set_target_properties(${_tool} PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)' >> /ceph/CMakeLists.txt \
+ && echo '  target_link_libraries(${_tool} PRIVATE os kv global ceph-common)' >> /ceph/CMakeLists.txt \
+ && echo 'endforeach()' >> /ceph/CMakeLists.txt
+
+# Configure: enable only BlueStore and its required support libraries;
+# disable everything else to keep build time manageable (~20 min with ninja).
+# WITH_SYSTEM_ROCKSDB=OFF: bundled RocksDB (see comment above).
+RUN cd /ceph && mkdir build && cd build && \
+    cmake .. \
+      -GNinja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_C_COMPILER=/usr/bin/gcc-14 \
+      -DCMAKE_CXX_COMPILER=/usr/bin/g++-14 \
+      -DWITH_BLUESTORE=ON \
+      -DWITH_FUSE=OFF \
+      -DWITH_RADOSGW=OFF \
+      -DWITH_MGR=OFF \
+      -DWITH_MDS=OFF \
+      -DWITH_RBD=OFF \
+      -DWITH_KRBD=OFF \
+      -DWITH_CEPHFS=OFF \
+      -DWITH_MANPAGE=OFF \
+      -DWITH_SYSTEMD=OFF \
+      -DWITH_LTTNG=OFF \
+      -DWITH_BABELTRACE=OFF \
+      -DWITH_SPDK=OFF \
+      -DWITH_DPDK=OFF \
+      -DWITH_BLUESTORE_PMEM=OFF \
+      -DALLOCATOR=libc \
+      -DWITH_SYSTEM_BOOST=ON \
+      -DWITH_SYSTEM_ROCKSDB=OFF \
+      -DWITH_SYSTEM_ZSTD=ON \
+      -DWITH_TESTS=OFF \
+      -DWITH_CRIMSON=OFF \
+      -DWITH_JAEGER=OFF \
+      -DWITH_GRAFANA=OFF \
+      -DWITH_QATLIB=OFF \
+      -DWITH_QATZIP=OFF \
+      -DWITH_LIBURING=OFF \
+    && ninja -j$(nproc) bs_util objectstore_bench
+
+# Collect all transitive .so dependencies of our binaries into /runtime-libs
+# so Stage 3 needs no apt packages beyond the base image.
+RUN mkdir /runtime-libs \
+    && LD_LIBRARY_PATH=/ceph/build/lib \
+       ldd /ceph/build/bin/bs_util /ceph/build/bin/objectstore_bench \
+           /ceph/build/lib/libceph-common.so.2 \
+       | grep ' => /' | awk '{print $3}' | sort -u \
+       | xargs -I{} cp {} /runtime-libs/ \
+    && cp /ceph/build/lib/libceph-common.so* /runtime-libs/
+
+# ── Stage 3: slim runtime image ────────────────────────────────────────────────
+FROM ubuntu:26.04
+ENV DEBIAN_FRONTEND=noninteractive TZ=UTC
+
+COPY --from=builder /runtime-libs/                    /usr/local/lib/
+COPY --from=builder /ceph/build/bin/bs_util           /usr/local/bin/
+COPY --from=builder /ceph/build/bin/objectstore_bench /usr/local/bin/
+
+RUN ldconfig
+
+# Default data directory; override via BLUESTORE_BENCH_PATH env var.
+WORKDIR /var/lib/bluestore
+
+CMD ["/bin/bash"]
