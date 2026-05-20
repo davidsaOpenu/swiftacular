@@ -1,0 +1,25 @@
+FROM localhost:5001/swiftacular-base:latest
+
+ARG ANSIBLE_PUBLIC_KEY
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        swift-proxy \
+        python3-keystonemiddleware \
+        python3-swiftclient \
+        memcached \
+        rsyslog \
+    && rm -rf /var/lib/apt/lists/*
+
+# Forward all syslog output to the container stdout so `kubectl logs` captures it.
+RUN printf '*.*\t/proc/1/fd/1\n' > /etc/rsyslog.d/00-stdout.conf \
+    && sed -i 's/^\$ModLoad imklog/#\$ModLoad imklog/' /etc/rsyslog.conf
+
+RUN install -d -o swift -g swift -m 0755 \
+        /etc/swift \
+        /var/cache/swift \
+        /var/run/swift
+
+EXPOSE 22 8080 11211
+
+CMD ["/usr/sbin/sshd", "-D"]
