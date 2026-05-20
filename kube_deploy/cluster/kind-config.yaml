@@ -1,0 +1,43 @@
+# kind cluster topology. Single source of truth — bootstrap-cluster.sh renders
+# the ${...HOST_PORT} placeholders with envsubst (CI uses offset ports so they
+# don't collide with Jenkins on 8080), then passes the result to `kind create`.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+
+nodes:
+  - role: control-plane
+    # NodePort services must use these exact containerPort values.
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: ${PROXY_HOST_PORT}
+        protocol: TCP
+      - containerPort: 30500
+        hostPort: ${KEYSTONE_HOST_PORT}
+        protocol: TCP
+      - containerPort: 30300
+        hostPort: ${GRAFANA_HOST_PORT}
+        protocol: TCP
+
+  - role: worker
+    labels:
+      swiftacular/role: storage
+      swiftacular/storage-index: "0"
+
+  - role: worker
+    labels:
+      swiftacular/role: storage
+      swiftacular/storage-index: "1"
+
+  - role: worker
+    labels:
+      swiftacular/role: storage
+      swiftacular/storage-index: "2"
+
+containerdConfigPatches:
+  # Resolve localhost:5001/* image refs inside the nodes to the registry
+  # container on the kind network (a node's own localhost is not the host's).
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5001"]
+          endpoint = ["http://swiftacular-registry:5000"]

@@ -1,0 +1,35 @@
+FROM localhost:5001/swiftacular-base:latest
+
+ARG ANSIBLE_PUBLIC_KEY
+ENV DEBIAN_FRONTEND=noninteractive
+
+# apache2 post-install calls systemctl; stub it out
+RUN printf '#!/bin/sh\nexit 0\n' > /usr/bin/systemctl && chmod +x /usr/bin/systemctl
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        keystone \
+        apache2 \
+        libapache2-mod-wsgi-py3 \
+        python3-pymysql \
+        python3-cryptography \
+        python3-openssl \
+        python3-openstackclient \
+    && rm -rf /var/lib/apt/lists/*
+
+# Wire up the Keystone Apache WSGI site.
+# The keystone package installs its config at sites-available/keystone.conf.
+RUN a2enmod wsgi \
+    && a2ensite keystone \
+    && a2dissite 000-default \
+    && echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
+# Redirect Apache's logs to the container's stdout/stderr at build time so
+# `kubectl logs` captures them.  Keystone itself logs to stderr (use_stderr in
+# keystone.conf, no log_file) which mod_wsgi routes into Apache's error log —
+# so there is no /var/log/keystone file for the non-root daemon to open.
+RUN ln -sf /dev/stdout /var/log/apache2/access.log \
+    && ln -sf /dev/stderr /var/log/apache2/error.log \
+    && ln -sf /dev/stderr /var/log/apache2/keystone.log \
+    && ln -sf /dev/stdout /var/log/apache2/keystone_access.log
+
+EXPOSE 5000

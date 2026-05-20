@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keystone-conf
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    {{- include "swiftacular.labels" . | nindent 4 }}
+data:
+  keystone.conf: |
+    [DEFAULT]
+    # Log to stderr (no file): mod_wsgi routes the Keystone daemon's stderr into
+    # Apache's error log, which is symlinked to the container stderr. A log_file
+    # here would be opened by the non-root mod_wsgi daemon user and fail.
+    use_stderr = true
+
+    [database]
+    connection = mysql+pymysql://keystone:{{ .Values.secrets.keystoneMysqlPassword }}@mariadb-svc/keystone
+    max_pool_size = 20
+    max_overflow = 10
+    pool_timeout = 60
+    pool_recycle = 300
+    pool_pre_ping = true
+
+    [token]
+    provider = fernet
+
+    [oslo_messaging_notifications]
+    driver = noop

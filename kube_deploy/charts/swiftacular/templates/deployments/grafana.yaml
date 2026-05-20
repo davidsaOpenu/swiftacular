@@ -1,0 +1,119 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-data
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    app: grafana
+    {{- include "swiftacular.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: {{ .Values.storage.storageClassName }}
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    app: grafana
+    {{- include "swiftacular.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      serviceAccountName: swiftacular
+
+      initContainers:
+        # Download the PCP Grafana plugin into the PVC on first boot.
+        # Idempotent: skips download if the plugin directory already exists.
+        # Runs as root so it can write into /var/lib/grafana/plugins before
+        # the PVC ownership is established by Grafana's own startup.
+        - name: install-pcp-plugin
+          image: alpine:3.19
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              PLUGIN_DIR=/var/lib/grafana/plugins/performancecopilot-pcp-app
+              if [ -d "$PLUGIN_DIR" ]; then
+                echo "PCP plugin already present, skipping download."
+                exit 0
+              fi
+              echo "Installing performancecopilot-pcp-app..."
+              apk add --no-cache unzip >/dev/null 2>&1 || { echo "apk failed (no network?), skipping plugin install"; exit 0; }
+              wget -qO /tmp/pcp.zip \
+                "https://grafana.com/api/plugins/performancecopilot-pcp-app/versions/latest/download" \
+                2>/dev/null || { echo "wget failed (no network to grafana.com), skipping plugin install"; exit 0; }
+              mkdir -p /var/lib/grafana/plugins
+              unzip -q /tmp/pcp.zip -d /var/lib/grafana/plugins/
+              rm /tmp/pcp.zip
+              echo "Plugin installed at $PLUGIN_DIR"
+          volumeMounts:
+            - name: grafana-data
+              mountPath: /var/lib/grafana
+
+      containers:
+        - name: grafana
+          image: {{ include "swiftacular.grafanaImage" . }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: swift-secrets
+                  key: grafanaAdminPassword
+          ports:
+            - containerPort: 3000
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            failureThreshold: 3
+          volumeMounts:
+            - name: grafana-data
+              mountPath: /var/lib/grafana
+            - name: grafana-provisioning
+              mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
+              subPath: datasources.yaml
+            - name: grafana-provisioning
+              mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
+              subPath: dashboards.yaml
+            - name: grafana-provisioning
+              mountPath: /etc/grafana/provisioning/plugins/plugins.yaml
+              subPath: plugins.yaml
+            - name: grafana-dashboards
+              mountPath: /var/lib/grafana/dashboards/swift
+
+      volumes:
+        - name: grafana-data
+          persistentVolumeClaim:
+            claimName: grafana-data
+        - name: grafana-provisioning
+          configMap:
+            name: grafana-provisioning
+        - name: grafana-dashboards
+          configMap:
+            name: grafana-dashboards
+{{- end }}

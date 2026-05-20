@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pmlogger-conf
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    {{- include "swiftacular.labels" . | nindent 4 }}
+data:
+  swiftacular.conf: |
+    # All metrics are advisory — silently skipped if a metric is unavailable
+    # (e.g. swiftdbinfo before any Swift objects exist, XFS on ext4 mounts).
+    log advisory on 10sec {
+        swiftdbinfo.size
+        swiftdbinfo.object.count
+        swiftdbinfo.object.dist
+        kernel.all.cpu.user
+        kernel.all.cpu.sys
+        kernel.all.cpu.idle
+        kernel.all.load
+        kernel.percpu.cpu.user
+        kernel.percpu.cpu.sys
+        kernel.all.pswitch
+        kernel.all.runnable
+        mem.util.used
+        mem.util.free
+        mem.util.cached
+        mem.physmem
+        mem.vmstat.pgfault
+        mem.vmstat.pgmajfault
+        disk.all.total
+        disk.all.read
+        disk.all.write
+        disk.dev.read
+        disk.dev.write
+        disk.dev.read_bytes
+        disk.dev.write_bytes
+        disk.dev.read_rawactive
+        disk.dev.write_rawactive
+        disk.dev.avactive
+        network.interface.in.bytes
+        network.interface.out.bytes
+        network.interface.in.drops
+        network.interface.out.drops
+        network.interface.in.packets
+        network.interface.out.packets
+        network.tcp.timeouts
+        network.tcp.listendrops
+        network.tcp.listenoverflows
+        network.tcp.retranssegs
+        network.tcp.fastretrans
+        network.tcp.slowstartretrans
+        network.tcp.synretrans
+        xfs.perdev.inode_ops.ig_attrchg
+        xfs.perdev.inode_ops.ig_attempts
+        xfs.perdev.inode_ops.ig_missed
+        xfs.perdev.inode_ops.ig_found
+        xfs.perdev.inode_ops.ig_dup
+        xfs.perdev.inode_ops.ig_frecycle
+        xfs.perdev.inode_ops.ig_reclaims
+        xfs.perdev.allocs.alloc_extent
+        xfs.perdev.allocs.free_extent
+        xfs.perdev.allocs.alloc_block
+        xfs.perdev.allocs.free_block
+        xfs.perdev.alloc_btree.lookup
+        xfs.perdev.alloc_btree.compare
+        xfs.perdev.alloc_btree.insrec
+        xfs.perdev.alloc_btree.delrec
+        xfs.perdev.iflush_count
+        xfs.perdev.icluster_flushcnt
+        xfs.perdev.icluster_flushinode
+    }
