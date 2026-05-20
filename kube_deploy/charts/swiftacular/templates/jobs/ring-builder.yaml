@@ -1,0 +1,99 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ring-builder
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    app: ring-builder
+    {{- include "swiftacular.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: ring-builder
+    spec:
+      serviceAccountName: swiftacular
+      restartPolicy: OnFailure
+
+      initContainers:
+        # build-rings: use swift-ring-builder to produce account/container/object
+        # .ring.gz files in the shared /rings emptyDir.
+        - name: build-rings
+          image: {{ include "swiftacular.storageImage" . }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - bash
+            - -c
+            - |
+              set -e
+              mkdir -p /rings
+
+              PART_POWER={{ .Values.swift.partitionPower }}
+              REPLICAS={{ .Values.swift.replicas }}
+              MIN_PART_HOURS={{ .Values.swift.minPartHours }}
+              DISK_PREFIX={{ .Values.swift.diskPrefix }}
+              DISKS_PER_NODE={{ .Values.swift.disksPerNode }}
+              STORAGE_NODES=3
+
+              for RING_TYPE in account container object; do
+                case $RING_TYPE in
+                  account)   PORT=6002 ;;
+                  container) PORT=6001 ;;
+                  object)    PORT=6000 ;;
+                esac
+
+                echo "Building ${RING_TYPE} ring..."
+                swift-ring-builder /rings/${RING_TYPE}.builder create \
+                  ${PART_POWER} ${REPLICAS} ${MIN_PART_HOURS}
+
+                for i in $(seq 0 $((STORAGE_NODES - 1))); do
+                  for d in $(seq 0 $((DISKS_PER_NODE - 1))); do
+                    swift-ring-builder /rings/${RING_TYPE}.builder add \
+                      --region 1 --zone ${i} \
+                      --ip storage-${i}.storage-headless \
+                      --port ${PORT} \
+                      --device ${DISK_PREFIX}${d} \
+                      --weight 100
+                  done
+                done
+
+                swift-ring-builder /rings/${RING_TYPE}.builder rebalance
+                echo "${RING_TYPE} ring done."
+              done
+
+              ls -lh /rings/
+          volumeMounts:
+            - name: rings
+              mountPath: /rings
+
+      containers:
+        # publish-rings: base64-encode the built ring files and apply them to
+        # the swift-rings ConfigMap so storage and proxy init containers unblock.
+        - name: publish-rings
+          image: bitnami/kubectl:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - bash
+            - -c
+            - |
+              set -e
+              kubectl create configmap swift-rings \
+                -n {{ include "swiftacular.namespace" . }} \
+                --from-file=account.ring.gz=/rings/account.ring.gz \
+                --from-file=container.ring.gz=/rings/container.ring.gz \
+                --from-file=object.ring.gz=/rings/object.ring.gz \
+                --dry-run=client -o yaml | kubectl apply -f -
+              echo "swift-rings ConfigMap updated."
+          volumeMounts:
+            - name: rings
+              mountPath: /rings
+              readOnly: true
+
+      volumes:
+        - name: rings
+          emptyDir: {}
