@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: proxy-conf
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    {{- include "swiftacular.labels" . | nindent 4 }}
+data:
+  proxy-server.conf: |
+    [DEFAULT]
+    bind_port = 8080
+    bind_host = 0.0.0.0
+    user = swift
+
+    [pipeline:main]
+    pipeline = catch_errors healthcheck cache ratelimit authtoken keystoneauth proxy-server
+
+    [app:proxy-server]
+    use = egg:swift#proxy
+    allow_account_management = true
+    account_autocreate = true
+
+    [filter:keystoneauth]
+    use = egg:swift#keystoneauth
+    operator_roles = Member, admin, swiftoperator
+
+    [filter:authtoken]
+    paste.filter_factory = keystonemiddleware.auth_token:filter_factory
+    www_authenticate_uri = http://keystone-svc:5000/
+    auth_url = http://keystone-svc:5000/v3
+    identity_uri = http://keystone-svc:5000
+    auth_type = password
+    project_domain_name = Default
+    user_domain_name = Default
+    project_name = service
+    username = swift
+    password = {{ .Values.secrets.keystoneGenericServicePassword }}
+    delay_auth_decision = true
+    insecure = true
+    memcached_servers = 127.0.0.1:11211
+
+    [keystone_authtoken]
+    www_authenticate_uri = http://keystone-svc:5000/
+    auth_url = http://keystone-svc:5000/v3
+    identity_uri = http://keystone-svc:5000
+    auth_type = password
+    project_domain_name = Default
+    user_domain_name = Default
+    project_name = service
+    username = swift
+    password = {{ .Values.secrets.keystoneGenericServicePassword }}
+    delay_auth_decision = true
+    insecure = true
+    memcached_servers = 127.0.0.1:11211
+
+    [filter:cache]
+    use = egg:swift#memcache
+    memcache_servers = 127.0.0.1:11211
+
+    [filter:catch_errors]
+    use = egg:swift#catch_errors
+
+    [filter:healthcheck]
+    use = egg:swift#healthcheck
+
+    [filter:ratelimit]
+    use = egg:swift#ratelimit
+    clock_accuracy = 1000
+    max_sleep_time_seconds = 60
+    log_sleep_time_seconds = 0
+    rate_buffer_seconds = 5
+    account_ratelimit = 0
