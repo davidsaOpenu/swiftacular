@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mariadb
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    app: mariadb
+    {{- include "swiftacular.labels" . | nindent 4 }}
+spec:
+  serviceName: mariadb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:11.4
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: swift-secrets
+                  key: keystoneMysqlPassword
+            - name: MYSQL_DATABASE
+              value: keystone
+            - name: MYSQL_USER
+              value: keystone
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: swift-secrets
+                  key: keystoneMysqlPassword
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+              name: mysql
+          # startupProbe gates the liveness probe until MariaDB finishes first-time
+          # data-directory initialization.  On a loaded CI host that can take 3-5
+          # minutes; without this gate the liveness probe fires at initialDelaySeconds
+          # (30 s), kills the container mid-init, and every subsequent restart fails
+          # because the data directory is left corrupt.  36 × 10 s = 6 min budget.
+          startupProbe:
+            exec:
+              command:
+                - healthcheck.sh
+                - --connect
+                - --innodb_initialized
+            failureThreshold: 36
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - healthcheck.sh
+                - --connect
+                - --innodb_initialized
+            periodSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            exec:
+              command:
+                - healthcheck.sh
+                - --connect
+                - --innodb_initialized
+            periodSeconds: 10
+            failureThreshold: 3
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: {{ .Values.storage.storageClassName }}
+        resources:
+          requests:
+            storage: 2Gi

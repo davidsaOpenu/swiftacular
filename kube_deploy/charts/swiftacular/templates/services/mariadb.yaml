@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    app: mariadb
+    {{- include "swiftacular.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: mariadb
+  ports:
+    - name: mysql
+      port: 3306
+      protocol: TCP
