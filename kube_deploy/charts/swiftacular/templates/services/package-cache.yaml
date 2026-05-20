@@ -1,0 +1,17 @@
+{{- if .Values.packageCache.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: package-cache-svc
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    app: package-cache
+    {{- include "swiftacular.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: package-cache
+  ports:
+    - name: apt-cacher
+      port: 3142
+      protocol: TCP
+{{- end }}
