@@ -1,0 +1,36 @@
+# Headless service: gives the StatefulSet stable per-pod DNS
+# (mariadb-0.mariadb-headless) and is what `serviceName` must reference.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb-headless
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    app: mariadb
+    {{- include "swiftacular.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    app: mariadb
+  ports:
+    - name: mysql
+      port: 3306
+      protocol: TCP
+---
+# Client-facing ClusterIP service. Named -svc for consistency with
+# keystone-svc / proxy-svc; this is what Keystone connects to.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb-svc
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    app: mariadb
+    {{- include "swiftacular.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: mariadb
+  ports:
+    - name: mysql
+      port: 3306
+      protocol: TCP

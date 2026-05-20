@@ -1,0 +1,455 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    {{- include "swiftacular.labels" . | nindent 4 }}
+data:
+  swift-db-info.json: |
+    {
+      "annotations": { "list": [] },
+      "description": "Swift container database metrics from swiftdbinfo PCP PMDA",
+      "editable": true,
+      "graphTooltip": 0,
+      "links": [],
+      "panels": [
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": {
+            "defaults": { "color": { "mode": "palette-classic" }, "unit": "none" },
+            "overrides": []
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "id": 1,
+          "options": {
+            "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" },
+            "tooltip": { "mode": "single" }
+          },
+          "targets": [
+            {
+              "expr": "swiftdbinfo.object.count",
+              "format": "time_series",
+              "legendFormat": "{{ `{{swift_db_name}}` }}",
+              "refId": "A"
+            }
+          ],
+          "title": "Number of Objects per Container",
+          "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": {
+            "defaults": { "color": { "mode": "palette-classic" }, "unit": "bytes" },
+            "overrides": []
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "id": 2,
+          "options": {
+            "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" },
+            "tooltip": { "mode": "single" }
+          },
+          "targets": [
+            {
+              "expr": "swiftdbinfo.size",
+              "format": "time_series",
+              "legendFormat": "{{ `{{swift_db_name}}` }}",
+              "refId": "A"
+            }
+          ],
+          "title": "Container DB Size",
+          "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": {
+            "defaults": { "color": { "mode": "palette-classic" }, "unit": "percentunit" },
+            "overrides": []
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "id": 3,
+          "options": {
+            "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" },
+            "tooltip": { "mode": "multi" }
+          },
+          "targets": [
+            {
+              "expr": "kernel.all.cpu.user",
+              "format": "time_series",
+              "legendFormat": "user",
+              "refId": "A"
+            },
+            {
+              "expr": "kernel.all.cpu.sys",
+              "format": "time_series",
+              "legendFormat": "sys",
+              "refId": "B"
+            },
+            {
+              "expr": "kernel.all.cpu.idle",
+              "format": "time_series",
+              "legendFormat": "idle",
+              "refId": "C"
+            }
+          ],
+          "title": "CPU Usage",
+          "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": {
+            "defaults": { "color": { "mode": "palette-classic" }, "unit": "bytes" },
+            "overrides": []
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "id": 4,
+          "options": {
+            "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" },
+            "tooltip": { "mode": "multi" }
+          },
+          "targets": [
+            {
+              "expr": "mem.util.used",
+              "format": "time_series",
+              "legendFormat": "used",
+              "refId": "A"
+            },
+            {
+              "expr": "mem.util.free",
+              "format": "time_series",
+              "legendFormat": "free",
+              "refId": "B"
+            },
+            {
+              "expr": "mem.util.cached",
+              "format": "time_series",
+              "legendFormat": "cached",
+              "refId": "C"
+            }
+          ],
+          "title": "Memory Usage",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 39,
+      "tags": ["swift", "pcp"],
+      "templating": {
+        "list": [
+          {
+            "current": {},
+            "hide": 0,
+            "includeAll": false,
+            "multi": false,
+            "name": "datasource",
+            "options": [],
+            "query": "performancecopilot-redis-datasource",
+            "refresh": 1,
+            "regex": ".*storage.*",
+            "type": "datasource"
+          }
+        ]
+      },
+      "time": { "from": "now-30m", "to": "now" },
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "Swift DB Info",
+      "uid": "swift-db-info",
+      "version": 1
+    }
+
+  host-overview.json: |
+    {
+      "annotations": { "list": [] },
+      "description": "Host-level PCP metrics for each Swift storage node",
+      "editable": true,
+      "graphTooltip": 0,
+      "links": [],
+      "panels": [
+        { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "id": 100, "title": "Overview", "type": "row" },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "none", "decimals": 2 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 1 }, "id": 1,
+          "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["min","max","lastNotNull"] }, "tooltip": { "mode": "single" } },
+          "targets": [{ "expr": "kernel.all.load{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$instance", "refId": "A" }],
+          "title": "Load Average", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "kbytes", "min": 0, "custom": { "stacking": { "mode": "normal" } } }, "overrides": [{ "matcher": { "id": "byName", "options": "physmem" }, "properties": [{ "id": "custom.fillOpacity", "value": 0 }, { "id": "custom.lineWidth", "value": 2 }, { "id": "custom.stacking", "value": { "mode": "none" } }] }] },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 1 }, "id": 2,
+          "targets": [
+            { "expr": "mem.util.free{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "A" },
+            { "expr": "mem.util.cached{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "B" },
+            { "expr": "mem.physmem{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "C" }
+          ],
+          "title": "Memory Utilization", "type": "timeseries"
+        },
+
+        { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 8 }, "id": 101, "title": "CPU", "type": "row" },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 9 }, "id": 3,
+          "targets": [{ "expr": "kernel.percpu.cpu.user{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$instance", "refId": "A" }],
+          "title": "Per-CPU Busy (User)", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 9 }, "id": 4,
+          "targets": [{ "expr": "kernel.percpu.cpu.sys{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$instance", "refId": "A" }],
+          "title": "Per-CPU Busy (Sys)", "type": "timeseries"
+        },
+
+        { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 }, "id": 102, "title": "Scheduler", "type": "row" },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "ops", "min": 0 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 17 }, "id": 5,
+          "options": { "legend": { "displayMode": "hidden" } },
+          "targets": [{ "expr": "kernel.all.pswitch{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "A" }],
+          "title": "Context Switches / sec", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "none", "min": 0, "decimals": 0, "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter" } }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 17 }, "id": 6,
+          "options": { "legend": { "displayMode": "hidden" } },
+          "targets": [{ "expr": "kernel.all.runnable{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "A" }],
+          "title": "Runnable", "type": "timeseries"
+        },
+
+        { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 }, "id": 103, "title": "Memory", "type": "row" },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "kbytes", "min": 0 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 8, "x": 0, "y": 25 }, "id": 7,
+          "options": { "legend": { "displayMode": "hidden" } },
+          "targets": [{ "expr": "mem.util.used{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "A" }],
+          "title": "Memory Used", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "kbytes", "min": 0 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 8, "x": 8, "y": 25 }, "id": 8,
+          "options": { "legend": { "displayMode": "hidden" } },
+          "targets": [{ "expr": "mem.util.cached{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "A" }],
+          "title": "Memory Cached", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "kbytes", "min": 0 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 8, "x": 16, "y": 25 }, "id": 9,
+          "options": { "legend": { "displayMode": "hidden" } },
+          "targets": [{ "expr": "mem.util.free{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "A" }],
+          "title": "Memory Free", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "ops", "min": 0 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 32 }, "id": 10,
+          "options": { "legend": { "displayMode": "hidden" } },
+          "targets": [{ "expr": "mem.vmstat.pgfault{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "A" }],
+          "title": "Page Fault Rate", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "ops", "min": 0 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 32 }, "id": 11,
+          "options": { "legend": { "displayMode": "hidden" } },
+          "targets": [{ "expr": "mem.vmstat.pgmajfault{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "A" }],
+          "title": "Hard Fault Rate", "type": "timeseries"
+        },
+
+        { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 39 }, "id": 104, "title": "Network", "type": "row" },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 40 }, "id": 12,
+          "targets": [{ "expr": "network.interface.in.bytes{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$instance", "refId": "A" }],
+          "title": "Network Throughput (In)", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 40 }, "id": 13,
+          "targets": [{ "expr": "network.interface.out.bytes{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$instance", "refId": "A" }],
+          "title": "Network Throughput (Out)", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "ops", "min": 0, "decimals": 0 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 47 }, "id": 14,
+          "targets": [{ "expr": "network.interface.in.drops{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$instance", "refId": "A" }],
+          "title": "Network Drops (In)", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "ops", "min": 0, "decimals": 0 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 47 }, "id": 15,
+          "targets": [{ "expr": "network.interface.out.drops{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$instance", "refId": "A" }],
+          "title": "Network Drops (Out)", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "ops", "min": 0, "decimals": 0 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 54 }, "id": 16,
+          "targets": [{ "expr": "network.interface.in.packets{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$instance", "refId": "A" }],
+          "title": "Network Packets (In)", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "ops", "min": 0, "decimals": 0 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 54 }, "id": 17,
+          "targets": [{ "expr": "network.interface.out.packets{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$instance", "refId": "A" }],
+          "title": "Network Packets (Out)", "type": "timeseries"
+        },
+
+        { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 61 }, "id": 105, "title": "TCP", "type": "row" },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "none", "min": 0, "decimals": 0 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 62 }, "id": 18,
+          "options": { "legend": { "displayMode": "hidden" } },
+          "targets": [{ "expr": "network.tcp.timeouts{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "A" }],
+          "title": "TCP Timeouts", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "ops", "min": 0, "decimals": 0 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 62 }, "id": 19,
+          "targets": [
+            { "expr": "network.tcp.listendrops{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "A" },
+            { "expr": "network.tcp.listenoverflows{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "B" }
+          ],
+          "title": "TCP Listen Errors", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "ops", "min": 0, "decimals": 0 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 24, "x": 0, "y": 69 }, "id": 20,
+          "targets": [
+            { "expr": "network.tcp.retranssegs{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "A" },
+            { "expr": "network.tcp.fastretrans{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "B" },
+            { "expr": "network.tcp.slowstartretrans{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "C" },
+            { "expr": "network.tcp.synretrans{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$metric", "refId": "D" }
+          ],
+          "title": "TCP Retransmits", "type": "timeseries"
+        },
+
+        { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 76 }, "id": 106, "title": "Disk", "type": "row" },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 77 }, "id": 21,
+          "targets": [
+            { "expr": "disk.dev.read_rawactive{hostname == \"$host\"}", "format": "time_series", "legendFormat": "read $instance", "refId": "A" },
+            { "expr": "disk.dev.write_rawactive{hostname == \"$host\"}", "format": "time_series", "legendFormat": "write $instance", "refId": "B" }
+          ],
+          "title": "Disk Latency", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "iops" }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 77 }, "id": 22,
+          "targets": [
+            { "expr": "disk.dev.read{hostname == \"$host\"}", "format": "time_series", "legendFormat": "read $instance", "refId": "A" },
+            { "expr": "disk.dev.write{hostname == \"$host\"}", "format": "time_series", "legendFormat": "write $instance", "refId": "B" }
+          ],
+          "title": "Disk IOPS", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "KiBs" }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 84 }, "id": 23,
+          "targets": [
+            { "expr": "disk.dev.read_bytes{hostname == \"$host\"}", "format": "time_series", "legendFormat": "read $instance", "refId": "A" },
+            { "expr": "disk.dev.write_bytes{hostname == \"$host\"}", "format": "time_series", "legendFormat": "write $instance", "refId": "B" }
+          ],
+          "title": "Disk Throughput", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 84 }, "id": 24,
+          "targets": [{ "expr": "disk.dev.avactive{hostname == \"$host\"}", "format": "time_series", "legendFormat": "$instance", "refId": "A" }],
+          "title": "Disk Utilization", "type": "timeseries"
+        },
+
+        { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 91 }, "id": 107, "title": "XFS", "type": "row" },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 92 }, "id": 25,
+          "targets": [
+            { "expr": "xfs.perdev.allocs.alloc_extent{hostname == \"$host\"}", "format": "time_series", "legendFormat": "alloc", "refId": "A" },
+            { "expr": "xfs.perdev.allocs.free_extent{hostname == \"$host\"}", "format": "time_series", "legendFormat": "free", "refId": "B" }
+          ],
+          "title": "XFS Extent Allocations", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 92 }, "id": 26,
+          "targets": [
+            { "expr": "xfs.perdev.allocs.alloc_block{hostname == \"$host\"}", "format": "time_series", "legendFormat": "alloc", "refId": "A" },
+            { "expr": "xfs.perdev.allocs.free_block{hostname == \"$host\"}", "format": "time_series", "legendFormat": "free", "refId": "B" }
+          ],
+          "title": "XFS Block Allocations", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 99 }, "id": 27,
+          "targets": [
+            { "expr": "xfs.perdev.iflush_count{hostname == \"$host\"}", "format": "time_series", "legendFormat": "flushes", "refId": "A" }
+          ],
+          "title": "XFS Inode Flushes", "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "performancecopilot-redis-datasource", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 99 }, "id": 28,
+          "targets": [
+            { "expr": "xfs.perdev.icluster_flushcnt{hostname == \"$host\"}", "format": "time_series", "legendFormat": "count", "refId": "A" },
+            { "expr": "xfs.perdev.icluster_flushinode{hostname == \"$host\"}", "format": "time_series", "legendFormat": "inodes", "refId": "B" }
+          ],
+          "title": "XFS Inode Cluster Flushes", "type": "timeseries"
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 39,
+      "tags": ["swift"],
+      "templating": {
+        "list": [
+          {
+            "current": {}, "hide": 0, "includeAll": false, "multi": false,
+            "name": "datasource", "options": [],
+            "query": "performancecopilot-redis-datasource", "refresh": 1,
+            "regex": ".*storage.*", "type": "datasource"
+          },
+          {
+            "current": { "selected": true, "text": "storage-0", "value": "storage-0" },
+            "hide": 0, "includeAll": false, "multi": false,
+            "name": "host",
+            "options": [
+              { "selected": true,  "text": "storage-0", "value": "storage-0" },
+              { "selected": false, "text": "storage-1", "value": "storage-1" },
+              { "selected": false, "text": "storage-2", "value": "storage-2" }
+            ],
+            "query": "storage-0,storage-1,storage-2",
+            "type": "custom"
+          }
+        ]
+      },
+      "time": { "from": "now-30m", "to": "now" },
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "Host Overview",
+      "uid": "host-overview",
+      "version": 3
+    }
+{{- end }}
