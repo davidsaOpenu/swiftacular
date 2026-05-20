@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-headless
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    app: storage
+    {{- include "swiftacular.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    app: storage
+  ports:
+    - name: object
+      port: 6000
+      protocol: TCP
+    - name: container
+      port: 6001
+      protocol: TCP
+    - name: account
+      port: 6002
+      protocol: TCP
+    - name: rsync
+      port: 873
+      protocol: TCP
+    - name: pmproxy
+      port: 44322
+      protocol: TCP
+    - name: ssh
+      port: 22
+      protocol: TCP

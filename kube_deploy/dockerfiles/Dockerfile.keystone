@@ -1,0 +1,32 @@
+FROM localhost:5001/swiftacular-base:latest
+
+ARG ANSIBLE_PUBLIC_KEY
+ENV DEBIAN_FRONTEND=noninteractive
+
+# apache2 post-install calls systemctl; stub it out
+RUN printf '#!/bin/sh\nexit 0\n' > /usr/bin/systemctl && chmod +x /usr/bin/systemctl
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        keystone \
+        apache2 \
+        libapache2-mod-wsgi-py3 \
+        python3-pymysql \
+        python3-cryptography \
+        python3-openssl \
+        python3-openstackclient \
+    && rm -rf /var/lib/apt/lists/*
+
+# Wire up the Keystone Apache WSGI site.
+# The keystone package installs its config at sites-available/keystone.conf.
+RUN a2enmod wsgi \
+    && a2ensite keystone \
+    && a2dissite 000-default \
+    && echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
+RUN install -d -o keystone -g keystone -m 0755 /var/log/keystone \
+    && touch /var/log/keystone/keystone.log \
+    && chown keystone:keystone /var/log/keystone/keystone.log
+
+EXPOSE 22 5000
+
+CMD ["/usr/sbin/sshd", "-D"]
