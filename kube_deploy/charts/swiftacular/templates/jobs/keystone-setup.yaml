@@ -1,0 +1,124 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keystone-setup
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    app: keystone-setup
+    {{- include "swiftacular.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: keystone-setup
+    spec:
+      serviceAccountName: swiftacular
+      restartPolicy: OnFailure
+      containers:
+        - name: keystone-setup
+          image: {{ include "swiftacular.keystoneImage" . }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - bash
+            - -c
+            - |
+              set -e
+
+              export OS_AUTH_URL=http://keystone-svc:5000/v3
+              export OS_USERNAME=admin
+              export OS_PASSWORD="${KEYSTONE_ADMIN_PASSWORD}"
+              export OS_PROJECT_NAME=admin
+              export OS_USER_DOMAIN_NAME=Default
+              export OS_PROJECT_DOMAIN_NAME=Default
+              export OS_IDENTITY_API_VERSION=3
+
+              echo "Waiting for Keystone..."
+              i=0
+              until openstack token issue >/dev/null 2>&1; do
+                i=$((i+5))
+                if [ $((i % 30)) -eq 0 ]; then
+                  echo "still waiting for Keystone token (${i}s elapsed) — last error:"
+                  openstack token issue 2>&1 >/dev/null | tail -3 || true
+                fi
+                sleep 5
+              done
+              echo "Keystone ready after ${i}s."
+
+              # Projects
+              openstack project create --description "Service Tenant" service || true
+              openstack project create --description "Default Tenant" demo   || true
+
+              # Swift service user
+              openstack user create \
+                --project service \
+                --password "${SWIFT_SERVICE_PASSWORD}" \
+                --domain Default swift || true
+              openstack role add --project service --user swift admin || true
+
+              # Ensure the configured region exists (bootstrap only creates RegionOne).
+              openstack region create {{ .Values.keystone.region }} || true
+
+              # Swift object-store service and endpoints (idempotent: wipe duplicates
+              # then recreate so endpoint-create can use the unambiguous service ID).
+              for SVC_ID in $(openstack service list -f value | grep 'object-store' | awk '{print $1}'); do
+                openstack service delete "$SVC_ID"
+              done
+              SWIFT_SVC_ID=$(openstack service create \
+                --name swift \
+                --description "Object Store Service" \
+                -f value -c id object-store)
+              openstack endpoint create --region {{ .Values.keystone.region }} \
+                "$SWIFT_SVC_ID" public \
+                'http://proxy-svc:8080/v1/AUTH_%(project_id)s'
+              openstack endpoint create --region {{ .Values.keystone.region }} \
+                "$SWIFT_SVC_ID" internal \
+                'http://proxy-svc:8080/v1/AUTH_%(project_id)s'
+              openstack endpoint create --region {{ .Values.keystone.region }} \
+                "$SWIFT_SVC_ID" admin \
+                'http://proxy-svc:8080/v1'
+
+              # Test user — create if new, update password if already exists.
+              # The || true on the original create masked password drift on helm upgrades.
+              openstack user create \
+                --project demo \
+                --password "${KEYSTONE_TEST_USER_PASSWORD}" \
+                --domain Default {{ .Values.keystone_test_user }} \
+                2>/dev/null \
+              || openstack user set \
+                --password "${KEYSTONE_TEST_USER_PASSWORD}" \
+                {{ .Values.keystone_test_user }}
+              openstack role create swiftoperator || true
+              openstack role add \
+                --project demo \
+                --user {{ .Values.keystone_test_user }} swiftoperator || true
+
+              echo "Keystone setup complete."
+          env:
+            - name: KEYSTONE_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: swift-secrets
+                  key: keystoneAdminPassword
+            - name: SWIFT_SERVICE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: swift-secrets
+                  key: keystoneGenericServicePassword
+            - name: KEYSTONE_TEST_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: swift-secrets
+                  key: keystoneTestUserPassword
+          volumeMounts:
+            - name: keystone-conf
+              mountPath: /etc/keystone/keystone.conf
+              subPath: keystone.conf
+      volumes:
+        - name: keystone-conf
+          configMap:
+            name: keystone-conf
