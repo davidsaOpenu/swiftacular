@@ -1,0 +1,54 @@
+registry: localhost:5001
+
+namespace: swiftacular
+
+swift:
+  diskPrefix: td
+  disksPerNode: 2
+  diskSizeGi: 5
+  partitionPower: 12
+  replicas: 2
+  minPartHours: 1
+  hashPathSuffix: CHANGEME
+  hashPathPrefix: CHANGEME
+
+storage:
+  storageClassName: local-path
+  image: swiftacular-storage
+  tag: latest
+
+proxy:
+  image: swiftacular-proxy
+  tag: latest
+
+keystone:
+  image: swiftacular-keystone
+  tag: latest
+  region: Edmonton
+
+packageCache:
+  image: swiftacular-package-cache
+  tag: latest
+  enabled: true
+
+grafana:
+  enabled: false
+  image: grafana/grafana
+  tag: "10.4.3"
+
+bluestore:
+  enabled: false
+  image: swiftacular-bluestore
+  tag: latest
+  storeSizeGi: 12
+  cpuLimit: "2"
+  memoryLimit: "2Gi"
+
+secrets:
+  keystoneAdminPassword: CHANGEME
+  keystoneMysqlPassword: CHANGEME
+  keystoneGenericServicePassword: CHANGEME
+  keystoneTestUserPassword: CHANGEME
+  grafanaAdminPassword: CHANGEME
+
+keystone_test_user: achilles

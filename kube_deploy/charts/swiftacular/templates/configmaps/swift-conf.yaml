@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swift-conf
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    {{- include "swiftacular.labels" . | nindent 4 }}
+data:
+  swift.conf: |
+    [swift-hash]
+    swift_hash_path_suffix = {{ .Values.swift.hashPathSuffix }}
+    swift_hash_path_prefix = {{ .Values.swift.hashPathPrefix }}

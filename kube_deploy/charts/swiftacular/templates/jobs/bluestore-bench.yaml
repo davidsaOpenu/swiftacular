@@ -1,0 +1,82 @@
+{{/*
+BlueStore benchmark Job.
+
+Runs objectstore_bench against a dedicated PVC so BlueStore performance can
+be measured from inside the cluster without touching Swift data.
+
+Enable with:
+  helm upgrade --install swiftacular kube_deploy/charts/swiftacular \
+    -f kube_deploy/charts/swiftacular/values.dev.yaml \
+    --set bluestore.enabled=true
+
+Results are written to stdout — fetch with:
+  kubectl logs -n <namespace> job/bluestore-bench
+
+Disabled by default (bluestore.enabled: false).
+*/}}
+{{- if .Values.bluestore.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: bluestore-bench-pvc
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    app: bluestore-bench
+    {{- include "swiftacular.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+    "helm.sh/hook-weight": "5"
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ .Values.storage.storageClassName | quote }}
+  resources:
+    requests:
+      storage: {{ printf "%dGi" (.Values.bluestore.storeSizeGi | int) }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: bluestore-bench
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    app: bluestore-bench
+    {{- include "swiftacular.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+    "helm.sh/hook-weight": "10"
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: bluestore-bench
+    spec:
+      serviceAccountName: swiftacular
+      restartPolicy: Never
+      containers:
+        - name: bench
+          image: {{ include "swiftacular.bluestoreImage" . }}
+          imagePullPolicy: Always
+          command: ["/usr/local/bin/objectstore_bench"]
+          env:
+            - name: BLUESTORE_BENCH_PATH
+              value: /var/lib/bluestore/bench_run
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: {{ .Values.bluestore.cpuLimit | quote }}
+              memory: {{ .Values.bluestore.memoryLimit | quote }}
+          volumeMounts:
+            - name: store
+              mountPath: /var/lib/bluestore
+      volumes:
+        - name: store
+          persistentVolumeClaim:
+            claimName: bluestore-bench-pvc
+{{- end }}

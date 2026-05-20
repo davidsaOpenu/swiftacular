@@ -1,0 +1,12 @@
+FROM localhost:5001/swiftacular-base:latest
+
+ARG ANSIBLE_PUBLIC_KEY
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        apt-cacher-ng \
+    && rm -rf /var/lib/apt/lists/*
+
+EXPOSE 22 3142
+
+CMD ["/usr/sbin/sshd", "-D"]
