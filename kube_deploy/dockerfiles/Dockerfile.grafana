@@ -1,0 +1,4 @@
+# No custom Grafana image needed — the PCP plugin is installed at pod
+# start by the install-pcp-plugin init container (see grafana.yaml).
+# Using the stock public image avoids grafana-cli permission/VOLUME issues.
+FROM grafana/grafana:10.4.3

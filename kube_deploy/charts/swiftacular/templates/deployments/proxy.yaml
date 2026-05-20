@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxy
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    app: proxy
+    {{- include "swiftacular.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: proxy
+  template:
+    metadata:
+      labels:
+        app: proxy
+    spec:
+      serviceAccountName: swiftacular
+      initContainers:
+        - name: wait-for-rings
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Swift ring files..."
+              until [ -f /tpl-rings/account.ring.gz ]; do sleep 2; done
+              echo "Ring files present."
+          volumeMounts:
+            - name: rings
+              mountPath: /tpl-rings
+
+        - name: wait-for-keystone
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Keystone..."
+              until wget -qO- http://keystone-svc:5000/v3 >/dev/null 2>&1; do sleep 5; done
+              echo "Keystone ready."
+
+        - name: copy-rings
+          image: {{ include "swiftacular.proxyImage" . }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              # Symlink ring files to the live ConfigMap mount so the main
+              # container picks up ring updates via Swift's ring_check_interval
+              # without a pod restart.
+              for f in /tpl-rings/*.ring.gz; do
+                ln -sf /var/swift-rings/"$(basename "$f")" /etc/swift/"$(basename "$f")"
+              done
+              cp /tpl-swift/swift.conf /etc/swift/swift.conf
+              echo "Rings symlinked, swift.conf staged."
+          volumeMounts:
+            - name: swift-config
+              mountPath: /etc/swift
+            - name: rings
+              mountPath: /tpl-rings
+            - name: swift-conf
+              mountPath: /tpl-swift
+
+      containers:
+        - name: proxy
+          image: {{ include "swiftacular.proxyImage" . }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - bash
+            - -c
+            - |
+              rsyslogd
+              memcached -u memcache -d
+              /usr/sbin/sshd &
+              exec swift-proxy-server /etc/swift/proxy-server.conf --verbose
+          ports:
+            - containerPort: 8080
+              name: proxy
+            - containerPort: 11211
+              name: memcached
+            - containerPort: 22
+              name: ssh
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+          volumeMounts:
+            - name: swift-config
+              mountPath: /etc/swift
+            - name: proxy-conf
+              mountPath: /etc/swift/proxy-server.conf
+              subPath: proxy-server.conf
+            - name: rings
+              mountPath: /var/swift-rings
+
+      volumes:
+        - name: swift-config
+          emptyDir: {}
+        - name: rings
+          configMap:
+            name: swift-rings
+            optional: true
+        - name: proxy-conf
+          configMap:
+            name: proxy-conf
+        - name: swift-conf
+          configMap:
+            name: swift-conf

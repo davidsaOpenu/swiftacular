@@ -1,0 +1,51 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-provisioning
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    {{- include "swiftacular.labels" . | nindent 4 }}
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: "PCP Redis - storage-0"
+        type: performancecopilot-redis-datasource
+        uid: pcp-storage-0
+        url: http://storage-0.storage-headless:44322
+        access: proxy
+        isDefault: true
+        jsonData:
+          hostspec: "localhost"
+      - name: "PCP Redis - storage-1"
+        type: performancecopilot-redis-datasource
+        uid: pcp-storage-1
+        url: http://storage-1.storage-headless:44322
+        access: proxy
+        jsonData:
+          hostspec: "localhost"
+      - name: "PCP Redis - storage-2"
+        type: performancecopilot-redis-datasource
+        uid: pcp-storage-2
+        url: http://storage-2.storage-headless:44322
+        access: proxy
+        jsonData:
+          hostspec: "localhost"
+
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: swift
+        type: file
+        folder: Swift
+        options:
+          path: /var/lib/grafana/dashboards/swift
+
+  plugins.yaml: |
+    apiVersion: 1
+    apps:
+      - type: performancecopilot-pcp-app
+        org_id: 1
+        disabled: false
+{{- end }}
