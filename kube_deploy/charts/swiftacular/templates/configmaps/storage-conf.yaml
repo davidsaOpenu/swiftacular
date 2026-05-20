@@ -1,0 +1,179 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: storage-conf
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    {{- include "swiftacular.labels" . | nindent 4 }}
+data:
+  account-server.conf: |
+    [DEFAULT]
+    devices = /srv/node
+    bind_ip = ${MY_POD_IP}
+    bind_port = 6002
+    workers = 2
+
+    [pipeline:main]
+    pipeline = account-server
+
+    [app:account-server]
+    use = egg:swift#account
+
+    [account-replicator]
+
+    [account-auditor]
+
+    [account-reaper]
+
+  account-replication.conf: |
+    [DEFAULT]
+    devices = /srv/node
+    bind_ip = ${MY_POD_IP}
+    bind_port = 6012
+    workers = 2
+
+    [pipeline:main]
+    pipeline = account-server
+
+    [app:account-server]
+    use = egg:swift#account
+    replication_server = True
+
+    [account-replicator]
+
+    [account-auditor]
+
+    [account-reaper]
+
+  container-server.conf: |
+    [DEFAULT]
+    devices = /srv/node
+    bind_ip = ${MY_POD_IP}
+    bind_port = 6001
+    workers = 2
+
+    [pipeline:main]
+    pipeline = container-server
+
+    [app:container-server]
+    use = egg:swift#container
+
+    [container-replicator]
+
+    [container-updater]
+
+    [container-auditor]
+
+    [container-sync]
+
+    [container-sharder]
+    auto_shard = true
+    rsync_module = {replication_ip}::container{replication_port}
+    shard_container_threshold = 100
+    shard_scanner_batch_size = 10
+    cleave_batch_size = 2
+
+  container-replication.conf: |
+    [DEFAULT]
+    devices = /srv/node
+    bind_ip = ${MY_POD_IP}
+    bind_port = 6011
+    workers = 2
+
+    [pipeline:main]
+    pipeline = container-server
+
+    [app:container-server]
+    use = egg:swift#container
+    replication_server = True
+
+    [container-replicator]
+
+    [container-updater]
+
+    [container-auditor]
+
+    [container-sync]
+
+    [container-sharder]
+    auto_shard = true
+    rsync_module = {replication_ip}::container{replication_port}
+    shard_container_threshold = 100
+    shard_scanner_batch_size = 10
+    cleave_batch_size = 2
+
+  object-server.conf: |
+    [DEFAULT]
+    devices = /srv/node
+    bind_ip = ${MY_POD_IP}
+    bind_port = 6000
+    workers = 2
+
+    [pipeline:main]
+    pipeline = object-server
+
+    [app:object-server]
+    use = egg:swift#object
+
+    [object-replicator]
+
+    [object-updater]
+
+    [object-auditor]
+
+    [object-expirer]
+
+    [object-reconstructor]
+
+    [object-relinker]
+
+  object-replication.conf: |
+    [DEFAULT]
+    devices = /srv/node
+    bind_ip = ${MY_POD_IP}
+    bind_port = 6010
+    workers = 2
+
+    [pipeline:main]
+    pipeline = object-server
+
+    [app:object-server]
+    use = egg:swift#object
+    replication_server = True
+
+    [object-replicator]
+
+    [object-updater]
+
+    [object-auditor]
+
+    [object-expirer]
+
+    [object-reconstructor]
+
+    [object-relinker]
+
+  rsyncd.conf: |
+    uid = swift
+    gid = swift
+    log file = /var/log/rsyncd.log
+    pid file = /var/run/rsyncd.pid
+    address = ${MY_POD_IP}
+
+    [account]
+    max connections = 2
+    path = /srv/node/
+    read only = false
+    lock file = /var/lock/account.lock
+
+    [container]
+    max connections = 2
+    path = /srv/node/
+    read only = false
+    lock file = /var/lock/container.lock
+
+    [object]
+    max connections = 2
+    path = /srv/node/
+    read only = false
+    lock file = /var/lock/object.lock
