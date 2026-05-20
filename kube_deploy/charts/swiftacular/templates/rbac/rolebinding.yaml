@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: swiftacular-ring-publisher
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    {{- include "swiftacular.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: swiftacular-ring-publisher
+subjects:
+  - kind: ServiceAccount
+    name: swiftacular
+    namespace: {{ include "swiftacular.namespace" . }}
