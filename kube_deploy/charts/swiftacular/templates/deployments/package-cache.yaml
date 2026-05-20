@@ -1,0 +1,47 @@
+{{- if .Values.packageCache.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: package-cache
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    app: package-cache
+    {{- include "swiftacular.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: package-cache
+  template:
+    metadata:
+      labels:
+        app: package-cache
+    spec:
+      serviceAccountName: swiftacular
+      containers:
+        - name: package-cache
+          image: {{ include "swiftacular.packageCacheImage" . }}
+          imagePullPolicy: Always
+          command:
+            - bash
+            - -c
+            - |
+              /usr/sbin/sshd &
+              exec /usr/sbin/apt-cacher-ng ForeGround=1
+          ports:
+            - containerPort: 3142
+              name: apt-cacher
+            - containerPort: 22
+              name: ssh
+          readinessProbe:
+            tcpSocket:
+              port: 3142
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: cache
+              mountPath: /var/cache/apt-cacher-ng
+      volumes:
+        - name: cache
+          emptyDir: {}
+{{- end }}
