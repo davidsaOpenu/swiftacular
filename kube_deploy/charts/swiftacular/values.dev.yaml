@@ -1,0 +1,13 @@
+swift:
+  hashPathSuffix: swiftacular-dev-suffix
+  hashPathPrefix: swiftacular-dev-prefix
+
+grafana:
+  enabled: true
+
+secrets:
+  keystoneAdminPassword: devpassword
+  keystoneMysqlPassword: devmysqlpass
+  keystoneGenericServicePassword: devservicepass
+  keystoneTestUserPassword: devtestuserpass
+  grafanaAdminPassword: devgrafanapass

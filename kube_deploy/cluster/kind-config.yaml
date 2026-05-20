@@ -1,0 +1,41 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+
+nodes:
+  - role: control-plane
+    # Expose NodePorts to the host via extraPortMappings.
+    # NodePort services must use these exact containerPort values.
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 8080
+        protocol: TCP
+      - containerPort: 30500
+        hostPort: 5000
+        protocol: TCP
+      - containerPort: 30300
+        hostPort: 3000
+        protocol: TCP
+
+  - role: worker
+    labels:
+      swiftacular/role: storage
+      swiftacular/storage-index: "0"
+
+  - role: worker
+    labels:
+      swiftacular/role: storage
+      swiftacular/storage-index: "1"
+
+  - role: worker
+    labels:
+      swiftacular/role: storage
+      swiftacular/storage-index: "2"
+
+containerdConfigPatches:
+  # Mirror the local registry into every cluster node so image pulls
+  # resolve via swiftacular-registry:5000 without a public registry.
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5001"]
+          endpoint = ["http://swiftacular-registry:5000"]
