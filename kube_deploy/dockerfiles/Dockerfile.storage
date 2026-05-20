@@ -1,0 +1,46 @@
+FROM localhost:5001/swiftacular-base:latest
+
+ARG ANSIBLE_PUBLIC_KEY
+ENV DEBIAN_FRONTEND=noninteractive
+
+# systemctl stub must precede pcp install — pcp post-install calls systemctl
+# directly (bypassing policy-rc.d) and hard-fails without systemd.
+RUN printf '#!/bin/sh\nexit 0\n' > /usr/bin/systemctl && chmod +x /usr/bin/systemctl
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        swift \
+        swift-account \
+        swift-container \
+        swift-object \
+        rsync \
+        pcp \
+        python3-pcp \
+        python3-swiftclient \
+        python3-xattr \
+        redis-server \
+        xfsprogs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Swift runtime directories
+RUN install -d -o swift -g swift -m 0755 \
+        /srv/node \
+        /var/swift/recon \
+        /etc/swift \
+        /var/run/swift \
+        /var/cache/swift
+
+# PCP: rebuild metrics namespace (dpkg post-install trigger doesn't fire in Docker)
+RUN cd /var/lib/pcp/pmns && ./Rebuild
+
+# swiftdbinfo PMDA — copy source and register with pmcd
+COPY monitoring/pdmas/swiftdbinfo/pmdaswiftdbinfo.py \
+     /var/lib/pcp/pmdas/swiftdbinfo/pmdaswiftdbinfo.py
+
+RUN chmod 0755 /var/lib/pcp/pmdas/swiftdbinfo/pmdaswiftdbinfo.py \
+    && sed -i '/^\[access\]/i swiftdbinfo\t400\tpipe\tbinary\t\tpython3 /var/lib/pcp/pmdas/swiftdbinfo/pmdaswiftdbinfo.py' \
+       /etc/pcp/pmcd/pmcd.conf \
+    && sed -i '/^root {/a\\    swiftdbinfo 400:*:*' /var/lib/pcp/pmns/root
+
+EXPOSE 22 6000 6001 6002 873 44322
+
+CMD ["/usr/sbin/sshd", "-D"]
