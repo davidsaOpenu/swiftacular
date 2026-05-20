@@ -1,0 +1,72 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: swiftclient-smoke
+  namespace: swiftacular
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: swiftclient-smoke
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: swiftclient
+          image: localhost:5001/swiftacular-proxy:latest
+          imagePullPolicy: Always
+          command:
+            - bash
+            - -c
+            - |
+              set -e
+
+              export OS_AUTH_URL=http://keystone-svc:5000/v3
+              export OS_USERNAME=admin
+              export OS_PASSWORD="${KEYSTONE_ADMIN_PASSWORD}"
+              export OS_PROJECT_NAME=admin
+              export OS_USER_DOMAIN_NAME=Default
+              export OS_PROJECT_DOMAIN_NAME=Default
+              export OS_IDENTITY_API_VERSION=3
+
+              CONTAINER="swiftacular-smoke"
+              OBJECT="smoke-test.txt"
+              EXPECTED="swiftacular-smoke-test-content"
+
+              echo "=== Swiftacular Smoke Test ==="
+              echo ""
+
+              echo "→ Waiting for proxy to be reachable..."
+              until curl -sf http://proxy-svc:8080/healthcheck >/dev/null; do sleep 3; done
+              echo "  OK"
+
+              echo "→ Creating container..."
+              swift post "${CONTAINER}"
+              echo "  OK"
+
+              echo "→ Uploading test object..."
+              echo "${EXPECTED}" | swift upload "${CONTAINER}" --object-name "${OBJECT}" -
+              echo "  OK"
+
+              echo "→ Listing container..."
+              swift list "${CONTAINER}" | grep -q "${OBJECT}"
+              echo "  OK"
+
+              echo "→ Downloading and verifying content..."
+              CONTENT=$(swift download "${CONTAINER}" "${OBJECT}" --output -)
+              [ "${CONTENT}" = "${EXPECTED}" ] || { echo "FAIL: content mismatch: got '${CONTENT}'"; exit 1; }
+              echo "  OK"
+
+              echo "→ Deleting object and container..."
+              swift delete "${CONTAINER}" "${OBJECT}"
+              swift delete "${CONTAINER}"
+              echo "  OK"
+
+              echo ""
+              echo "=== PASS ==="
+          env:
+            - name: KEYSTONE_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: swift-secrets
+                  key: keystoneAdminPassword
