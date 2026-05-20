@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keystone-conf
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    {{- include "swiftacular.labels" . | nindent 4 }}
+data:
+  keystone.conf: |
+    [DEFAULT]
+    log_file = /var/log/keystone/keystone.log
+
+    [database]
+    connection = mysql+pymysql://keystone:{{ .Values.secrets.keystoneMysqlPassword }}@mariadb/keystone
+    max_pool_size = 20
+    max_overflow = 10
+    pool_timeout = 60
+    pool_recycle = 300
+    pool_pre_ping = true
+
+    [token]
+    provider = fernet
+
+    [oslo_messaging_notifications]
+    driver = noop

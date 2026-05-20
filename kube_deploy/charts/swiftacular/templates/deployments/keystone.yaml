@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keystone
+  namespace: {{ include "swiftacular.namespace" . }}
+  labels:
+    app: keystone
+    {{- include "swiftacular.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keystone
+  template:
+    metadata:
+      labels:
+        app: keystone
+    spec:
+      serviceAccountName: swiftacular
+      initContainers:
+        # Bootstrap Keystone: wait for MariaDB, then run db_sync + fernet + bootstrap.
+        # fernet-keys and credential-keys are written to emptyDir volumes so the
+        # main container can read them (init container filesystem is not shared).
+        - name: init-db
+          image: {{ include "swiftacular.keystoneImage" . }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - bash
+            - -c
+            - |
+              set -e
+              echo "Waiting for MariaDB..."
+              until nc -z mariadb 3306; do sleep 2; done
+              echo "MariaDB TCP up."
+              # Retry db_sync: MariaDB's TCP port opens before the entrypoint
+              # finishes creating the keystone database and user, so the first
+              # attempt can fail with "Unknown database 'keystone'" or
+              # "Access denied".  Log the error on each failure so CI can see
+              # exactly what goes wrong without needing shell access.
+              until keystone-manage db_sync; do
+                echo "  db_sync failed — DB may still be initializing, retrying in 5s..."
+                sleep 5
+              done
+              echo "db_sync complete."
+              keystone-manage fernet_setup \
+                --keystone-user keystone --keystone-group keystone
+              keystone-manage credential_setup \
+                --keystone-user keystone --keystone-group keystone
+              keystone-manage bootstrap \
+                --bootstrap-password "${KEYSTONE_ADMIN_PASSWORD}" \
+                --bootstrap-admin-url "http://keystone-svc:5000/v3/" \
+                --bootstrap-internal-url "http://keystone-svc:5000/v3/" \
+                --bootstrap-public-url "http://keystone-svc:5000/v3/" \
+                --bootstrap-region-id RegionOne
+              echo "Bootstrap complete."
+          env:
+            - name: KEYSTONE_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: swift-secrets
+                  key: keystoneAdminPassword
+          volumeMounts:
+            - name: keystone-conf
+              mountPath: /etc/keystone/keystone.conf
+              subPath: keystone.conf
+            - name: fernet-keys
+              mountPath: /etc/keystone/fernet-keys
+            - name: credential-keys
+              mountPath: /etc/keystone/credential-keys
+
+      containers:
+        - name: keystone
+          image: {{ include "swiftacular.keystoneImage" . }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - bash
+            - -c
+            - |
+              ln -sf /dev/stdout /var/log/apache2/access.log
+              ln -sf /dev/stderr /var/log/apache2/error.log
+              ln -sf /dev/stderr /var/log/apache2/keystone.log
+              ln -sf /dev/stdout /var/log/apache2/keystone_access.log
+              /usr/sbin/sshd &
+              apache2ctl configtest
+              exec apache2ctl -DFOREGROUND
+          ports:
+            - containerPort: 5000
+              name: public
+            - containerPort: 22
+              name: ssh
+          readinessProbe:
+            httpGet:
+              path: /v3
+              port: 5000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /v3
+              port: 5000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+          volumeMounts:
+            - name: keystone-conf
+              mountPath: /etc/keystone/keystone.conf
+              subPath: keystone.conf
+            - name: fernet-keys
+              mountPath: /etc/keystone/fernet-keys
+            - name: credential-keys
+              mountPath: /etc/keystone/credential-keys
+
+      volumes:
+        - name: keystone-conf
+          configMap:
+            name: keystone-conf
+        - name: fernet-keys
+          emptyDir: {}
+        - name: credential-keys
+          emptyDir: {}
