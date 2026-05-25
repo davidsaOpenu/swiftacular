@@ -1,0 +1,104 @@
+---
+# Build BlueStore utilities (bs_ondisk, bs_xattr, etc.)
+- name: Check if ceph directory exists
+  ansible.builtin.stat:
+    path: /home/vagrant/ceph
+  register: ceph_dir
+
+- name: Ensure Ceph build folder exists
+  ansible.builtin.file:
+    path: /home/vagrant/ceph/build
+    state: directory
+    owner: vagrant
+    group: vagrant
+    mode: "0755"
+  when: ceph_dir.stat.exists
+
+- name: Configure Ceph build with CMake
+  ansible.builtin.shell: |
+    cd /home/vagrant/ceph/build
+    export BUILD_TYPE="Release"
+    cmake .. \
+      -GNinja \
+      -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+      -DWITH_BLUESTORE=ON \
+      -DWITH_FUSE=OFF \
+      -DWITH_RADOSGW=OFF \
+      -DWITH_MGR=OFF \
+      -DWITH_MDS=OFF \
+      -DWITH_RBD=OFF \
+      -DWITH_KRBD=OFF \
+      -DWITH_CEPHFS=OFF \
+      -DWITH_MANPAGE=OFF \
+      -DWITH_SYSTEMD=OFF \
+      -DWITH_LTTNG=OFF \
+      -DWITH_BABELTRACE=OFF \
+      -DWITH_SPDK=OFF \
+      -DWITH_DPDK=OFF \
+      -DWITH_BLUESTORE_PMEM=OFF \
+      -DALLOCATOR=libc \
+      -DWITH_SYSTEM_BOOST=ON \
+      -DWITH_SYSTEM_ROCKSDB=OFF \
+      -DWITH_SYSTEM_ZSTD=ON \
+      -DWITH_TESTS=OFF \
+      -DWITH_CRIMSON=OFF \
+      -DWITH_JAEGER=OFF \
+      -DWITH_GRAFANA=OFF \
+      -DWITH_QATLIB=OFF \
+      -DWITH_QATZIP=OFF \
+      -DWITH_LIBURING=OFF \
+      -DWITH_BOOST=OFF \
+      -DWITH_SYSTEM_BOOST=OFF
+  args:
+    executable: /bin/bash
+    creates: /home/vagrant/ceph/build/CMakeCache.txt
+  become: true
+  become_user: vagrant
+  when: ceph_dir.stat.exists
+
+- name: Copy utility sources to Ceph tools directory
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/ceph_patches/{{ item }}"
+    dest: /home/vagrant/ceph/src/tools/{{ item }}
+    mode: "0644"
+  loop:
+    - bs_util.cc
+    - objectstore_bench.cc
+    - test_kv.cc
+    - bs_ondisk.cc
+    - bs_xattr.cc
+  when: ceph_dir.stat.exists
+
+- name: Read CMakeLists.txt content from local
+  ansible.builtin.set_fact:
+    cmake_append_content: "{{ lookup('file', playbook_dir + '/ceph_patches/CMakeLists.txt') }}"
+  when: ceph_dir.stat.exists
+
+- name: Append CMakeLists.txt to Ceph tools directory
+  ansible.builtin.blockinfile:
+    path: /home/vagrant/ceph/src/tools/CMakeLists.txt
+    block: "{{ cmake_append_content }}"
+    marker: "# {mark} SWIFTACULAR BLUESTORE TOOLS"
+  when: ceph_dir.stat.exists
+
+- name: Build BlueStore utilities with Ninja
+  ansible.builtin.shell: |
+    cd /home/vagrant/ceph/build
+    ninja
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: vagrant
+  when: ceph_dir.stat.exists
+  changed_when: true
+  register: ceph_build_result
+
+- name: Display BlueStore utilities build status
+  ansible.builtin.debug:
+    msg: "✓ BlueStore utilities built and installed to /usr/local/bin"
+  when: ceph_dir.stat.exists and ceph_build_result.rc == 0
+
+- name: Fail if Ceph directory not found
+  ansible.builtin.fail:
+    msg: "FAILED: Ceph directory not found at /home/vagrant/ceph - required for BlueStore backend"
+  when: not ceph_dir.stat.exists

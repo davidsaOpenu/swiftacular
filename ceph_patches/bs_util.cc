@@ -96,7 +96,7 @@ public:
         string block_path = base_path + "/block";
         int fd = ::open(block_path.c_str(), O_CREAT|O_RDWR|O_TRUNC, 0644);
         if (fd < 0) return -1;
-        ::ftruncate(fd, 10LL*1024*1024*1024); # 2 GB
+        ::ftruncate(fd, 10LL*1024*1024*1024); // 2 GB
         ::close(fd);
 
         store = new BlueStore(cct.get(), base_path);

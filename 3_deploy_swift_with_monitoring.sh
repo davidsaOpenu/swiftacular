@@ -84,6 +84,9 @@ run_playbook "install_packages_on_nodes.yml" "Install Packages" "packages"
 # Apply Swift patches (requires Swift packages to be installed)
 run_playbook "apply_patches.yml" "Apply Swift Patches"
 
+# Build BlueStore C++ utilities (only when swift_backend=bs)
+run_playbook "update_ceph_bs_tools.yml" "Build BlueStore Utilities"
+
 # Deploy Swift Cluster (repository setup and configuration)
 run_playbook "deploy_swift_cluster.yml" "Deploy Swift Cluster" "configure"
 

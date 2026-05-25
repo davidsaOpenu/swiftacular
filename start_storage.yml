@@ -38,3 +38,10 @@
       ansible.builtin.service:
         name: rsyslog
         state: restarted
+
+- name: Ensure swift-storage services are running
+  ansible.builtin.command: swift-init all start
+  register: swift_start_result
+  changed_when: false
+  failed_when: false
+  become: true
