@@ -43,6 +43,7 @@ import uuid
 import logging
 import traceback
 import xattr
+import subprocess
 from os.path import basename, dirname, exists, join, splitext
 import random
 from tempfile import mkstemp
@@ -96,6 +97,56 @@ TMP_BASE = 'tmp'
 MIN_TIME_UPDATE_AUDITOR_STATUS = 60
 # This matches rsync tempfiles, like ".<timestamp>.data.Xy095a"
 RE_RSYNC_TEMPFILE = re.compile(r'^\..*\.([a-zA-Z0-9_]){6}$')
+
+# BlueStore backend configuration
+# Default to Ceph build directory, fallback to PATH
+_BS_XATTR_DEFAULT = '/home/vagrant/ceph/build/bin/bs_xattr'
+BS_XATTR_PATH = os.environ.get('BS_XATTR_PATH',
+                                _BS_XATTR_DEFAULT if os.path.exists(_BS_XATTR_DEFAULT)
+                                else 'bs_xattr')
+USE_BS_XATTR = True  # Set to True to use BlueStore xattr backend
+
+
+def _bs_xattr_get(filepath, key):
+    """Call bs_xattr get to retrieve extended attribute (returns bytes)."""
+    try:
+        key_str = key.decode('utf-8') if isinstance(key, bytes) else key
+        result = subprocess.run(
+            [BS_XATTR_PATH, 'get', filepath, key_str],
+            capture_output=True,
+            check=False
+        )
+        if result.returncode == errno.ENODATA:
+            # Key not found
+            raise OSError(errno.ENODATA, "No data available")
+        elif result.returncode != 0:
+            raise OSError(errno.EIO, "bs_xattr get failed")
+        return result.stdout  # Binary data
+    except FileNotFoundError:
+        logging.error("bs_xattr utility not found at %s", BS_XATTR_PATH)
+        raise OSError(errno.ENOTSUP, "bs_xattr not available")
+
+
+def _bs_xattr_set(filepath, key, value):
+    """Call bs_xattr set to store extended attribute (value as bytes via stdin)."""
+    try:
+        key_str = key.decode('utf-8') if isinstance(key, bytes) else key
+        value_bytes = value if isinstance(value, bytes) else value.encode('utf-8')
+
+        # Pass binary value via stdin to handle large/binary metadata
+        result = subprocess.run(
+            [BS_XATTR_PATH, 'set', filepath, key_str],
+            input=value_bytes,
+            capture_output=True,
+            check=False
+        )
+        if result.returncode != 0:
+            if b'No space left' in result.stderr or b'Disk quota exceeded' in result.stderr:
+                raise OSError(errno.ENOSPC, "No space left on device")
+            raise OSError(errno.EIO, "bs_xattr set failed")
+    except FileNotFoundError:
+        logging.error("bs_xattr utility not found at %s", BS_XATTR_PATH)
+        raise OSError(errno.ENOTSUP, "bs_xattr not available")
 
 
 def get_data_dir(policy_or_index):
@@ -191,38 +242,77 @@ def read_metadata(fd, add_missing_checksum=False):
 
     :returns: dictionary of metadata
     """
+    filepath = _get_filename(fd)
     metadata = b''
     key = 0
-    try:
-        while True:
-            metadata += xattr.getxattr(
-                fd, METADATA_KEY + str(key or '').encode('ascii'))
-            key += 1
-    except (IOError, OSError) as e:
-        if errno.errorcode.get(e.errno) in ('ENOTSUP', 'EOPNOTSUPP'):
-            msg = "Filesystem at %s does not support xattr"
-            logging.exception(msg, _get_filename(fd))
-            raise DiskFileXattrNotSupported(e)
-        if e.errno == errno.ENOENT:
-            raise DiskFileNotExist()
-        # TODO: we might want to re-raise errors that don't denote a missing
-        # xattr here.  Seems to be ENODATA on linux and ENOATTR on BSD/OSX.
 
-    metadata_checksum = None
-    try:
-        metadata_checksum = xattr.getxattr(fd, METADATA_CHECKSUM_KEY)
-    except (IOError, OSError):
-        # All the interesting errors were handled above; the only thing left
-        # here is ENODATA / ENOATTR to indicate that this attribute doesn't
-        # exist. This is fine; it just means that this object predates the
-        # introduction of metadata checksums.
-        if add_missing_checksum:
-            new_checksum = (md5(metadata, usedforsecurity=False)
-                            .hexdigest().encode('ascii'))
+    # Use BlueStore xattr backend if enabled
+    if USE_BS_XATTR:
+        # Read metadata chunks until we get ENODATA (no more chunks)
+        while True:
             try:
-                xattr.setxattr(fd, METADATA_CHECKSUM_KEY, new_checksum)
+                chunk = _bs_xattr_get(
+                    filepath, METADATA_KEY + str(key or '').encode('ascii'))
+                metadata += chunk
+                key += 1
             except (IOError, OSError) as e:
-                logging.error("Error adding metadata: %s" % e)
+                if e.errno == errno.ENODATA:
+                    # End of metadata chunks - this is expected
+                    break
+                elif errno.errorcode.get(e.errno) in ('ENOTSUP', 'EOPNOTSUPP'):
+                    msg = "BlueStore xattr backend not available for %s"
+                    logging.exception(msg, filepath)
+                    raise DiskFileXattrNotSupported(e)
+                elif e.errno == errno.ENOENT:
+                    raise DiskFileNotExist()
+                else:
+                    raise
+
+        # If no metadata was read at all, file doesn't exist
+        if not metadata:
+            raise DiskFileNotExist()
+
+        metadata_checksum = None
+        try:
+            metadata_checksum = _bs_xattr_get(filepath, METADATA_CHECKSUM_KEY)
+        except (IOError, OSError) as e:
+            if e.errno != errno.ENODATA:
+                # Real error, not just missing checksum
+                raise
+            # Checksum not found - either old object or missing checksum
+            if add_missing_checksum:
+                new_checksum = (md5(metadata, usedforsecurity=False)
+                                .hexdigest().encode('ascii'))
+                try:
+                    _bs_xattr_set(filepath, METADATA_CHECKSUM_KEY, new_checksum)
+                except (IOError, OSError) as e:
+                    logging.error("Error adding metadata checksum: %s" % e)
+    else:
+        # Fallback to standard xattr
+        try:
+            while True:
+                metadata += xattr.getxattr(
+                    fd, METADATA_KEY + str(key or '').encode('ascii'))
+                key += 1
+        except (IOError, OSError) as e:
+            if errno.errorcode.get(e.errno) in ('ENOTSUP', 'EOPNOTSUPP'):
+                msg = "Filesystem at %s does not support xattr"
+                logging.exception(msg, filepath)
+                raise DiskFileXattrNotSupported(e)
+            if e.errno == errno.ENOENT:
+                raise DiskFileNotExist()
+
+        metadata_checksum = None
+        try:
+            metadata_checksum = xattr.getxattr(fd, METADATA_CHECKSUM_KEY)
+        except (IOError, OSError):
+            if add_missing_checksum:
+                new_checksum = (md5(metadata, usedforsecurity=False)
+                                .hexdigest().encode('ascii'))
+                try:
+                    xattr.setxattr(fd, METADATA_CHECKSUM_KEY, new_checksum)
+                except (IOError, OSError) as e:
+                    logging.error("Error adding metadata: %s" % e)
 
     if metadata_checksum:
         computed_checksum = (md5(metadata, usedforsecurity=False)
@@ -248,29 +338,50 @@ def write_metadata(fd, metadata, xattr_size=65536):
     :param fd: file descriptor or filename to write the metadata
     :param metadata: metadata to write
     """
+    filepath = _get_filename(fd)
     metastr = pickle.dumps(_encode_metadata(metadata), PICKLE_PROTOCOL)
     metastr_md5 = (
         md5(metastr, usedforsecurity=False).hexdigest().encode('ascii'))
     key = 0
-    try:
-        while metastr:
-            xattr.setxattr(fd, METADATA_KEY + str(key or '').encode('ascii'),
-                           metastr[:xattr_size])
-            metastr = metastr[xattr_size:]
-            key += 1
-        xattr.setxattr(fd, METADATA_CHECKSUM_KEY, metastr_md5)
-    except IOError as e:
-        # errno module doesn't always have both of these, hence the ugly
-        # check
-        if errno.errorcode.get(e.errno) in ('ENOTSUP', 'EOPNOTSUPP'):
-            msg = "Filesystem at %s does not support xattr"
-            logging.exception(msg, _get_filename(fd))
-            raise DiskFileXattrNotSupported(e)
-        elif e.errno in (errno.ENOSPC, errno.EDQUOT):
-            msg = "No space left on device for %s" % _get_filename(fd)
-            logging.exception(msg)
-            raise DiskFileNoSpace()
-        raise
+
+    # Use BlueStore xattr backend if enabled
+    if USE_BS_XATTR:
+        try:
+            while metastr:
+                _bs_xattr_set(filepath, METADATA_KEY + str(key or '').encode('ascii'),
+                             metastr[:xattr_size])
+                metastr = metastr[xattr_size:]
+                key += 1
+            _bs_xattr_set(filepath, METADATA_CHECKSUM_KEY, metastr_md5)
+        except IOError as e:
+            if errno.errorcode.get(e.errno) in ('ENOTSUP', 'EOPNOTSUPP'):
+                msg = "BlueStore xattr backend not available for %s"
+                logging.exception(msg, filepath)
+                raise DiskFileXattrNotSupported(e)
+            elif e.errno in (errno.ENOSPC, errno.EDQUOT):
+                msg = "No space left on device for %s" % filepath
+                logging.exception(msg)
+                raise DiskFileNoSpace()
+            raise
+    else:
+        # Fallback to standard xattr
+        try:
+            while metastr:
+                xattr.setxattr(fd, METADATA_KEY + str(key or '').encode('ascii'),
+                               metastr[:xattr_size])
+                metastr = metastr[xattr_size:]
+                key += 1
+            xattr.setxattr(fd, METADATA_CHECKSUM_KEY, metastr_md5)
+        except IOError as e:
+            if errno.errorcode.get(e.errno) in ('ENOTSUP', 'EOPNOTSUPP'):
+                msg = "Filesystem at %s does not support xattr"
+                logging.exception(msg, filepath)
+                raise DiskFileXattrNotSupported(e)
+            elif e.errno in (errno.ENOSPC, errno.EDQUOT):
+                msg = "No space left on device for %s" % filepath
+                logging.exception(msg)
+                raise DiskFileNoSpace()
+            raise
 
 
 def extract_policy(obj_path):
@@ -703,6 +814,8 @@ class BaseDiskFileManager(object):
         # BlueStore Backend Logging
         self.logger.warning("=" * 80)
         self.logger.warning("BLUESTORE BACKEND INITIALIZED - Using bs_diskfile.py")
+        self.logger.warning("BlueStore xattr backend: %s", "ENABLED" if USE_BS_XATTR else "DISABLED")
+        self.logger.warning("bs_xattr utility path: %s", BS_XATTR_PATH)
         self.logger.warning("This is NOT the standard XFS diskfile backend")
         self.logger.warning("=" * 80)
         self.disk_chunk_size = int(conf.get('disk_chunk_size', 65536))
