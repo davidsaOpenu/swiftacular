@@ -1,33 +1,40 @@
 ---
-# Apply Swift patches in order based on numeric prefix
-# This playbook makes decisions about WHAT to apply and WHEN
-# apply_single_patch.yml is the executor that does the actual work
+# Apply Swift patches and install BlueStore backend files
 
-# Generate BlueStore backend patch from modified source files
-- name: Generate BlueStore backend patch
-  hosts: localhost
-  connection: local
-  gather_facts: false
-  become: false
+# Install BlueStore backend files directly (no patching)
+- name: Install BlueStore backend files
+  hosts: storage
+  become: true
   tasks:
-    - name: Create 1_bs_object.patch from bs_diskfile.py and bs_server.py
-      ansible.builtin.shell: |
-        set -o pipefail
-        cd {{ playbook_dir }}/swift_patches/obj
-        # Create patch for bs_diskfile.py
-        diff -u /dev/null bs_diskfile.py | \
-          sed 's|/dev/null|a/obj/bs_diskfile.py|' | \
-          sed 's|bs_diskfile.py|b/obj/bs_diskfile.py|' > /tmp/bs_diskfile.patch || true
-        # Create patch for bs_server.py
-        diff -u /dev/null bs_server.py | \
-          sed 's|/dev/null|a/obj/bs_server.py|' | \
-          sed 's|bs_server.py|b/obj/bs_server.py|' > /tmp/bs_server.patch || true
-        # Combine patches
-        cat /tmp/bs_diskfile.patch /tmp/bs_server.patch > {{ playbook_dir }}/swift_patches/1_bs_object.patch
-        echo "Generated 1_bs_object.patch ($(wc -l < {{ playbook_dir }}/swift_patches/1_bs_object.patch) lines)"
-      args:
-        executable: /bin/bash
-      changed_when: true
+    - name: Copy bs_diskfile.py to Swift obj directory
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/swift_patches/obj/bs_diskfile.py"
+        dest: /usr/lib/python3.9/site-packages/swift/obj/bs_diskfile.py
+        mode: "0644"
+        owner: root
+        group: root
+      when: swift_backend is defined and swift_backend == 'bs'
+
+    - name: Copy bs_server.py to Swift obj directory
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/swift_patches/obj/bs_server.py"
+        dest: /usr/lib/python3.9/site-packages/swift/obj/bs_server.py
+        mode: "0644"
+        owner: root
+        group: root
+      when: swift_backend is defined and swift_backend == 'bs'
+
+    - name: Register bs_object entry point
+      ansible.builtin.lineinfile:
+        path: /usr/lib/python3.9/site-packages/swift-2.35.0.dist-info/entry_points.txt
+        insertafter: "^\\[paste\\.app_factory\\]"
+        line: "bs_object = swift.obj.bs_server:app_factory"
+        state: present
+      when: swift_backend is defined and swift_backend == 'bs'
+
+    - name: Display BlueStore backend installation status
+      ansible.builtin.debug:
+        msg: "✓ BlueStore backend files installed: bs_diskfile.py, bs_server.py, entry point registered"
       when: swift_backend is defined and swift_backend == 'bs'
 
 # Install patch utility on all nodes
@@ -46,17 +53,6 @@
   become: true
   vars:
     patches:
-      - name: "BlueStore (bs_object) backend"
-        patch_file: "1_bs_object.patch"
-        target_dir: "/usr/lib/python3.9/site-packages/swift"
-        patch_level: 1
-        apply_when: "{{ swift_backend is defined and swift_backend == 'bs' }}"
-        # Special post-patch action: register entry point
-        register_entry_point: true
-        entry_point_file: "/usr/lib/python3.9/site-packages/swift-2.35.0.dist-info/entry_points.txt"
-        entry_point_line: "bs_object = swift.obj.bs_server:app_factory"
-        entry_point_section: "^\\[paste\\.app_factory\\]"
-
       - name: "Container sharder always enabled"
         patch_file: "2_sharder.patch"
         target_dir: "/usr/lib/python3.9/site-packages/swift/container"
@@ -74,29 +70,3 @@
         loop_var: patch_item
         label: "{{ patch_item.patch_file }}"
       when: patch_item.apply_when | default(true)
-
-    # Special handling: Register entry points for patches that need it
-    - name: "Register entry point for: {{ patch_item.name }}"
-      ansible.builtin.lineinfile:
-        path: "{{ patch_item.entry_point_file }}"
-        insertafter: "{{ patch_item.entry_point_section }}"
-        line: "{{ patch_item.entry_point_line }}"
-        state: present
-      loop: "{{ patches | sort(attribute='patch_file') }}"
-      loop_control:
-        loop_var: patch_item
-        label: "{{ patch_item.patch_file }}"
-      when:
-        - patch_item.apply_when | default(true)
-        - patch_item.register_entry_point | default(false)
-
-    - name: "Display entry point registration: {{ patch_item.name }}"
-      ansible.builtin.debug:
-        msg: "✓ Registered entry point: {{ patch_item.entry_point_line }}"
-      loop: "{{ patches | sort(attribute='patch_file') }}"
-      loop_control:
-        loop_var: patch_item
-        label: "{{ patch_item.patch_file }}"
-      when:
-        - patch_item.apply_when | default(true)
-        - patch_item.register_entry_point | default(false)

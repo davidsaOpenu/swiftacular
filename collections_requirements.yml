@@ -7,4 +7,3 @@ collections:
   - name: performancecopilot.metrics
     type: git
     source: https://github.com/performancecopilot/ansible-pcp.git
-    version: 2.3.0

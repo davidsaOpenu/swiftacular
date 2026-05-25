@@ -43,6 +43,151 @@
       register: pytest_result
       changed_when: false
 
+- name: Verify BlueStore utilities
+  hosts: storage
+  become: true
+  environment:
+    PATH: "/home/vagrant/ceph/build/bin:{{ ansible_env.PATH }}"
+  tasks:
+    - name: Check if BlueStore utilities should be verified
+      ansible.builtin.set_fact:
+        verify_bs_utils: "{{ swift_backend is defined and swift_backend == 'bs' }}"
+
+    - name: Verify bs_xattr utility exists
+      ansible.builtin.command: which bs_xattr
+      register: bs_xattr_path
+      changed_when: false
+      failed_when: false
+      when: verify_bs_utils
+
+    - name: Test bs_xattr (get non-existent key returns error)
+      ansible.builtin.command: bs_xattr get /tmp/nonexistent user.test
+      register: bs_xattr_test
+      changed_when: false
+      failed_when: false
+      when: verify_bs_utils and bs_xattr_path.rc == 0
+
+    - name: Test bs_ondisk utility exists
+      ansible.builtin.command: which bs_ondisk
+      register: bs_ondisk_path
+      changed_when: false
+      failed_when: false
+      when: verify_bs_utils
+
+    - name: Test bs_ondisk (help message)
+      ansible.builtin.command: bs_ondisk
+      register: bs_ondisk_test
+      changed_when: false
+      failed_when: false
+      when: verify_bs_utils and bs_ondisk_path.rc == 0
+
+    - name: Verify bs_util utility exists
+      ansible.builtin.command: which bs_util
+      register: bs_util_path
+      changed_when: false
+      failed_when: false
+      when: verify_bs_utils
+
+    - name: Verify objectstore_bench utility exists
+      ansible.builtin.command: which objectstore_bench
+      register: objectstore_bench_path
+      changed_when: false
+      failed_when: false
+      when: verify_bs_utils
+
+    - name: Verify test_kv utility exists
+      ansible.builtin.command: which test_kv
+      register: test_kv_path
+      changed_when: false
+      failed_when: false
+      when: verify_bs_utils
+
+    - name: Display BlueStore utilities verification results
+      ansible.builtin.debug:
+        msg: |
+          BlueStore Utilities Status:
+          - bs_xattr: {{ 'FOUND' if (verify_bs_utils and bs_xattr_path.rc == 0) else 'NOT FOUND' }}
+          - bs_ondisk: {{ 'FOUND' if (verify_bs_utils and bs_ondisk_path.rc == 0) else 'NOT FOUND' }}
+          - bs_util: {{ 'FOUND' if (verify_bs_utils and bs_util_path.rc == 0) else 'NOT FOUND' }}
+          - objectstore_bench: {{ 'FOUND' if (verify_bs_utils and objectstore_bench_path.rc == 0) else 'NOT FOUND' }}
+          - test_kv: {{ 'FOUND' if (verify_bs_utils and test_kv_path.rc == 0) else 'NOT FOUND' }}
+      when: verify_bs_utils
+
+    - name: Fail if any BlueStore utility is missing
+      ansible.builtin.fail:
+        msg: "FAILED: One or more required BlueStore utilities are missing! All 5 utilities must be present when swift_backend=bs"
+      when:
+        - verify_bs_utils
+        - bs_xattr_path.rc != 0 or bs_ondisk_path.rc != 0 or bs_util_path.rc != 0 or objectstore_bench_path.rc != 0 or test_kv_path.rc != 0
+
+- name: Run comprehensive BlueStore utility tests
+  hosts: storage
+  become: true
+  environment:
+    PATH: "/home/vagrant/ceph/build/bin:{{ ansible_env.PATH }}"
+    BS_XATTR_PATH: "/home/vagrant/ceph/build/bin/bs_xattr"
+    BS_ONDISK_PATH: "/home/vagrant/ceph/build/bin/bs_ondisk"
+    BS_UTIL_PATH: "/home/vagrant/ceph/build/bin/bs_util"
+  tasks:
+    - name: Check if BlueStore tests should run
+      ansible.builtin.set_fact:
+        run_bs_tests: "{{ swift_backend is defined and swift_backend == 'bs' }}"
+
+    - name: Copy test files to storage nodes
+      ansible.builtin.copy:
+        src: workload_tests/{{ item }}
+        dest: /home/vagrant/{{ item }}
+        mode: "0755"
+      loop:
+        - test_bs_xattr.py
+        - test_bs_ondisk.py
+      when: run_bs_tests
+
+    - name: Install pytest on storage nodes
+      ansible.builtin.dnf:
+        name: python3-pytest
+        state: present
+      when: run_bs_tests
+
+    - name: Run bs_xattr comprehensive tests
+      ansible.builtin.command: /usr/bin/python3 -m pytest test_bs_xattr.py -v
+      args:
+        chdir: /home/vagrant
+      register: bs_xattr_tests
+      changed_when: false
+      failed_when: false
+      when: run_bs_tests
+
+    - name: Display bs_xattr test results
+      ansible.builtin.debug:
+        msg: |
+          bs_xattr tests {{ 'PASSED' if bs_xattr_tests.rc == 0 else 'FAILED' }}
+          {{ bs_xattr_tests.stdout }}
+      when: run_bs_tests
+
+    - name: Run bs_ondisk comprehensive tests
+      ansible.builtin.command: /usr/bin/python3 -m pytest test_bs_ondisk.py -v
+      args:
+        chdir: /home/vagrant
+      register: bs_ondisk_tests
+      changed_when: false
+      failed_when: false
+      when: run_bs_tests
+
+    - name: Display bs_ondisk test results
+      ansible.builtin.debug:
+        msg: |
+          bs_ondisk tests {{ 'PASSED' if bs_ondisk_tests.rc == 0 else 'FAILED' }}
+          {{ bs_ondisk_tests.stdout }}
+      when: run_bs_tests
+
+    - name: Fail if BlueStore utility tests failed
+      ansible.builtin.fail:
+        msg: "BlueStore utility tests failed! Check output above for details."
+      when:
+        - run_bs_tests
+        - bs_xattr_tests.rc != 0 or bs_ondisk_tests.rc != 0
+
 # - name: Verify sharding
 #   hosts: storage
 #   tasks:

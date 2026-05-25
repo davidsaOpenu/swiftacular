@@ -1,0 +1,27 @@
+---
+# Build and install BlueStore C++ utilities
+
+# TODO: remove this task when ceph cloning will be a part of regular run
+#       rather than calling scripts/compile_and_test_bluestore.sh from the
+#       vagrant box preparation.
+- name: Fix Ceph directory ownership
+  hosts: storage
+  become: true
+  tasks:
+    - name: Change ownership of /home/vagrant/ceph/build to vagrant user
+      ansible.builtin.file:
+        path: /home/vagrant/ceph/build
+        owner: vagrant
+        group: vagrant
+        recurse: true
+        follow: false # Don't follow symlinks to avoid infinite loops
+      when: swift_backend is defined and swift_backend == 'bs'
+      register: ceph_ownership_result
+      failed_when: ceph_ownership_result.failed and not (ceph_ownership_result.msg is defined and 'does not exist' in ceph_ownership_result.msg)
+
+- name: Build BlueStore utilities
+  hosts: storage
+  tasks:
+    - name: Include BlueStore utilities build tasks
+      ansible.builtin.include_tasks: roles/storage/tasks/build_bluestore_utilities.yml
+      when: swift_backend is defined and swift_backend == 'bs'
