@@ -33,6 +33,10 @@ swift-storage-03 ansible_ssh_host=192.168.100.202 ansible_ssh_private_key_file=.
 [grafana]
 grafana-01 ansible_ssh_host=192.168.100.150 ansible_ssh_private_key_file=./.vagrant/machines/grafana-01/libvirt/private_key
 
+[jenkins]
+jenkins-01 ansible_ssh_host=192.168.100.170 ansible_ssh_private_key_file=./.vagrant/machines/jenkins-01/libvirt/private_key
+
+# [mainnodes] is not referenced by any playbook yet; add jenkins-01 here if a common play is introduced
 [mainnodes]
 swift-storage-[01:03]
 swift-proxy-[01:01]

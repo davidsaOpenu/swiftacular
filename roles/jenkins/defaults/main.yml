@@ -1,0 +1,18 @@
+---
+jenkins_home: /var/lib/jenkins
+jenkins_http_port: 8080
+jenkins_admin_user: admin
+jenkins_admin_password: admin
+jenkins_repo_url: https://review.gerrithub.io/davidsaOpenu/swiftacular
+jenkins_plugins:
+  - configuration-as-code
+  - job-dsl
+  - git
+  - workflow-aggregator
+  - ansible
+  - gerrit-trigger
+jenkins_vagrant_key_vms:
+  - swift-package-cache-01
+  - swift-storage-01
+  - swift-storage-02
+  - swift-storage-03
