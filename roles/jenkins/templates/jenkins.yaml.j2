@@ -1,0 +1,46 @@
+jenkins:
+  systemMessage: "Swiftacular CI - Configured as Code"
+  numExecutors: 2
+
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "{{ jenkins_admin_user }}"
+          password: "{{ jenkins_admin_password }}"
+
+  authorizationStrategy:
+    # Single admin user in dev; replace with matrix-auth for multi-user or production deployments
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+{% for vm in jenkins_vagrant_key_vms %}
+          - basicSSHUserPrivateKey:
+              scope: GLOBAL
+              id: "vagrant-{{ vm }}"
+              username: "vagrant"
+              privateKeySource:
+                directEntry:
+                  privateKey: "${file:{{ jenkins_home }}/.ssh/vagrant_keys/{{ vm }}}"
+{% endfor %}
+
+jobs:
+  - script: |
+      pipelineJob('swiftacular-workload-tests') {
+        description('Runs Swift workload tests on every change request')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote { url('{{ jenkins_repo_url }}') }
+                branch('master')
+              }
+            }
+            scriptPath('Jenkinsfile')
+          }
+        }
+      }

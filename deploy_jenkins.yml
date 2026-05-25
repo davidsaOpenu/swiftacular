@@ -1,0 +1,6 @@
+---
+- name: Deploy Jenkins with Configuration as Code
+  hosts: jenkins
+  become: true
+  roles:
+    - jenkins

@@ -1,0 +1,115 @@
+---
+- name: Install Java 21
+  ansible.builtin.dnf:
+    name: java-21-openjdk
+    state: present
+  tags: install
+
+- name: Set Java 21 as default
+  community.general.alternatives:
+    name: java
+    path: /usr/lib/jvm/java-21-openjdk/bin/java
+  tags: install
+
+- name: Add Jenkins repository
+  ansible.builtin.get_url:
+    url: https://pkg.jenkins.io/redhat-stable/jenkins.repo
+    dest: /etc/yum.repos.d/jenkins.repo
+    mode: "0644"
+  tags: install
+
+- name: Import Jenkins GPG key
+  ansible.builtin.rpm_key:
+    key: https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+    state: present
+  tags: install
+
+- name: Install Ansible and Jenkins
+  ansible.builtin.dnf:
+    name:
+      - ansible
+      - jenkins
+    state: present
+  tags: install
+
+- name: Create systemd drop-in directory for Jenkins
+  ansible.builtin.file:
+    path: /etc/systemd/system/jenkins.service.d
+    state: directory
+    mode: "0755"
+  tags: configure
+
+- name: Configure Jenkins environment via systemd drop-in
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/jenkins.service.d/override.conf
+    content: |
+      [Service]
+      Environment="JAVA_HOME=/usr/lib/jvm/java-21-openjdk"
+      Environment="JAVA_OPTS=-Djava.awt.headless=true -Djenkins.install.runSetupWizard=false"
+      Environment="CASC_JENKINS_CONFIG={{ jenkins_home }}/casc_configs"
+    mode: "0644"
+  notify: Restart jenkins
+  tags: configure
+
+- name: Create JCasC directory
+  ansible.builtin.file:
+    path: "{{ jenkins_home }}/casc_configs"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0755"
+  tags: configure
+
+- name: Deploy JCasC configuration
+  ansible.builtin.template:
+    src: jenkins.yaml.j2
+    dest: "{{ jenkins_home }}/casc_configs/jenkins.yaml"
+    owner: jenkins
+    group: jenkins
+    mode: "0644"
+  notify: Restart jenkins
+  tags: configure
+
+- name: Create SSH key store for Vagrant keys
+  ansible.builtin.file:
+    path: "{{ jenkins_home }}/.ssh/vagrant_keys"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0700"
+  tags: configure
+
+- name: Stage Vagrant SSH keys for pipeline use
+  ansible.builtin.copy:
+    src: ".vagrant/machines/{{ item }}/libvirt/private_key"
+    dest: "{{ jenkins_home }}/.ssh/vagrant_keys/{{ item }}"
+    owner: jenkins
+    group: jenkins
+    mode: "0600"
+  loop: "{{ jenkins_vagrant_key_vms }}"
+  tags: configure
+
+- name: Pre-install Jenkins plugins before first boot
+  ansible.builtin.command:
+    cmd: /usr/bin/jenkins-plugin-cli --plugins {{ jenkins_plugins | join(' ') }}
+  become_user: jenkins
+  changed_when: false
+  tags: install
+
+- name: Enable and start Jenkins
+  ansible.builtin.systemd:
+    name: jenkins
+    daemon_reload: true
+    enabled: true
+    state: started
+  tags: configure
+
+- name: Wait for Jenkins to start
+  ansible.builtin.uri:
+    url: "http://localhost:{{ jenkins_http_port }}/login"
+    status_code: 200
+  register: jenkins_up
+  retries: 30
+  delay: 10
+  until: jenkins_up.status == 200
+  tags: configure
