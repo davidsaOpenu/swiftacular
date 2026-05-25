@@ -1,0 +1,52 @@
+jenkins:
+  systemMessage: "Swiftacular CI - Configured as Code"
+  numExecutors: 2
+
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "{{ jenkins_admin_user }}"
+          password: "{{ jenkins_admin_password }}"
+
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+jobs:
+  - script: |
+      pipelineJob('swiftacular-workload-tests') {
+        description('Runs Swift workload tests on every change request')
+        definition {
+          cps {
+            script('''
+              pipeline {
+                agent any
+                stages {
+                  stage('Checkout') {
+                    steps {
+                      git url: '{{ jenkins_repo_url }}', branch: 'master'
+                    }
+                  }
+                  stage('Setup SSH Keys') {
+                    steps {
+                      sh 'KEY_STORE=/var/lib/jenkins/.ssh/vagrant_keys; for VM in swift-package-cache-01 swift-storage-01 swift-storage-02 swift-storage-03; do mkdir -p .vagrant/machines/$VM/libvirt && cp $KEY_STORE/$VM .vagrant/machines/$VM/libvirt/private_key && chmod 600 .vagrant/machines/$VM/libvirt/private_key; done'
+                    }
+                  }
+                  stage('Run Workload Tests') {
+                    steps {
+                      sh 'ansible-playbook -i hosts setup_workload_test.yml'
+                    }
+                  }
+                }
+                post {
+                  always {
+                    echo "Workload tests completed"
+                  }
+                }
+              }
+            ''')
+            sandbox(true)
+          }
+        }
+      }
