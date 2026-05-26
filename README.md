@@ -215,7 +215,3 @@ export VAGRANT_LOG=debug
 ## Modules
 
 - library/swift-ansible-modules/keystone_user
-
-## Issues
-
-See the [issues](https://github.com/curtisgithub/swiftacular/issues) in the tracking tracking system on Github for Swiftacular.
