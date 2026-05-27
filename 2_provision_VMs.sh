@@ -48,5 +48,5 @@ vagrant status --machine-readable | \
       vagrant ssh-config "$vm_name" >> ~/.ssh/config
     fi
   done
-
+chmod 600 /var/lib/jenkins/.ssh/config
 echo "SSH config updated successfully"
