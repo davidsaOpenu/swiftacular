@@ -43,15 +43,12 @@ EOF
 # Add base boxes
 vagrant box list | grep -q 'eurolinux-vagrant/centos-stream-9' || \
     vagrant box add eurolinux-vagrant/centos-stream-9 --provider libvirt
-vagrant box list | grep -q 'generic/ubuntu2204' || \
-    vagrant box add generic/ubuntu2204 --provider libvirt
 
 # Customize if --ceph flag
 if [[ "$1" == "--ceph" ]]; then
     [ ! -f "$SCRIPT_PATH" ] && echo "Error: $SCRIPT_PATH not found" && exit 1
     customize_box "eurolinux-vagrant/centos-stream-9"
-    customize_box "generic/ubuntu2204"
-    echo "Done! Use: eurolinux-vagrant/centos-stream-9-ceph or generic/ubuntu2204-ceph"
+    echo "Done! Use: eurolinux-vagrant/centos-stream-9-ceph"
 fi
 
 # Status display
