@@ -10,9 +10,14 @@ for cmd in python ansible-playbook ansible-galaxy; do
   fi
 done
 
-# Install collections from requirements (before running tox)
-ansible-galaxy collection install -r collections_requirements.yml -p library/ansible_collections
-
+# install ansible collections before running tox
+ansible-galaxy collection install community.general --force
+ansible-galaxy collection install community.mysql --force
+# Explicitly get v2.3.0. ansible-galaxy collection install performancecopilot.metrics
+# installs lates 2.4.0 without redis roles.
+# TODO: install latest, address the issue.
+ansible-galaxy collection install git+https://github.com/performancecopilot/ansible-pcp.git,v2.3.0 --force
+ansible-galaxy collection install ansible.posix --force
 
 # Pre-commit checks
 tox

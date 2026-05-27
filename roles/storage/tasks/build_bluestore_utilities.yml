@@ -84,7 +84,7 @@
 - name: Build BlueStore utilities with Ninja
   ansible.builtin.shell: |
     cd /home/vagrant/ceph/build
-    ninja
+    ninja -j 1
   args:
     executable: /bin/bash
   become: true

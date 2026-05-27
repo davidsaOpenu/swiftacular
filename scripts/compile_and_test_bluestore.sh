@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-BUILD_TYPE="RelWithDebInfo"
+BUILD_TYPE="Release"
 JOBS=$(nproc)
 RAM=18 # GB
 
@@ -100,7 +100,37 @@ configure_build() {
 
     cd "ceph"
 
-    export ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE -DWITH_BLUESTORE=ON -DWITH_TESTS=ON"
+    export ARGS="\
+      -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+      -DWITH_BLUESTORE=ON \
+      -DWITH_FUSE=OFF \
+      -DWITH_RADOSGW=OFF \
+      -DWITH_MGR=OFF \
+      -DWITH_MDS=OFF \
+      -DWITH_RBD=OFF \
+      -DWITH_KRBD=OFF \
+      -DWITH_CEPHFS=OFF \
+      -DWITH_MANPAGE=OFF \
+      -DWITH_SYSTEMD=OFF \
+      -DWITH_LTTNG=OFF \
+      -DWITH_BABELTRACE=OFF \
+      -DWITH_SPDK=OFF \
+      -DWITH_DPDK=OFF \
+      -DWITH_BLUESTORE_PMEM=OFF \
+      -DALLOCATOR=libc \
+      -DWITH_SYSTEM_BOOST=ON \
+      -DWITH_SYSTEM_ROCKSDB=OFF \
+      -DWITH_SYSTEM_ZSTD=ON \
+      -DWITH_TESTS=OFF \
+      -DWITH_CRIMSON=OFF \
+      -DWITH_JAEGER=OFF \
+      -DWITH_GRAFANA=OFF \
+      -DWITH_QATLIB=OFF \
+      -DWITH_QATZIP=OFF \
+      -DWITH_LIBURING=OFF \
+      -DWITH_BOOST=OFF \
+      -DWITH_SYSTEM_BOOST=OFF
+      -DWITH_TESTS=ON"
 
     ./do_cmake.sh
 
@@ -122,7 +152,7 @@ build_ceph() {
 
     print_status "Building with $JOBS parallel jobs..."
 
-    ninja -j$JOBS
+    ninja -j 1 #-j$JOBS
 
     cd ../..
 }
