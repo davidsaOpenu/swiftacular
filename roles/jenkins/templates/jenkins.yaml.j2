@@ -1,6 +1,11 @@
 jenkins:
   systemMessage: "Swiftacular CI - Configured as Code"
   numExecutors: 2
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: "GERRIT_OWNER_USERNAME"
+            value: "{{ gerrit_ssh_username }}"
 
   securityRealm:
     local:
@@ -27,11 +32,50 @@ credentials:
                 directEntry:
                   privateKey: "${file:{{ jenkins_home }}/.ssh/vagrant_keys/{{ vm }}}"
 {% endfor %}
+          - basicSSHUserPrivateKey:
+              scope: GLOBAL
+              id: "gerrit-ssh-key"
+              username: "{{ gerrit_ssh_username }}"
+              privateKeySource:
+                directEntry:
+                  privateKey: "{{ gerrit_ssh_private_key }}"
+
+unclassified:
+  location:
+    url: "http://{{ ansible_host }}:{{ jenkins_http_port }}/"
+  gerrit-trigger:
+    servers:
+      - name: "GerritHub"
+        noConnectionOnStartup: false
+        config:
+          gerritHostName: "review.gerrithub.io"
+          gerritSshPort: 29418
+          gerritUserName: "{{ gerrit_ssh_username }}"
+          gerritAuthKeyFile: "{{ jenkins_home }}/.ssh/gerrit_id_ed25519"
+          gerritFrontEndUrl: "https://review.gerrithub.io/"
+          gerritBuildStartedVerifiedValue: 0
+          gerritBuildStartedCodeReviewValue: 0
+          gerritBuildSuccessfulVerifiedValue: 1
+          gerritBuildSuccessfulCodeReviewValue: 0
+          gerritBuildFailedVerifiedValue: -1
+          gerritBuildFailedCodeReviewValue: 0
+          gerritBuildUnstableVerifiedValue: 0
+          gerritBuildUnstableCodeReviewValue: 0
+          gerritBuildNotBuiltVerifiedValue: 0
+          gerritBuildNotBuiltCodeReviewValue: 0
 
 jobs:
   - script: |
       pipelineJob('swiftacular-workload-tests') {
         description('Runs Swift workload tests on every change request')
+        triggers {
+          gerrit {
+            events {
+              patchsetCreated()
+            }
+            project('plain:davidsaOpenu/swiftacular', ['plain:master'])
+          }
+        }
         definition {
           cpsScm {
             scm {
