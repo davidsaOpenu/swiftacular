@@ -7,6 +7,7 @@ nodes = {
   'swift-proxy'         => [1, 100],
   'swift-storage'       => [3, 200],
 #  'grafana'             => [1, 150],
+  'jenkins'             => [1, 170],
 }
 
 # Select box based on ENV variable
