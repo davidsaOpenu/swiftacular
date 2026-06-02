@@ -22,6 +22,7 @@ This repository will create a virtualized OpenStack Swift cluster using Vagrant,
   - [Features](#features)
   - [Requirements](#hardware-requirements)
   - [Virtual machines created](#virtual-machines-created)
+  - [Jenkins CI](#jenkins-ci)
   - [Networking setup](#networking-setup)
   - [Self-signed certificates](#self-signed-certificates)
   - [Using the swift command line client](#using-the-swift-command-line-client)
@@ -121,6 +122,89 @@ vagrant_box.sh --ceph
 ```
 
 creates a VM with 20 GB of ram for bluestore compilation. The VM is destroyed later.
+
+## Jenkins CI
+
+Jenkins is deployed as a separate VM (`jenkins-01`) via an Ansible role with full
+Configuration as Code (JCasC). Each developer runs their own isolated Jenkins instance —
+no shared university server.
+
+### Prerequisites
+
+Generate a dedicated SSH key pair for Jenkins to authenticate with GerritHub:
+
+```bash
+ssh-keygen -t ed25519 -f gerrit_jenkins_key -C "jenkins@swiftacular"
+```
+
+Register `gerrit_jenkins_key.pub` in your GerritHub account:
+[https://review.gerrithub.io/settings/#SSHKeys](https://review.gerrithub.io/settings/#SSHKeys)
+
+### Setup
+
+**1. Create your credentials vault**
+```bash
+cp roles/jenkins/vars/vault.yml.example roles/jenkins/vars/vault.yml
+```
+
+Edit `roles/jenkins/vars/vault.yml` and fill in your values:
+```yaml
+vault_jenkins_admin_password: yourpassword
+vault_gerrit_ssh_username: your_gerrithub_username
+vault_gerrit_ssh_private_key: |
+  -----BEGIN OPENSSH PRIVATE KEY-----
+  <contents of gerrit_jenkins_key>
+  -----END OPENSSH PRIVATE KEY-----
+```
+
+Encrypt it:
+```bash
+ansible-vault encrypt roles/jenkins/vars/vault.yml
+```
+
+**2. Boot the Jenkins VM**
+```bash
+LIBVIRT_DEFAULT_URI=qemu:///system vagrant up jenkins-01
+```
+
+**3. Deploy Jenkins**
+```bash
+ansible-playbook deploy_jenkins.yml --ask-vault-pass
+```
+
+**4. Open Jenkins**
+
+URL: `http://192.168.100.170:8080` — login with the admin password you set in the vault.
+
+> `vault.yml` is git-ignored and never committed. Each developer holds their own encrypted copy.
+
+### CI Flow
+
+Once deployed, Jenkins listens to GerritHub automatically. Every push to `refs/for/master` triggers the following:
+
+```
+git push origin HEAD:refs/for/master
+        ↓
+GerritHub creates a Change Request
+        ↓
+gerrit-trigger detects patchset-created event via SSH stream
+        ↓
+Jenkins checks: is the uploader me? → if not, marks NOT_BUILT and stops
+        ↓
+Runs swiftacular-workload-tests pipeline
+        ↓
+Posts Verified +1 (pass) or Verified -1 (fail) back to the change
+```
+
+To submit a change request:
+```bash
+git push origin HEAD:refs/for/master
+```
+
+View the result on your change page:
+`https://review.gerrithub.io/c/davidsaOpenu/swiftacular/+/<change-number>`
+
+Under **Labels** you will see `Verified +1` or `Verified -1` posted by Jenkins, and a comment with a direct link to the build log.
 
 ## Networking setup
 
