@@ -1,0 +1,17 @@
+---
+# Copy this file to vault.yml, fill in your values, then encrypt it:
+#   cp roles/jenkins/vars/vault.yml.example roles/jenkins/vars/vault.yml
+#   ansible-vault encrypt roles/jenkins/vars/vault.yml
+
+vault_jenkins_admin_password: changeme
+
+# Your GerritHub username (used to associate the SSH key with your account)
+vault_gerrit_ssh_username: your_gerrithub_username
+
+# Private key of the SSH key pair you registered in GerritHub
+# Generate with: ssh-keygen -t ed25519 -f gerrit_jenkins_key -C "jenkins@swiftacular"
+# Register gerrit_jenkins_key.pub at: https://review.gerrithub.io/settings/#SSHKeys
+vault_gerrit_ssh_private_key: |
+  -----BEGIN OPENSSH PRIVATE KEY-----
+  paste_your_private_key_here
+  -----END OPENSSH PRIVATE KEY-----
