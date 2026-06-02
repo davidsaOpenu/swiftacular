@@ -1,14 +1,24 @@
 ---
+- name: Load vault credentials
+  ansible.builtin.include_vars: vault.yml
+  tags: always
+
 - name: Install Java 21
   ansible.builtin.dnf:
     name: java-21-openjdk
     state: present
   tags: install
 
+- name: Find Java 21 home
+  ansible.builtin.shell: "ls -d /usr/lib/jvm/java-21-openjdk-* | head -1"
+  register: java21_home
+  changed_when: false
+  tags: install
+
 - name: Set Java 21 as default
   community.general.alternatives:
     name: java
-    path: /usr/lib/jvm/java-21-openjdk/bin/java
+    path: "{{ java21_home.stdout }}/bin/java"
   tags: install
 
 - name: Add Jenkins repository
@@ -21,6 +31,12 @@
 - name: Import Jenkins GPG key
   ansible.builtin.rpm_key:
     key: https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+    state: present
+  tags: install
+
+- name: Install EPEL repository
+  ansible.builtin.dnf:
+    name: epel-release
     state: present
   tags: install
 
@@ -44,10 +60,72 @@
     dest: /etc/systemd/system/jenkins.service.d/override.conf
     content: |
       [Service]
-      Environment="JAVA_HOME=/usr/lib/jvm/java-21-openjdk"
+      Environment="JAVA_HOME={{ java21_home.stdout }}"
       Environment="JAVA_OPTS=-Djava.awt.headless=true -Djenkins.install.runSetupWizard=false"
       Environment="CASC_JENKINS_CONFIG={{ jenkins_home }}/casc_configs"
+      TimeoutStartSec=300
     mode: "0644"
+  notify: Restart jenkins
+  tags: configure
+
+- name: Create Jenkins secrets directory
+  ansible.builtin.file:
+    path: "{{ jenkins_home }}/secrets"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0700"
+  tags: configure
+
+- name: Write admin password to secrets file
+  ansible.builtin.copy:
+    content: "{{ jenkins_admin_password }}"
+    dest: "{{ jenkins_home }}/secrets/admin-password"
+    owner: jenkins
+    group: jenkins
+    mode: "0600"
+  notify: Restart jenkins
+  tags: configure
+
+- name: Create Jenkins init.groovy.d directory
+  ansible.builtin.file:
+    path: "{{ jenkins_home }}/init.groovy.d"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0755"
+  tags: configure
+
+- name: Deploy Jenkins URL init script
+  ansible.builtin.copy:
+    dest: "{{ jenkins_home }}/init.groovy.d/01-jenkins-url.groovy"
+    owner: jenkins
+    group: jenkins
+    mode: "0644"
+    content: |
+      import jenkins.model.JenkinsLocationConfiguration
+
+      def locationConfig = JenkinsLocationConfiguration.get()
+      locationConfig.setUrl('http://{{ ansible_host }}:{{ jenkins_http_port }}/')
+      locationConfig.save()
+  notify: Restart jenkins
+  tags: configure
+
+- name: Deploy admin password init script
+  ansible.builtin.copy:
+    dest: "{{ jenkins_home }}/init.groovy.d/00-admin-password.groovy"
+    owner: jenkins
+    group: jenkins
+    mode: "0644"
+    content: |
+      import jenkins.model.Jenkins
+      import hudson.security.HudsonPrivateSecurityRealm
+
+      def password = new File('{{ jenkins_home }}/secrets/admin-password').text.trim()
+      def realm = new HudsonPrivateSecurityRealm(false)
+      realm.createAccount('{{ jenkins_admin_user }}', password)
+      Jenkins.instance.setSecurityRealm(realm)
+      Jenkins.instance.save()
   notify: Restart jenkins
   tags: configure
 
@@ -89,12 +167,14 @@
   loop: "{{ jenkins_vagrant_key_vms }}"
   tags: configure
 
-- name: Pre-install Jenkins plugins before first boot
-  ansible.builtin.command:
-    cmd: /usr/bin/jenkins-plugin-cli --plugins {{ jenkins_plugins | join(' ') }}
-  become_user: jenkins
-  changed_when: false
-  tags: install
+- name: Deploy Gerrit SSH private key
+  ansible.builtin.copy:
+    content: "{{ gerrit_ssh_private_key }}"
+    dest: "{{ jenkins_home }}/.ssh/gerrit_id_ed25519"
+    owner: jenkins
+    group: jenkins
+    mode: "0600"
+  tags: configure
 
 - name: Enable and start Jenkins
   ansible.builtin.systemd:
@@ -104,12 +184,55 @@
     state: started
   tags: configure
 
-- name: Wait for Jenkins to start
+- name: Flush handlers to apply new JCasC before plugin installation
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for Jenkins to be ready with new JCasC
   ansible.builtin.uri:
     url: "http://localhost:{{ jenkins_http_port }}/login"
     status_code: 200
   register: jenkins_up
-  retries: 30
+  retries: 60
   delay: 10
   until: jenkins_up.status == 200
   tags: configure
+
+- name: Check if plugins are already installed
+  ansible.builtin.stat:
+    path: "{{ jenkins_home }}/plugins/configuration-as-code.jpi"
+  register: casc_plugin
+  tags: install
+
+- name: Download Jenkins CLI
+  ansible.builtin.get_url:
+    url: "http://localhost:{{ jenkins_http_port }}/jnlpJars/jenkins-cli.jar"
+    dest: "{{ jenkins_home }}/jenkins-cli.jar"
+    owner: jenkins
+    group: jenkins
+    mode: "0644"
+  when: not casc_plugin.stat.exists
+  tags: install
+
+- name: Install Jenkins plugins
+  ansible.builtin.command:
+    cmd: >
+      java -jar {{ jenkins_home }}/jenkins-cli.jar
+      -s http://{{ ansible_host }}:{{ jenkins_http_port }}
+      -webSocket
+      -auth {{ jenkins_admin_user }}:{{ jenkins_admin_password }}
+      install-plugin {{ jenkins_plugins | join(' ') }} -restart
+  become_user: jenkins
+  changed_when: false
+  when: not casc_plugin.stat.exists
+  tags: install
+
+- name: Wait for Jenkins to restart after plugin installation
+  ansible.builtin.uri:
+    url: "http://localhost:{{ jenkins_http_port }}/login"
+    status_code: 200
+  register: jenkins_up
+  retries: 60
+  delay: 10
+  until: jenkins_up.status == 200
+  when: not casc_plugin.stat.exists
+  tags: install

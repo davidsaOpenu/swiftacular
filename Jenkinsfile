@@ -1,6 +1,17 @@
 pipeline {
     agent any
     stages {
+        stage('Check ownership') {
+            steps {
+                script {
+                    if (env.GERRIT_PATCHSET_UPLOADER_USERNAME &&
+                        env.GERRIT_PATCHSET_UPLOADER_USERNAME != env.GERRIT_OWNER_USERNAME) {
+                        currentBuild.result = 'NOT_BUILT'
+                        error("Skipping: change belongs to ${env.GERRIT_PATCHSET_UPLOADER_USERNAME}, not ${env.GERRIT_OWNER_USERNAME}")
+                    }
+                }
+            }
+        }
         stage('Setup SSH Keys') {
             steps {
                 withCredentials([
