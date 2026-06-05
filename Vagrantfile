@@ -1,12 +1,12 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 nodes = {
-  'swift-package-cache' => [1, 20],
-  'swift-keystone'      => [1, 50],
-  # 'swift-lbssl'       => [1, 30],
+#'swift-package-cache' => [1, 20],
+#  'swift-keystone'      => [1, 50],
+# 'swift-lbssl'       => [1, 30],
   'swift-proxy'         => [1, 100],
   'swift-storage'       => [3, 200],
-  'grafana'             => [1, 150],
+#  'grafana'             => [1, 150],
 }
 
 # Select box based on ENV variable
@@ -80,7 +80,7 @@ Vagrant.configure("2") do |config|
         box.vm.hostname = "#{hostname}.example.com"
 
         box.vm.provider :libvirt do |v|
-          v.memory = 3072 #16384
+          v.memory = 6144 #16384
           v.cpus = `nproc`.to_i
         end
 
