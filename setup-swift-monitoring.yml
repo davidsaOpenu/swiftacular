@@ -184,7 +184,7 @@
       ansible.builtin.command: >
         /opt/grafana-venv/bin/python /tmp/configure_grafana.py
         delete-default-pcp-datasource
-        {{ hostvars['grafana-01']['ansible_default_ipv4']['address'] }}:3000
+        {{ hostvars[groups['grafana'][0]]['ansible_default_ipv4']['address'] }}:3000
         admin admin
       changed_when: false # noqa no-changed-when
 
@@ -195,7 +195,7 @@
       ansible.builtin.command: >
         /opt/grafana-venv/bin/python /tmp/configure_grafana.py
         create-pcp-datasource
-        {{ hostvars['grafana-01']['ansible_default_ipv4']['address'] }}:3000
+        {{ hostvars[groups['grafana'][0]]['ansible_default_ipv4']['address'] }}:3000
         admin admin
         {{ inventory_hostname }}
         {{ ansible_host }}
