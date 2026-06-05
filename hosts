@@ -1,6 +1,7 @@
 # Keystone
 [authentication]
-swift-keystone-01 ansible_ssh_host=192.168.100.50 ansible_ssh_private_key_file=./.vagrant/machines/swift-keystone-01/libvirt/private_key
+#swift-keystone-01 ansible_ssh_host=192.168.100.50 ansible_ssh_private_key_file=./.vagrant/machines/swift-keystone-01/libvirt/private_key
+swift-proxy-01 ansible_ssh_host=192.168.100.100 ansible_ssh_private_key_file=./.vagrant/machines/swift-proxy-01/libvirt/private_key
 
 # Loadbalancing and SSL
 # [lbssl]
@@ -8,16 +9,19 @@ swift-keystone-01 ansible_ssh_host=192.168.100.50 ansible_ssh_private_key_file=.
 
 # A place to run swift cli tests
 [swiftclient]
-swift-package-cache-01 ansible_ssh_host=192.168.100.20 ansible_ssh_private_key_file=./.vagrant/machines/swift-package-cache-01/libvirt/private_key
+#swift-package-cache-01 ansible_ssh_host=192.168.100.20 ansible_ssh_private_key_file=./.vagrant/machines/swift-package-cache-01/libvirt/private_key
+swift-proxy-01 ansible_ssh_host=192.168.100.100 ansible_ssh_private_key_file=./.vagrant/machines/swift-proxy-01/libvirt/private_key
 
 # Gauntlt is for running security checks
 # See: http://gauntlt.org/
 [gauntlt]
-swift-package-cache-01 ansible_ssh_host=192.168.100.20 ansible_ssh_private_key_file=./.vagrant/machines/swift-package-cache-01/libvirt/private_key
+#swift-package-cache-01 ansible_ssh_host=192.168.100.20 ansible_ssh_private_key_file=./.vagrant/machines/swift-package-cache-01/libvirt/private_key
+swift-proxy-01 ansible_ssh_host=192.168.100.100 ansible_ssh_private_key_file=./.vagrant/machines/swift-proxy-01/libvirt/private_key
 
 # apt-cacher-ng
 [package_cache]
-swift-package-cache-01 ansible_ssh_host=192.168.100.20 ansible_ssh_private_key_file=./.vagrant/machines/swift-package-cache-01/libvirt/private_key
+#swift-package-cache-01 ansible_ssh_host=192.168.100.20 ansible_ssh_private_key_file=./.vagrant/machines/swift-package-cache-01/libvirt/private_key
+swift-proxy-01 ansible_ssh_host=192.168.100.100 ansible_ssh_private_key_file=./.vagrant/machines/swift-proxy-01/libvirt/private_key
 
 # Swift proxy node
 [proxy]
@@ -31,7 +35,8 @@ swift-storage-02 ansible_ssh_host=192.168.100.201 ansible_ssh_private_key_file=.
 swift-storage-03 ansible_ssh_host=192.168.100.202 ansible_ssh_private_key_file=./.vagrant/machines/swift-storage-03/libvirt/private_key
 
 [grafana]
-grafana-01 ansible_ssh_host=192.168.100.150 ansible_ssh_private_key_file=./.vagrant/machines/grafana-01/libvirt/private_key
+#grafana-01 ansible_ssh_host=192.168.100.150 ansible_ssh_private_key_file=./.vagrant/machines/grafana-01/libvirt/private_key
+swift-proxy-01 ansible_ssh_host=192.168.100.100 ansible_ssh_private_key_file=./.vagrant/machines/swift-proxy-01/libvirt/private_key
 
 [mainnodes]
 swift-storage-[01:03]

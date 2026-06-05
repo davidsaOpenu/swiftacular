@@ -96,4 +96,3 @@ run_playbook "update_ceph_bs_tools.yml" "Build BlueStore Utilities"
 run_playbook "deploy_swift_cluster.yml" "Deploy Swift Cluster" "configure"
 
 # Setup and run workload tests
-run_playbook "setup_workload_test.yml" "Setup Workload Test"
