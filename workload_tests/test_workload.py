@@ -4,6 +4,9 @@ import swiftclient
 from verifier import Verifier
 from workloader import Workloader
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from config import KEYSTONE_HOST
+
 MEAN_SIZE = 1 * 1024 # 1 KB
 MAX_SIZE = 10 * 1024 # 10 KB
 MIN_SIZE = 512 # 512 Bytes
@@ -12,7 +15,7 @@ LARGE_FILE_SIZE = int(1.1 * 1024 * 1024 * 1024) # 1.1 GB
 LARGE_STDEV_SIZE = 0
 RETENTION_TIME = 24 * 60 * 60 # 24 hours
 
-PROXY_BASE_URL = 'http://192.168.100.50:5000'
+PROXY_BASE_URL = f"http://{KEYSTONE_HOST}:5000"
 AUTH_URL = f"{PROXY_BASE_URL}/v3"
 AUTH_VERSION = '3'
 USER = "achilles"

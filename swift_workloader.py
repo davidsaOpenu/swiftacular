@@ -1,8 +1,9 @@
 import swiftclient
 import random
 import uuid
+from config import KEYSTONE_HOST
 
-PROXY_BASE_URL = 'http://192.168.100.50:5000'
+PROXY_BASE_URL = f"http://{KEYSTONE_HOST}:5000"
 AUTH_URL = f"{PROXY_BASE_URL}/v3"
 AUTH_VERSION = '3'
 USER = "achilles"
