@@ -1,9 +1,11 @@
 import requests
 from swiftclient import client
+from config import KEYSTONE_HOST
 
 
 i = 1
-user, password, auth_url = "achilles", "CHANGEME", "http://192.168.100.50:5000/v3/auth/tokens"
+user, password = "achilles", "CHANGEME"
+auth_url = f"http://{KEYSTONE_HOST}:5000/v3/auth/tokens"
 continer_name, obejct_name, object_data, object_ttl =  f'test-container-{1}', f'obj_number_{1}', "A"*1, 60*60
 
 def get_connection_info(user, password, auth_url):
