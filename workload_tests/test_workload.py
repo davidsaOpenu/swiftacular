@@ -1,6 +1,11 @@
+import os
+import sys
 import uuid
+
 import pytest
 import swiftclient
+
+from config import KEYSTONE_HOST
 from verifier import Verifier
 from workloader import Workloader
 
@@ -12,7 +17,7 @@ LARGE_FILE_SIZE = int(1.1 * 1024 * 1024 * 1024) # 1.1 GB
 LARGE_STDEV_SIZE = 0
 RETENTION_TIME = 24 * 60 * 60 # 24 hours
 
-PROXY_BASE_URL = 'http://192.168.100.50:5000'
+PROXY_BASE_URL = f"http://{KEYSTONE_HOST}:5000"
 AUTH_URL = f"{PROXY_BASE_URL}/v3"
 AUTH_VERSION = '3'
 USER = "achilles"
