@@ -72,6 +72,9 @@ cp group_vars/all.example group_vars/all
 
 ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts setup-swift-monitoring.yml
 
+run_playbook "setup_workload_test.yml" "Setup Workload Test"
+exit 0
+
 # Install jsonnet on localhost
 ansible-playbook -i 'localhost,' -c local jsonnet_install.yml
 
