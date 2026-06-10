@@ -10,6 +10,11 @@
         src: workload_tests
         dest: /home/vagrant/
         mode: "0755"
+    - name: Copy hosts inventory to workload_tests directory
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/hosts"
+        dest: /home/vagrant/workload_tests/hosts
+        mode: "0644"
 
     - name: Enable CRB repository
       ansible.builtin.command:
