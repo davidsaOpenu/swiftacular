@@ -1,0 +1,17 @@
+# Swiftacular Swift patch manifest — the single source of truth for which patches
+# apply.sh applies, shared by the VM/Ansible flow and the Kubernetes image build.
+#
+# One patch per row.  Blank lines and lines starting with '#' are ignored.
+# Columns (whitespace-separated):
+#
+#   patch_file   path of the .patch file, relative to this directory
+#   level        the -p<level> strip count passed to patch(1)
+#   target_subdir  directory the patch applies in, relative to the Swift package
+#                  root (each OS prepends its own root, e.g. the deb dist-packages
+#                  path or the CentOS site-packages path)
+#
+# To add a future patch: drop the .patch file here and add one row below.
+# No change to apply.sh, the Dockerfiles, or the playbooks is required.
+#
+# patch_file        level  target_subdir
+2_sharder.patch     0      container
