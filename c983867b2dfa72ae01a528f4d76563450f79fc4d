@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "520c3e7d_9630926f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 27
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-06-12T13:18:47Z",
+      "side": 1,
+      "message": "CI is passing! Well done! Since you started working on changes, the way we are applying Swift and Ceph patches has changed. Can you please apply Swift patches from the same location as https://github.com/davidsaOpenu/swiftacular/blob/master/3_deploy_swift_with_monitoring.sh#L90 does and Ceph patches from the same location as https://github.com/davidsaOpenu/swiftacular/blob/master/3_deploy_swift_with_monitoring.sh#L93, and run tests as we are doing in https://github.com/davidsaOpenu/swiftacular/blob/master/3_deploy_swift_with_monitoring.sh#L99?\nHaving the same code to apply Swift/Ceph patches and run workload tests is essential to avoid duplication of patch applications. There is no problem with replacing Ansible given that the same code works in both VM/bare-metal deployments and Kubernetes.",
+      "revId": "c983867b2dfa72ae01a528f4d76563450f79fc4d",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
