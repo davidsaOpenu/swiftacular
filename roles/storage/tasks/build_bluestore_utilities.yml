@@ -56,29 +56,27 @@
   become_user: vagrant
   when: ceph_dir.stat.exists
 
-- name: Copy utility sources to Ceph tools directory
+# Inject the tool sources + CMake targets via the shared recipe in ceph_patches/
+# (inject.sh + CMakeLists.txt) — the same single source of truth the Kubernetes
+# build runs from kube_deploy/dockerfiles/Dockerfile.bluestore.  Which tools get
+# built is declared once, in the foreach inside ceph_patches/CMakeLists.txt.
+- name: Copy ceph_patches to the storage node
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/ceph_patches/{{ item }}"
-    dest: /home/vagrant/ceph/src/tools/{{ item }}
-    mode: "0644"
-  loop:
-    - bs_util.cc
-    - objectstore_bench.cc
-    - test_kv.cc
-    - bs_ondisk.cc
-    - bs_xattr.cc
+    src: "{{ playbook_dir }}/ceph_patches"
+    dest: /tmp/
+    mode: "0755"
   when: ceph_dir.stat.exists
 
-- name: Read CMakeLists.txt content from local
-  ansible.builtin.set_fact:
-    cmake_append_content: "{{ lookup('file', playbook_dir + '/ceph_patches/CMakeLists.txt') }}"
+- name: Inject BlueStore tool sources and CMake targets via the shared injector
+  ansible.builtin.command:
+    cmd: bash /tmp/ceph_patches/inject.sh /home/vagrant/ceph/src/tools
+  register: ceph_inject
+  changed_when: "'appended' in ceph_inject.stdout"
   when: ceph_dir.stat.exists
 
-- name: Append CMakeLists.txt to Ceph tools directory
-  ansible.builtin.blockinfile:
-    path: /home/vagrant/ceph/src/tools/CMakeLists.txt
-    block: "{{ cmake_append_content }}"
-    marker: "# {mark} SWIFTACULAR BLUESTORE TOOLS"
+- name: Show BlueStore injector output
+  ansible.builtin.debug:
+    var: ceph_inject.stdout_lines
   when: ceph_dir.stat.exists
 
 - name: Build BlueStore utilities with Ninja

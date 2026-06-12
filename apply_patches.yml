@@ -1,43 +1,12 @@
 ---
-# Apply Swift patches and install BlueStore backend files
+# Apply Swift patches and install the BlueStore backend.
+#
+# The patch list and the application logic live in swift_patches/ (patches.manifest
+# driven by apply.sh) — the single source of truth shared with the Kubernetes image
+# build (kube_deploy/dockerfiles/Dockerfile.storage).  Adding a patch is a one-row
+# change to patches.manifest; this playbook does not enumerate patches.
 
-# Install BlueStore backend files directly (no patching)
-- name: Install BlueStore backend files
-  hosts: storage
-  become: true
-  tasks:
-    - name: Copy bs_diskfile.py to Swift obj directory
-      ansible.builtin.copy:
-        src: "{{ playbook_dir }}/swift_patches/obj/bs_diskfile.py"
-        dest: /usr/lib/python3.9/site-packages/swift/obj/bs_diskfile.py
-        mode: "0644"
-        owner: root
-        group: root
-      when: swift_backend is defined and swift_backend == 'bs'
-
-    - name: Copy bs_server.py to Swift obj directory
-      ansible.builtin.copy:
-        src: "{{ playbook_dir }}/swift_patches/obj/bs_server.py"
-        dest: /usr/lib/python3.9/site-packages/swift/obj/bs_server.py
-        mode: "0644"
-        owner: root
-        group: root
-      when: swift_backend is defined and swift_backend == 'bs'
-
-    - name: Register bs_object entry point
-      ansible.builtin.lineinfile:
-        path: /usr/lib/python3.9/site-packages/swift-2.35.0.dist-info/entry_points.txt
-        insertafter: "^\\[paste\\.app_factory\\]"
-        line: "bs_object = swift.obj.bs_server:app_factory"
-        state: present
-      when: swift_backend is defined and swift_backend == 'bs'
-
-    - name: Display BlueStore backend installation status
-      ansible.builtin.debug:
-        msg: "✓ BlueStore backend files installed: bs_diskfile.py, bs_server.py, entry point registered"
-      when: swift_backend is defined and swift_backend == 'bs'
-
-# Install patch utility on all nodes
+# Install patch utility on all nodes (OS-specific; apply.sh needs the binary)
 - name: Install patch utility
   hosts: all
   become: true
@@ -47,26 +16,31 @@
         name: patch
         state: present
 
-# Apply storage node patches
-- name: Apply storage node patches
+# Apply the shared recipe on storage nodes
+- name: Apply Swift patches
   hosts: storage
   become: true
-  vars:
-    patches:
-      - name: "Container sharder always enabled"
-        patch_file: "2_sharder.patch"
-        target_dir: "/usr/lib/python3.9/site-packages/swift/container"
-        patch_level: 0
-        apply_when: true
-
   tasks:
-    # Apply each patch (only if apply_when condition is true)
-    - name: "Apply patch: {{ patch_item.name }}"
-      ansible.builtin.include_tasks: apply_single_patch.yml
-      vars:
-        patch: "{{ patch_item }}"
-      loop: "{{ patches | sort(attribute='patch_file') }}"
-      loop_control:
-        loop_var: patch_item
-        label: "{{ patch_item.patch_file }}"
-      when: patch_item.apply_when | default(true)
+    - name: Remove any stale swift_patches copy
+      ansible.builtin.file:
+        path: /tmp/swift_patches
+        state: absent
+
+    - name: Copy swift_patches to the storage node
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/swift_patches"
+        dest: /tmp/
+        mode: "0755"
+
+    - name: Apply Swift patches via the shared applier
+      ansible.builtin.command:
+        cmd: >-
+          bash /tmp/swift_patches/apply.sh
+          /usr/lib/python3.9/site-packages/swift
+          {{ '--with-bs' if (swift_backend | default('')) == 'bs' else '' }}
+      register: swift_apply
+      changed_when: "': applied' in swift_apply.stdout"
+
+    - name: Show Swift patch applier output
+      ansible.builtin.debug:
+        var: swift_apply.stdout_lines

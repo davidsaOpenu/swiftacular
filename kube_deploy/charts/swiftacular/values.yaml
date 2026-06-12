@@ -1,3 +1,4 @@
+---
 registry: localhost:5001
 
 namespace: swiftacular

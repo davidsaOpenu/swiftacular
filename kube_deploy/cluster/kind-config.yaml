@@ -1,3 +1,4 @@
+---
 # kind cluster topology. Single source of truth — bootstrap-cluster.sh renders
 # the ${...HOST_PORT} placeholders with envsubst (CI uses offset ports so they
 # don't collide with Jenkins on 8080), then passes the result to `kind create`.
