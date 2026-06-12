@@ -9,5 +9,7 @@ secrets:
   keystoneAdminPassword: devpassword
   keystoneMysqlPassword: devmysqlpass
   keystoneGenericServicePassword: devservicepass
-  keystoneTestUserPassword: devtestuserpass
+  # Must stay CHANGEME: the shared workload_tests/test_workload.py (also used
+  # by the VM/Ansible flow) hardcodes KEY = "CHANGEME" for the achilles user.
+  keystoneTestUserPassword: CHANGEME
   grafanaAdminPassword: devgrafanapass
