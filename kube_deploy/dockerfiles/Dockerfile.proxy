@@ -3,10 +3,13 @@ FROM localhost:5001/swiftacular-base:latest
 ARG ANSIBLE_PUBLIC_KEY
 ENV DEBIAN_FRONTEND=noninteractive
 
+# python3-pytest: the shared workload_tests/ suite (same files as the
+# VM/Ansible flow's setup_workload_test.yml) runs inside this pod.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         swift-proxy \
         python3-keystonemiddleware \
         python3-swiftclient \
+        python3-pytest \
         memcached \
         rsyslog \
     && rm -rf /var/lib/apt/lists/*

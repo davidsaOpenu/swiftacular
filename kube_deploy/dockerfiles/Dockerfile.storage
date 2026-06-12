@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         swift-container \
         swift-object \
         rsync \
+        patch \
         pcp \
         python3-pcp \
         python3-swiftclient \
@@ -20,6 +21,34 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         redis-server \
         xfsprogs \
     && rm -rf /var/lib/apt/lists/*
+
+# ── Swift patches — single source of truth: swift_patches/ at the repo root ──
+# The same files the VM/Ansible flow applies via apply_patches.yml.  Applied at
+# image build time so a patch that stops applying fails the build loudly
+# instead of silently shipping unpatched Swift.
+COPY swift_patches/ /tmp/swift_patches/
+
+RUN set -e; \
+    SWIFT_DIR=$(python3 -c "import swift, os; print(os.path.dirname(swift.__file__))"); \
+    echo "Swift package dir: ${SWIFT_DIR}"; \
+    # 1. Container sharder always enabled (swift_patches/2_sharder.patch, -p0
+    #    against the swift/container directory — same as apply_patches.yml)
+    cd "${SWIFT_DIR}/container"; \
+    patch -p0 < /tmp/swift_patches/2_sharder.patch; \
+    # 2. BlueStore backend files (swift_patches/obj/*.py)
+    install -m 0644 /tmp/swift_patches/obj/bs_diskfile.py "${SWIFT_DIR}/obj/bs_diskfile.py"; \
+    install -m 0644 /tmp/swift_patches/obj/bs_server.py   "${SWIFT_DIR}/obj/bs_server.py"; \
+    # 3. Register the bs_object paste app_factory entry point (same line
+    #    apply_patches.yml adds; metadata dir name differs between the CentOS
+    #    pip layout and the Ubuntu deb layout, so find it)
+    EP=$(find /usr/lib/python3/dist-packages -maxdepth 2 \
+           \( -path '*swift-*.egg-info/entry_points.txt' \
+           -o -path '*swift-*.dist-info/entry_points.txt' \) | head -1); \
+    test -n "${EP}" || { echo "ERROR: swift entry_points.txt not found"; exit 1; }; \
+    sed -i '/^\[paste\.app_factory\]/a bs_object = swift.obj.bs_server:app_factory' "${EP}"; \
+    grep -q '^bs_object' "${EP}"; \
+    echo "Swift patches applied: sharder, bs_diskfile, bs_server, bs_object entry point"; \
+    rm -rf /tmp/swift_patches
 
 # Swift runtime directories
 RUN install -d -o swift -g swift -m 0755 \
