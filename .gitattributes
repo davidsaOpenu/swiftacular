@@ -1,0 +1,11 @@
+# Files that execute on Linux (WSL, CI, inside containers) must keep LF
+# line endings even when checked out on Windows.  CRLF breaks:
+#   - shell shebangs        (/usr/bin/env: 'bash\r': No such file or directory)
+#   - Dockerfile line continuations (backslash followed by \r)
+#   - patch application     (CRLF context lines never match LF source files)
+#   - manifests read line-by-line (a trailing \r ends up inside a path field)
+*.sh            text eol=lf
+Dockerfile*     text eol=lf
+*.patch         text eol=lf
+CMakeLists.txt  text eol=lf
+*.manifest      text eol=lf
