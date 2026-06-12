@@ -1,11 +1,13 @@
-# BlueStore benchmark tools image — three-stage build.
+# BlueStore tools image — three-stage build.
 #
 # Stage 1  ceph-src    Shallow blobless clone of Ceph Umbrella v21.0.0 (~40 MB).
-# Stage 2  builder     Full build environment; injects our tools into Ceph's
-#                      cmake tree and compiles them (first build ~20-25 min,
-#                      fully cached by Docker after that).
-# Stage 3  runtime     Slim Ubuntu 26.04 image with the two binaries and their
-#                      shared-library dependencies.
+# Stage 2  builder     Full build environment; injects the shared ceph_patches/
+#                      tool sources into Ceph's cmake tree and compiles them
+#                      (first build ~20-25 min, fully cached by Docker after).
+# Stage 3  runtime     Slim Ubuntu 26.04 image with the BlueStore binaries
+#                      (built per ceph_patches/tools.list — the single tool
+#                      list), their shared-library dependencies, and the
+#                      shared workload_tests/ BlueStore pytest suites.
 #
 # Ceph Umbrella (v21) is the first Ceph release with official Ubuntu 26.04
 # support. Ubuntu 26.04's Boost 1.90 modular CMake layout, GCC 15, and
@@ -101,28 +103,32 @@ RUN sed -i '1s/^/include(ExternalProject)\n/' /ceph/src/CMakeLists.txt
 RUN grep -rl 'consteval' /ceph/src/include/ \
     | xargs -r sed -i 's/consteval/constexpr/g'
 
-# Inject our benchmark tools directly into Ceph's tools directory so cmake
-# handles all include paths and transitive link dependencies automatically.
-# Sources live under kube_deploy/ to keep the originals in bs_bench/ and
-# bs_util/ untouched.
-COPY kube_deploy/bs_bench/objectstore_bench.cc /ceph/src/swiftacular-tools/objectstore_bench.cc
-COPY kube_deploy/bs_util/bs_util.cc            /ceph/src/swiftacular-tools/bs_util.cc
+# ── Ceph patches — single source of truth: ceph_patches/ at the repo root ────
+# Same recipe the VM flow runs from build_bluestore_utilities.yml: inject.sh
+# copies the tool sources into Ceph's src/tools/ and appends the shared
+# CMakeLists snippet (which declares the tool targets).  Adding a tool is a data
+# change in ceph_patches/ (drop the .cc + add its name to the foreach there) —
+# no edit here.
+COPY ceph_patches/ /tmp/ceph_patches/
 
-# Append targets to the TOP-LEVEL CMakeLists.txt using echo (no heredoc).
-# Appending here — after add_subdirectory(src) already ran — guarantees that
-# os, kv, global, and ceph-common are all defined before cmake sees our targets.
-# Absolute source paths avoid any CMAKE_CURRENT_SOURCE_DIR resolution ambiguity.
+RUN bash /tmp/ceph_patches/inject.sh /ceph/src/tools
+
+# Ceph v21 / Ubuntu 26.04 fixup (build-env specific, NOT patch content — kept out
+# of the shared CMakeLists so it never reaches the CentOS VM flow): the default
+# --as-needed drops libceph-common.so for tools whose own objects do not
+# reference it directly (test_kv, bs_xattr); references introduced later by
+# libextblkdev.a then fail to resolve (ceph_pthread_getname, Log::submit_entry,
+# PluginRegistry::load).  --no-as-needed keeps the shared lib available for the
+# whole link.  Reads the same swiftacular-tools.list, so it stays in sync.
+RUN printf '\nfile(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/swiftacular-tools.list" _sw_tools)\nforeach(_tgt ${_sw_tools})\n  target_link_options(${_tgt} PRIVATE "LINKER:--no-as-needed")\nendforeach()\n' >> /ceph/src/tools/CMakeLists.txt
+
+# Ceph v21 + GCC 14 emit a wall of warnings from the support libraries our
+# tools link against; silence them (build-env concern, not patch content).
 RUN echo '' >> /ceph/CMakeLists.txt \
  && echo 'foreach(_cephtgt os kv bluestore global ceph-common)' >> /ceph/CMakeLists.txt \
  && echo '  if(TARGET ${_cephtgt})' >> /ceph/CMakeLists.txt \
  && echo '    target_compile_options(${_cephtgt} PRIVATE -w)' >> /ceph/CMakeLists.txt \
  && echo '  endif()' >> /ceph/CMakeLists.txt \
- && echo 'endforeach()' >> /ceph/CMakeLists.txt \
- && echo 'foreach(_tool bs_util objectstore_bench)' >> /ceph/CMakeLists.txt \
- && echo '  add_executable(${_tool} /ceph/src/swiftacular-tools/${_tool}.cc)' >> /ceph/CMakeLists.txt \
- && echo '  target_compile_options(${_tool} PRIVATE -w)' >> /ceph/CMakeLists.txt \
- && echo '  set_target_properties(${_tool} PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)' >> /ceph/CMakeLists.txt \
- && echo '  target_link_libraries(${_tool} PRIVATE os kv global ceph-common)' >> /ceph/CMakeLists.txt \
  && echo 'endforeach()' >> /ceph/CMakeLists.txt
 
 # Configure: enable only BlueStore and its required support libraries;
@@ -160,25 +166,39 @@ RUN cd /ceph && mkdir build && cd build && \
       -DWITH_QATLIB=OFF \
       -DWITH_QATZIP=OFF \
       -DWITH_LIBURING=OFF \
-    && ninja -j$(nproc) bs_util objectstore_bench
+    && ninja -j$(nproc) $(tr '\n' ' ' < /tmp/ceph_patches/tools.list)
 
 # Collect all transitive .so dependencies of our binaries into /runtime-libs
 # so Stage 3 needs no apt packages beyond the base image.
 RUN mkdir /runtime-libs \
+    && BINS=$(for t in $(tr '\n' ' ' < /tmp/ceph_patches/tools.list); do printf '/ceph/build/bin/%s ' "$t"; done) \
     && LD_LIBRARY_PATH=/ceph/build/lib \
-       ldd /ceph/build/bin/bs_util /ceph/build/bin/objectstore_bench \
-           /ceph/build/lib/libceph-common.so.2 \
+       ldd ${BINS} /ceph/build/lib/libceph-common.so.2 \
        | grep ' => /' | awk '{print $3}' | sort -u \
        | xargs -I{} cp {} /runtime-libs/ \
     && cp /ceph/build/lib/libceph-common.so* /runtime-libs/
+
+# Stage the built BlueStore binaries (per tools.list) so Stage 3 copies them in a
+# single COPY with no tool names hardcoded here.
+RUN mkdir -p /swtools \
+    && for t in $(tr '\n' ' ' < /tmp/ceph_patches/tools.list); do cp "/ceph/build/bin/${t}" /swtools/; done
 
 # ── Stage 3: slim runtime image ────────────────────────────────────────────────
 FROM ubuntu:26.04
 ENV DEBIAN_FRONTEND=noninteractive TZ=UTC
 
-COPY --from=builder /runtime-libs/                    /usr/local/lib/
-COPY --from=builder /ceph/build/bin/bs_util           /usr/local/bin/
-COPY --from=builder /ceph/build/bin/objectstore_bench /usr/local/bin/
+COPY --from=builder /runtime-libs/ /usr/local/lib/
+# BlueStore binaries, staged from tools.list in the builder — one COPY, no names.
+COPY --from=builder /swtools/      /usr/local/bin/
+
+# pytest + the shared BlueStore utility test suites (workload_tests/ at the
+# repo root — the same files setup_workload_test.yml runs on storage hosts).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3 python3-pytest \
+    && rm -rf /var/lib/apt/lists/*
+# Glob the bs suite (test_bs_*.py) + the shared runner, so a future bs test is
+# picked up by `run.sh bs` with no change here.
+COPY workload_tests/test_bs_*.py workload_tests/run.sh /opt/workload_tests/
 
 RUN ldconfig
 
