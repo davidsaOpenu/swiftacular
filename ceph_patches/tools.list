@@ -1,0 +1,5 @@
+bs_util
+objectstore_bench
+test_kv
+bs_ondisk
+bs_xattr
