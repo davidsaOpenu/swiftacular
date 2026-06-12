@@ -9,6 +9,8 @@
 #   3. End-to-end Swift  (create/upload/list/download/SHA-256/delete)
 #   4. Stress test       (N parallel uploads + downloads with throughput)
 #   5. PCP monitoring    (swiftdbinfo + Redis timeseries on all storage nodes)
+#   6. Workload tests    (W1 shared workload_tests/ tiny workload in proxy pod,
+#                         W2/W3 BlueStore utilities from ceph_patches/)
 #
 # All failures are collected; the script never aborts mid-suite.
 # Exit 0 = PASS, non-zero = FAIL.
@@ -720,6 +722,76 @@ else
   else
     t_fail "swift-recon replication on ${RECON_POD}"
   fi
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+section "6 / WORKLOAD TESTS  (shared workload_tests/ — same suite as the VM flow)"
+# ─────────────────────────────────────────────────────────────────────────────
+# Mirrors setup_workload_test.yml: the tiny workload runs via python-swiftclient
+# against Keystone+Swift, and the BlueStore utility suites run against the
+# binaries built from ceph_patches/.  Single source of truth: workload_tests/
+# at the repo root — no test code is duplicated for Kubernetes.
+
+WORKLOAD_SRC="$(cd "${SCRIPT_DIR}/../.." && pwd)/workload_tests"
+
+# W1 — test_workload.py::test_tiny_workload from inside the proxy pod
+# (cluster DNS resolves keystone-svc; no NodePort/NAT in the data path).
+if [[ ! -d "${WORKLOAD_SRC}" ]]; then
+  t_skip "W1 tiny workload" "workload_tests/ not found at repo root"
+elif [[ -z "${PROXY_POD}" ]]; then
+  t_fail "W1 tiny workload" "no running proxy pod"
+else
+  kubectl exec -n "${NAMESPACE}" "${PROXY_POD}" -- \
+    rm -rf /tmp/workload_tests 2>/dev/null || true
+  if ! kubectl cp "${WORKLOAD_SRC}" \
+       "${NAMESPACE}/${PROXY_POD}:/tmp/workload_tests" >/dev/null 2>&1; then
+    t_fail "W1 tiny workload" "kubectl cp of workload_tests/ failed"
+  else
+    # config.py resolves KEYSTONE_HOST from an Ansible-style inventory
+    # ([authentication] ansible_ssh_host=...); point it at the in-cluster
+    # Keystone Service instead of copying the VM hosts file.
+    kubectl exec -n "${NAMESPACE}" "${PROXY_POD}" -- bash -c \
+      "printf '[authentication]\nkeystone ansible_ssh_host=keystone-svc\n' > /tmp/workload_tests/hosts"
+    _w1_log=$(mktemp /tmp/workload-XXXXXX.log)
+    if kubectl exec -n "${NAMESPACE}" "${PROXY_POD}" -- bash -c \
+         "cd /tmp/workload_tests && python3 -m pytest test_workload.py::test_tiny_workload -svx" \
+         >"${_w1_log}" 2>&1; then
+      t_pass "W1 tiny workload (test_workload.py::test_tiny_workload in ${PROXY_POD})"
+    else
+      t_fail "W1 tiny workload (test_workload.py::test_tiny_workload)"
+      tail -30 "${_w1_log}" | sed 's/^/  /' >&2
+    fi
+    rm -f "${_w1_log}"
+  fi
+fi
+
+# W2/W3 — BlueStore utilities, run in the swiftacular-bluestore image on the
+# host Docker daemon (the utilities operate on local files; no cluster needed).
+_BS_IMG="localhost:5001/swiftacular-bluestore:latest"
+if ! command -v docker >/dev/null 2>&1 \
+   || ! docker image inspect "${_BS_IMG}" >/dev/null 2>&1; then
+  t_skip "W2 BlueStore utilities present" "swiftacular-bluestore image not in local Docker store"
+  t_skip "W3 BlueStore utility tests" "swiftacular-bluestore image not in local Docker store"
+else
+  if docker run --rm "${_BS_IMG}" bash -c \
+       'for b in bs_util objectstore_bench test_kv bs_ondisk bs_xattr; do
+          command -v "${b}" >/dev/null || { echo "MISSING: ${b}"; exit 1; }
+        done' >/dev/null 2>&1; then
+    t_pass "W2 BlueStore utilities present (bs_util objectstore_bench test_kv bs_ondisk bs_xattr)"
+  else
+    t_fail "W2 BlueStore utilities present" "one or more of the 5 binaries missing"
+  fi
+
+  _w3_log=$(mktemp /tmp/bstests-XXXXXX.log)
+  if docker run --rm "${_BS_IMG}" bash -c \
+       'cd /opt/workload_tests && python3 -m pytest test_bs_xattr.py test_bs_ondisk.py -v' \
+       >"${_w3_log}" 2>&1; then
+    t_pass "W3 BlueStore utility tests (test_bs_xattr.py, test_bs_ondisk.py)"
+  else
+    t_fail "W3 BlueStore utility tests"
+    tail -30 "${_w3_log}" | sed 's/^/  /' >&2
+  fi
+  rm -f "${_w3_log}"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
