@@ -41,8 +41,10 @@
         state: present
 
     # We're currently only running the tiny test. It would be good to run everything!
-    - name: Run workload tests
-      ansible.builtin.command: /usr/bin/python -m pytest "test_workload.py::test_tiny_workload" -svx
+    # Invocation lives in workload_tests/run.sh — the same runner the Kubernetes
+    # smoke test (kube_deploy/scripts/smoke-test.sh) calls.
+    - name: Run workload tests via the shared runner
+      ansible.builtin.command: bash run.sh workload
       args:
         chdir: /home/vagrant/workload_tests
       register: pytest_result
@@ -138,14 +140,16 @@
       ansible.builtin.set_fact:
         run_bs_tests: "{{ swift_backend is defined and swift_backend == 'bs' }}"
 
-    - name: Copy test files to storage nodes
+    # Glob the bs suite (test_bs_*.py) + the shared runner, so a future bs test
+    # is picked up with no change here — same files run.sh bs runs in the image.
+    - name: Copy bs test suite + shared runner to storage nodes
       ansible.builtin.copy:
-        src: workload_tests/{{ item }}
-        dest: /home/vagrant/{{ item }}
+        src: "{{ item }}"
+        dest: /home/vagrant/
         mode: "0755"
-      loop:
-        - test_bs_xattr.py
-        - test_bs_ondisk.py
+      loop: >-
+        {{ query('fileglob', playbook_dir + '/workload_tests/test_bs_*.py')
+           + [playbook_dir + '/workload_tests/run.sh'] }}
       when: run_bs_tests
 
     - name: Install pytest on storage nodes
@@ -154,36 +158,20 @@
         state: present
       when: run_bs_tests
 
-    - name: Run bs_xattr comprehensive tests
-      ansible.builtin.command: /usr/bin/python3 -m pytest test_bs_xattr.py -v
+    - name: Run BlueStore utility tests via the shared runner
+      ansible.builtin.command: bash run.sh bs
       args:
         chdir: /home/vagrant
-      register: bs_xattr_tests
+      register: bs_tests
       changed_when: false
       failed_when: false
       when: run_bs_tests
 
-    - name: Display bs_xattr test results
+    - name: Display BlueStore utility test results
       ansible.builtin.debug:
         msg: |
-          bs_xattr tests {{ 'PASSED' if bs_xattr_tests.rc == 0 else 'FAILED' }}
-          {{ bs_xattr_tests.stdout }}
-      when: run_bs_tests
-
-    - name: Run bs_ondisk comprehensive tests
-      ansible.builtin.command: /usr/bin/python3 -m pytest test_bs_ondisk.py -v
-      args:
-        chdir: /home/vagrant
-      register: bs_ondisk_tests
-      changed_when: false
-      failed_when: false
-      when: run_bs_tests
-
-    - name: Display bs_ondisk test results
-      ansible.builtin.debug:
-        msg: |
-          bs_ondisk tests {{ 'PASSED' if bs_ondisk_tests.rc == 0 else 'FAILED' }}
-          {{ bs_ondisk_tests.stdout }}
+          BlueStore tests {{ 'PASSED' if bs_tests.rc == 0 else 'FAILED' }}
+          {{ bs_tests.stdout }}
       when: run_bs_tests
 
     - name: Fail if BlueStore utility tests failed
@@ -191,7 +179,7 @@
         msg: "BlueStore utility tests failed! Check output above for details."
       when:
         - run_bs_tests
-        - bs_xattr_tests.rc != 0 or bs_ondisk_tests.rc != 0
+        - bs_tests.rc != 0
 
 # - name: Verify sharding
 #   hosts: storage
