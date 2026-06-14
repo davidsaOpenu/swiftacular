@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "340311dd_1a3de8c3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-06-14T11:21:04Z",
+      "side": 1,
+      "message": "Thanks for the new change request. With that please look at the comment https://review.gerrithub.io/c/davidsaOpenu/swiftacular/+/1237557/comments/520c3e7d_9630926f - we need no code duplication for swift/ceph patches application and test runs. They should be invoked from the same bits. This way, an update in one place requires careful update in another.",
+      "revId": "2303975b303ccc6b38dc97603cf99256c5f71d55",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
