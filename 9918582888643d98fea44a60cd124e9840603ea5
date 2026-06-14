@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a1639537_60cf4cbe",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-06-14T14:22:10Z",
+      "side": 1,
+      "message": "https://github.com/davidsaOpenu/swiftacular/blob/448108df9061392e5edae7432d638f8869e7f7e6/3_deploy_swift_with_monitoring.sh#L99 \n\n\nrun_playbook \"setup_jenkins_server.yml\" \"Setup Jenkins Server\" - start VM and run ansible-playbool deploy_jenkins.yam.",
+      "revId": "9918582888643d98fea44a60cd124e9840603ea5",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
