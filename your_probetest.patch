@@ -1,0 +1,17 @@
+--- /dev/null
++++ b/test/probe/test_object_read_writes.py
+@@ -0,0 +1,14 @@
++from swift.common import direct_client
++from test.probe.common import ReplProbeTest
++
++class TestObjectReadWrite(ReplProbeTest):
++    def test_main(self):
++        container_name = "container1"
++        object_name    = "object1"
++        payload        = b"1234"
++
++        apart, anodes = self.object_ring.get_nodes(self.account, container_name, object_name)
++        direct_client.direct_put_object(anodes[0], apart, self.account, container_name, object_name, payload)
++        headers, resp = direct_client.direct_get_object(anodes[0], apart, self.account, container_name, object_name)
++
++        self.assertEqual(payload, resp)
