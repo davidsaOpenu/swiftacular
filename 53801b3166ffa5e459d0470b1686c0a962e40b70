@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f6901e73_009196b2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1039625
+      },
+      "writtenOn": "2026-06-14T20:28:09Z",
+      "side": 1,
+      "message": "I would make 2 improvements\n\nUsing \u0027constant\u0027 container names can interfere with other tests/ other test instances.\n\nAlso notice how direct_put_object seems to test the direct part of the creation, without creating a container/ using the proxy (which might be relevant for the test)",
+      "revId": "53801b3166ffa5e459d0470b1686c0a962e40b70",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
