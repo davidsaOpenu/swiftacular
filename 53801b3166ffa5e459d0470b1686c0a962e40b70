@@ -16,6 +16,24 @@
       "message": "I would make 2 improvements\n\nUsing \u0027constant\u0027 container names can interfere with other tests/ other test instances.\n\nAlso notice how direct_put_object seems to test the direct part of the creation, without creating a container/ using the proxy (which might be relevant for the test)",
       "revId": "53801b3166ffa5e459d0470b1686c0a962e40b70",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3eb06701_41524657",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-06-15T18:27:19Z",
+      "side": 1,
+      "message": "\u003e Using \u0027constant\u0027 container names can interfere with other tests/ other test instances.\n\u003e\nThis test is meant to be a part of swift\u0027s probetest suite that uses static names. That said it would be a good idea to use their naming convention.\n\n\u003e Also notice how direct_put_object seems to test the direct part of the creation, without creating a container/ using the proxy (which might be relevant for the test)\n\u003e\nYup that\u0027s the idea.",
+      "parentUuid": "f6901e73_009196b2",
+      "revId": "53801b3166ffa5e459d0470b1686c0a962e40b70",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     }
   ]
 }
