@@ -467,6 +467,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "c3c497b3_225abc35",
+        "filename": "kube_deploy/charts/swiftacular/templates/deployments/keystone.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T18:06:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6bd25ab7_c8829166",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "955ac199_f9d421f8",
         "filename": "kube_deploy/charts/swiftacular/templates/deployments/package-cache.yaml",
         "patchSetId": 28
@@ -495,6 +513,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "Another unneeded sshd",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b3d5962f_2662f56e",
+        "filename": "kube_deploy/charts/swiftacular/templates/deployments/package-cache.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T18:06:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f3bbfd8a_3fc2518f",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -1174,6 +1210,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "db2d33b7_c855f2a0",
+        "filename": "kube_deploy/charts/swiftacular/templates/statefulsets/storage.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T18:06:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "62bb9733_5c301c0b",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2ccd6f58_2823370f",
@@ -1221,6 +1275,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "We don\u0027t need sshd",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bc5f1a75_c9f40007",
+        "filename": "kube_deploy/dockerfiles/Dockerfile.base",
+        "patchSetId": 28
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T18:06:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ac1504ca_97d1f277",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
