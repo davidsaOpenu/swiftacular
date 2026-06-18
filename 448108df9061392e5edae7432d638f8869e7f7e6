@@ -1317,6 +1317,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "97beb19d_a2cafb97",
+        "filename": "kube_deploy/cluster/kind-config.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T20:37:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2ccd6f58_2823370f",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4e2dfc5e_f0511b38",
@@ -1556,6 +1574,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5964cefd_189f2cdd",
+        "filename": "kube_deploy/scripts/bootstrap-cluster.sh",
+        "patchSetId": 28
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T20:37:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "22a51a5c_718450b5",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c1025dda_671def66",
@@ -1569,6 +1605,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "This seems to conflict with kube_deploy/cluster/kind-config.yaml . It would probably be best to envsubst to template that file rather then dynamically creating it inside a script",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "91bfd54b_033db7fa",
+        "filename": "kube_deploy/scripts/bootstrap-cluster.sh",
+        "patchSetId": 28
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T20:37:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c1025dda_671def66",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -1668,6 +1722,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "I don\u0027t think we use this anywhere",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a13ce149_2d0a252f",
+        "filename": "kube_deploy/scripts/deploy.sh",
+        "patchSetId": 28
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T20:37:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2da6f715_71b031fb",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
