@@ -86,6 +86,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "75c833d9_33dc1feb",
+        "filename": "kube_deploy/charts/swiftacular/templates/configmaps/keystone-conf.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T17:33:44Z",
+      "side": 1,
+      "message": "Keystone runs under Apache/mod_wsgi, not an eventlet server like the Swift services, so bind_port/bind_host don\u0027t apply — Apache binds 5000 via its vhost.",
+      "parentUuid": "5dfd3982_96370aca",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5b79da4c_3fe174c4",
@@ -99,6 +117,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "Unless this file is redirected into somewhere else we are writing into the container wasting ephemeral space",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e191f8da_ed09c259",
+        "filename": "kube_deploy/charts/swiftacular/templates/configmaps/keystone-conf.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T17:33:44Z",
+      "side": 1,
+      "message": "Log file are mostly for troubleshooting. we can change that in the future but it is negligible",
+      "parentUuid": "5b79da4c_3fe174c4",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -151,6 +187,30 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "This section isn\u0027t in the ansible playbook and appears identical to the above section. Is this intentional?",
+      "range": {
+        "startLine": 42,
+        "startChar": 5,
+        "endLine": 42,
+        "endChar": 23
+      },
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "27128f85_1c0a3c13",
+        "filename": "kube_deploy/charts/swiftacular/templates/configmaps/proxy-conf.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T17:33:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3d2a7229_ba65074c",
       "range": {
         "startLine": 42,
         "startChar": 5,
@@ -456,6 +516,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a31f9f7b_932c8eaa",
+        "filename": "kube_deploy/charts/swiftacular/templates/deployments/proxy.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T17:33:44Z",
+      "side": 1,
+      "message": "Separate init containers so each gate fails independently and is visible in kubectl describe; folding them would hide which gate is stuck.",
+      "parentUuid": "a49a6e23_72c83ad7",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "208b9037_9a629b44",
@@ -542,6 +620,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7a90ae85_c057e941",
+        "filename": "kube_deploy/charts/swiftacular/templates/jobs/keystone-setup.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T17:33:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d65a5dd9_76f181a4",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d5669f8c_92cf0fcc",
@@ -555,6 +651,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "Another quote needed here\n```suggestion\n                --user {{ quote .Values.keystone_test_user }} swiftoperator || true\n```",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e05ce3d5_4ef6c55a",
+        "filename": "kube_deploy/charts/swiftacular/templates/jobs/keystone-setup.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T17:33:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d5669f8c_92cf0fcc",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -582,6 +696,30 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "cc6e7b7e_be9a3037",
+        "filename": "kube_deploy/charts/swiftacular/templates/jobs/ring-builder.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T17:33:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c786fc7d_9b8676f3",
+      "range": {
+        "startLine": 36,
+        "startChar": 14,
+        "endLine": 40,
+        "endChar": 61
+      },
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6cc9d2ec_d4792b90",
@@ -595,6 +733,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "This time bash quotes are needed\n```suggestion\n                  \"${PART_POWER}\" \"${REPLICAS}\" \"${MIN_PART_HOURS}\"\n```",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f60a9f64_3c5729ce",
+        "filename": "kube_deploy/charts/swiftacular/templates/jobs/ring-builder.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T17:33:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6cc9d2ec_d4792b90",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -616,6 +772,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c4afb164_3a470602",
+        "filename": "kube_deploy/charts/swiftacular/templates/jobs/ring-builder.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T17:33:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3c4a2f9e_268f64d9",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "72136f3f_fea55c06",
@@ -629,6 +803,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "And more\n```suggestion\n                swift-ring-builder \"/rings/${RING_TYPE}.builder\" rebalance\n```",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "15ef22d0_a3bc2435",
+        "filename": "kube_deploy/charts/swiftacular/templates/jobs/ring-builder.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T17:33:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "72136f3f_fea55c06",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -681,6 +873,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "This one doesn\u0027t actually need quotes since namespaces cannot contain spaces and if swiftacular.namespace has a space then this will never reach k8s. But we probably should quote this\n```suggestion\n                -n {{ include \"swiftacular.namespace\" . | quote }} \\\n```",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4ab7fcf3_4620723c",
+        "filename": "kube_deploy/charts/swiftacular/templates/jobs/ring-builder.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T17:33:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "46bb1a0e_ab2707ff",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -754,6 +964,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9f87dc31_0b16d5a2",
+        "filename": "kube_deploy/charts/swiftacular/templates/services/mariadb.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T17:33:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a07122c1_d477f14d",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "08d25083_d3ea6119",
@@ -767,6 +995,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "Missing the mariadb-headless service",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1cc899b6_4ecfaef9",
+        "filename": "kube_deploy/charts/swiftacular/templates/services/mariadb.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T17:33:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "08d25083_d3ea6119",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -788,6 +1034,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "cea2b395_b52d8c08",
+        "filename": "kube_deploy/charts/swiftacular/templates/statefulsets/mariadb.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T17:33:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d304ab91_395faaeb",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b38c8e34_375f09d2",
@@ -801,6 +1065,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "Unlike other non trivial images this one is hard coded",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a28e1491_9aa91ba9",
+        "filename": "kube_deploy/charts/swiftacular/templates/statefulsets/mariadb.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T17:33:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b38c8e34_375f09d2",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
