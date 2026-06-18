@@ -120,6 +120,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c72b2f38_f9937356",
+        "filename": "kube_deploy/charts/swiftacular/templates/configmaps/proxy-conf.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "@ziventin@gmail.com Intentional — in a pod the container has its own network namespace, so binding 0.0.0.0 is the correct/idiomatic choice. The VM bound a specific IP because hosts share the network. Resloved",
+      "parentUuid": "a5ce6770_5b51d2ac",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3d2a7229_ba65074c",
@@ -160,6 +178,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "768d817a_07e4bd18",
+        "filename": "kube_deploy/charts/swiftacular/templates/configmaps/storage-conf.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "Correct this is a delibarat",
+      "parentUuid": "63d8b05a_668528ec",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "21e5a1c0_69921d3a",
@@ -173,6 +209,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "More problematic logs files",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b8aca9b7_be8260af",
+        "filename": "kube_deploy/charts/swiftacular/templates/configmaps/storage-conf.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "21e5a1c0_69921d3a",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -196,6 +250,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "df0e209d_84c04341",
+        "filename": "kube_deploy/charts/swiftacular/templates/configmaps/swift-rings.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "Thanks!",
+      "parentUuid": "09a55f4d_77bfa936",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "52858225_55172b61",
         "filename": "kube_deploy/charts/swiftacular/templates/deployments/grafana.yaml",
         "patchSetId": 28
@@ -207,6 +279,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "You chose to use a Deployment with a PVC instead of a StatefullSet. Not a problem I am just wondering if there is a reason.",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3644f546_e75dd52f",
+        "filename": "kube_deploy/charts/swiftacular/templates/deployments/grafana.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "Single replica with one PVC — a Deployment is simpler and we don\u0027t need stable per-pod identity or ordered scaling. Could switch to a StatefulSet if we ever scale Grafana, but no benefit at one replica",
+      "parentUuid": "52858225_55172b61",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -230,6 +320,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "f78ff5fd_cbdf0963",
+        "filename": "kube_deploy/charts/swiftacular/templates/deployments/grafana.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "yes — alpine because the init container uses apk. Inconsistent but intentional.",
+      "parentUuid": "e8f533f4_ba288b54",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "a2b43d0a_84bf5822",
         "filename": "kube_deploy/charts/swiftacular/templates/deployments/grafana.yaml",
         "patchSetId": 28
@@ -241,6 +349,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "Its unfortunate to install something during runtime even if doing so allows us to use the official image",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "47b25ac1_37c12fda",
+        "filename": "kube_deploy/charts/swiftacular/templates/deployments/grafana.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "Agreed it\u0027s not ideal; the trade-off is staying on the official Grafana image instead of maintaining a custom build. Open to baking it into a derived image later.",
+      "parentUuid": "a2b43d0a_84bf5822",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -381,6 +507,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "aeb96a01_9e786a21",
+        "filename": "kube_deploy/charts/swiftacular/templates/jobs/keystone-setup.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "Agreed — went with env for the same reason you note",
+      "parentUuid": "56410f42_575bdf67",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d65a5dd9_76f181a4",
@@ -506,6 +650,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "cd5dadbb_656440c9",
+        "filename": "kube_deploy/charts/swiftacular/templates/jobs/ring-builder.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "Good point. Noting as a follow-up to swap bitnami/kubectl for an alternative. for now though I think it is good enough as is - and we can tackle this in the future.",
+      "parentUuid": "d7b8185e_0d0b1a65",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "46bb1a0e_ab2707ff",
@@ -536,6 +698,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "Wish we could limit resource names. But we cant",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bfee12a0_9dba3bbb",
+        "filename": "kube_deploy/charts/swiftacular/templates/rbac/role.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "Right, RBAC can\u0027t scope by resource name here.",
+      "parentUuid": "26d16965_c59913dd",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -644,6 +824,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "adf73945_21fad231",
+        "filename": "kube_deploy/charts/swiftacular/templates/statefulsets/storage.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "Right — swift image has envsubst; busybox doesn\u0027t. Agreed it\u0027s a shame Swift configs don\u0027t take env directly.",
+      "parentUuid": "00c11256_e6e9bd78",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "8d079df8_9f2b97d3",
         "filename": "kube_deploy/charts/swiftacular/templates/statefulsets/storage.yaml",
         "patchSetId": 28
@@ -655,6 +853,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "At the moment we run a lot of services inside a single container. This is unfortunate since we cant see if one of them fails. We do this in order to make sure they can be logged by pmlogger. In the future we should consider using \"shareProcessNamespace\" to allow splitting off services into their own containers",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6f1a69c0_1c3d7409",
+        "filename": "kube_deploy/charts/swiftacular/templates/statefulsets/storage.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "Acknowledged — they\u0027re co-located so pmlogger can see them. Splitting via shareProcessNamespace is the right future direction",
+      "parentUuid": "8d079df8_9f2b97d3",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -750,6 +966,30 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a62db375_0d5f009e",
+        "filename": "kube_deploy/dockerfiles/Dockerfile.bluestore",
+        "patchSetId": 28
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "Already done in the next change",
+      "parentUuid": "d78cb4f0_b09c9a7f",
+      "range": {
+        "startLine": 115,
+        "startChar": 0,
+        "endLine": 126,
+        "endChar": 47
+      },
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1579fcba_bf9dd937",
@@ -797,6 +1037,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "While not critical using docker like this mandates the user be a part of the \"docker\" group. Since this essentially gives them root we may want to change it in the future",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c74578c1_70e9ada4",
+        "filename": "kube_deploy/scripts/bootstrap-cluster.sh",
+        "patchSetId": 28
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "Acknowledged; out of scope for this change but a valid future hardening",
+      "parentUuid": "37daea80_4695e5b2",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -854,6 +1112,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "2fc26fe8_4810943c",
+        "filename": "kube_deploy/scripts/bootstrap-cluster.sh",
+        "patchSetId": 28
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "kind\u0027s default standard StorageClass uses rancher local-path too, but we pin a known version + set it default explicitly so behavior is reproducible across kind releases.",
+      "parentUuid": "f8262cd2_6ee58023",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "dc7b0621_2bead621",
         "filename": "kube_deploy/scripts/build-images.sh",
         "patchSetId": 28
@@ -865,6 +1141,30 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "I think we can just tell people to install buildx. It isn\u0027t like we are breaking existing installations",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 21,
+        "endChar": 2
+      },
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "31438921_b90680e1",
+        "filename": "kube_deploy/scripts/build-images.sh",
+        "patchSetId": 28
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "The problem is the way the Jenkins handles things hence I added this :)",
+      "parentUuid": "dc7b0621_2bead621",
       "range": {
         "startLine": 7,
         "startChar": 0,
@@ -905,6 +1205,30 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "These aren\u0027t logging functions. Why are they here?",
+      "range": {
+        "startLine": 9,
+        "startChar": 0,
+        "endLine": 10,
+        "endChar": 62
+      },
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dd9db95f_41287910",
+        "filename": "kube_deploy/scripts/lib-logging.sh",
+        "patchSetId": 28
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T16:15:10Z",
+      "side": 1,
+      "message": "Agreed — these are orchestration helpers. Used this script for them because it was easy but I guess we can change the name to lib-common.sh but it would be out of scope for this change (requires renaming in other scripts)",
+      "parentUuid": "ed8d7591_826b0c84",
       "range": {
         "startLine": 9,
         "startChar": 0,
