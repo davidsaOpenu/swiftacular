@@ -293,6 +293,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "e604fafd_7cdb4615",
+        "filename": "kube_deploy/charts/swiftacular/templates/configmaps/storage-conf.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T19:20:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b8aca9b7_be8260af",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "09a55f4d_77bfa936",
         "filename": "kube_deploy/charts/swiftacular/templates/configmaps/swift-rings.yaml",
         "patchSetId": 28
@@ -444,6 +462,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "Good redirects on apache logs but why not do it in docker build",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bf7dcaea_56cb78a6",
+        "filename": "kube_deploy/charts/swiftacular/templates/deployments/keystone.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T19:20:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "01298da6_fec69a7a",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -1374,6 +1410,24 @@
       "writtenOn": "2026-06-15T18:57:02Z",
       "side": 1,
       "message": "Why make the logging files real instead of redirecting them into std{out,in}?",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "09452560_78e093c5",
+        "filename": "kube_deploy/dockerfiles/Dockerfile.keystone",
+        "patchSetId": 28
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T19:20:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5b331453_36e61b57",
       "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
