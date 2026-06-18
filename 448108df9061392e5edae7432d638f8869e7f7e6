@@ -1334,6 +1334,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "506b5464_6c2f619e",
+        "filename": "kube_deploy/dockerfiles/Dockerfile.base",
+        "patchSetId": 28
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T19:55:39Z",
+      "side": 1,
+      "message": "I don\u0027t get how would it help up as atm. we don\u0027t rebuild images that often - maybe worth playing with in the future but I currently leave it as is",
+      "parentUuid": "4e2dfc5e_f0511b38",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ac1504ca_97d1f277",
