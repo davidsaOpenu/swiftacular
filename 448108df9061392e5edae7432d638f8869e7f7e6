@@ -623,6 +623,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2862561c_87b08cec",
+        "filename": "kube_deploy/charts/swiftacular/templates/deployments/proxy.yaml",
+        "patchSetId": 28
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 1039378
+      },
+      "writtenOn": "2026-06-18T19:37:35Z",
+      "side": 1,
+      "message": "Acknowledged — the services are co-located in one container on purpose so maybe in a later commit we can fix that but it is currently out of scope.",
+      "parentUuid": "208b9037_9a629b44",
+      "revId": "448108df9061392e5edae7432d638f8869e7f7e6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "21646e45_81ea255f",
