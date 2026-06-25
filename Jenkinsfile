@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent { label 'host' }
     stages {
         stage('Check ownership') {
             steps {
@@ -12,45 +12,25 @@ pipeline {
                 }
             }
         }
-        stage('Checkout patchset') {
+        stage('Cleanup') {
             steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: 'FETCH_HEAD']],
-                    userRemoteConfigs: [[
-                        url: 'https://review.gerrithub.io/davidsaOpenu/swiftacular',
-                        refspec: env.GERRIT_REFSPEC
-                    ]]
-                ])
+                sh './cleanup.sh'
             }
         }
-        stage('Setup SSH Keys') {
+        stage('Provision VMs') {
             steps {
-                withCredentials([
-                    sshUserPrivateKey(credentialsId: 'vagrant-swift-package-cache-01', keyFileVariable: 'KEY_CACHE'),
-                    sshUserPrivateKey(credentialsId: 'vagrant-swift-storage-01',       keyFileVariable: 'KEY_STORAGE_01'),
-                    sshUserPrivateKey(credentialsId: 'vagrant-swift-storage-02',       keyFileVariable: 'KEY_STORAGE_02'),
-                    sshUserPrivateKey(credentialsId: 'vagrant-swift-storage-03',       keyFileVariable: 'KEY_STORAGE_03')
-                ]) {
-                    sh '''
-                        set -e
-                        install -m 600 -D "$KEY_CACHE"      .vagrant/machines/swift-package-cache-01/libvirt/private_key
-                        install -m 600 -D "$KEY_STORAGE_01" .vagrant/machines/swift-storage-01/libvirt/private_key
-                        install -m 600 -D "$KEY_STORAGE_02" .vagrant/machines/swift-storage-02/libvirt/private_key
-                        install -m 600 -D "$KEY_STORAGE_03" .vagrant/machines/swift-storage-03/libvirt/private_key
-                    '''
-                }
+                sh './2_provision_VMs.sh'
             }
         }
-        stage('Run Workload Tests') {
+        stage('Deploy and Test') {
             steps {
-                sh 'ansible-playbook -i hosts setup_workload_test.yml'
+                sh './3_deploy_swift_with_monitoring.sh'
             }
         }
     }
     post {
         always {
-            echo 'Workload tests completed'
+            sh './cleanup.sh'
         }
     }
 }
