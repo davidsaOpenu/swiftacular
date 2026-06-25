@@ -2,5 +2,8 @@
 - name: Deploy Jenkins with Configuration as Code
   hosts: jenkins
   become: true
+  vars:
+    jenkins_host_agent_user: "{{ lookup('env', 'USER') }}"
+    jenkins_agent_remote_fs: "{{ playbook_dir | dirname }}/swiftacular-ci"
   roles:
     - jenkins
