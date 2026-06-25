@@ -1,0 +1,54 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+selected_box = ENV['VM_BOX'] || "centos"
+box_config = {
+  "centos" => {
+    box:     "eurolinux-vagrant/centos-stream-9",
+    box_url: "https://app.vagrantup.com/eurolinux-vagrant/boxes/centos-stream-9/versions/9.0.28/providers/libvirt.box"
+  },
+  "ubuntu" => {
+    box:     "generic/ubuntu2204",
+    box_url: "https://vagrantcloud.com/generic/boxes/ubuntu2204/versions/4.3.12/providers/libvirt/amd64/vagrant.box",
+  },
+}
+
+unless box_config[selected_box]
+  abort "Unsupported VM_BOX '#{selected_box}'. Supported options: #{box_config.keys.join(', ')}"
+end
+
+Vagrant.configure("2") do |config|
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.provider :libvirt do |libvirt|
+    libvirt.qemu_use_session = false
+  end
+
+  config.vm.define "jenkins-01" do |box|
+    box.vm.box     = box_config[selected_box][:box]
+    box.vm.box_url = box_config[selected_box][:box_url] if box_config[selected_box][:box_url]
+
+    box.vm.synced_folder ".", "/vagrant", type: "rsync", rsync__exclude: ['.git/', '.vagrant/']
+
+    box.vm.provision "shell", privileged: false, inline: <<-SHELL
+      if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        echo "Working on jenkins-01 running $NAME $VERSION"
+      else
+        echo "Working on jenkins-01 (unknown OS)"
+      fi
+    SHELL
+
+    box.vm.hostname = "jenkins-01.example.com"
+
+    box.vm.provider :libvirt do |v|
+      v.memory = 6144
+      v.cpus = `nproc`.to_i
+    end
+
+    box.vm.network :private_network, ip: "192.168.100.170", netmask: "255.255.255.0"
+    box.vm.network :private_network, ip: "10.0.10.170",     netmask: "255.255.255.0"
+    box.vm.network :private_network, ip: "10.0.20.170",     netmask: "255.255.255.0"
+    box.vm.network :private_network, ip: "10.0.30.170",     netmask: "255.255.255.0"
+  end
+end
