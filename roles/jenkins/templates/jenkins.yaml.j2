@@ -23,15 +23,6 @@ credentials:
   system:
     domainCredentials:
       - credentials:
-{% for vm in jenkins_vagrant_key_vms %}
-          - basicSSHUserPrivateKey:
-              scope: GLOBAL
-              id: "vagrant-{{ vm }}"
-              username: "vagrant"
-              privateKeySource:
-                directEntry:
-                  privateKey: "${file:{{ jenkins_home }}/.ssh/vagrant_keys/{{ vm }}}"
-{% endfor %}
           - basicSSHUserPrivateKey:
               scope: GLOBAL
               id: "gerrit-ssh-key"
@@ -77,9 +68,17 @@ jobs:
           }
         }
         definition {
-          cps {
-            script(new File('/vagrant/Jenkinsfile').text)
-            sandbox(true)
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('https://review.gerrithub.io/davidsaOpenu/swiftacular')
+                  refspec('+refs/changes/*:refs/remotes/origin/changes/*')
+                }
+                branches('${GERRIT_REFSPEC}')
+              }
+            }
+            scriptPath('Jenkinsfile')
           }
         }
       }
