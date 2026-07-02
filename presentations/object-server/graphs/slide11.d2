@@ -1,0 +1,45 @@
+direction: right
+grid-rows: 1
+
+# ---------- Placement / paths ----------
+place: "" {
+  grid-rows: 3
+  a: "extract_policy"
+  b: "get_data_dir"
+  c: "get_async_dir"
+  d: "get_tmp_dir"
+  e: "relink_paths"
+  use: "turn a request into the right on-disk\nlocation for its policy; relink_paths\nmoves objects when the ring's part-power grows" {shape: document}
+}
+
+# ---------- Integrity / hashing ----------
+integ: "" {
+  grid-rows: 3
+  a: "invalidate_hash"
+  b: "consolidate_hashes"
+  c: "read_hashes"
+  d: "write_hashes"
+
+  use: "the REPLICATOR's change-detection:\na write invalidates a suffix, hashes are\nrecomputed lazily, nodes compare them\nto sync only what differs" {shape: document}
+}
+
+# ---------- Auditing ----------
+audit: "" {
+  grid-rows: 3
+  a: "object_audit_location_generator"
+  b: "update_auditor_status"
+  c: "clear_auditor_status"
+  use: "the AUDITOR's walk: enumerate every\nobject on disk, track progress so a\nrestart resumes where it left off" {shape: document}
+}
+
+alone: "" {
+  grid-rows: 2
+  quar: "quarantine_renamer" {shape: page}
+  valid: "valid_suffix" {shape: page}
+
+  quar_use: "auditor found corruption →\nmove the bad file aside to be\nhealed from another replica" {shape: document}
+  quar -> quar_use
+
+  valid_use: "sanity-check a suffix dir name\nbefore trusting it" {shape: document}
+  valid -> valid_use
+}
