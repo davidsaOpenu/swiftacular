@@ -1,0 +1,44 @@
+direction: right
+grid-rows: 1
+
+i: "Required" {
+  grid-rows: 5
+  style.fill: "#eef2ff" # neutral base — the foundation
+  style.stroke: "#3b5bdb"
+  a: "Safe reads"
+  b: "Ordered writes"
+  c: "Persistent"
+  d: "Self contained"
+  e: "Editable metadata"
+}
+
+k: "Kept" {
+  grid-rows: 5
+  *.style.fill: "#e6f4ea" # green — what you gain
+  *.style.stroke: "#1a7f37"
+  style.fill: "#e6f4ea" # green — what you gain
+  style.stroke: "#1a7f37"
+  a: "Always available"
+  b: "Crash safe"
+  c: "Consistent performance"
+  d: "Fast metadata updates"
+}
+
+l: "Lost" {
+  grid-rows: 4
+  *.style.fill: "#fdecec" # red — what you forfeit
+  *.style.stroke: "#c0392b"
+  style.fill: "#fdecec" # red — what you forfeit
+  style.stroke: "#c0392b"
+  a: "Replication"
+  c: "Auditing"
+  d: "Self-healing"
+  e: "Reclaim"
+}
+
+i.a -> k.a
+i.a -> k.b
+i.b -> k.a
+i.c -> k.b
+i.d -> k.c
+i.e -> k.d
