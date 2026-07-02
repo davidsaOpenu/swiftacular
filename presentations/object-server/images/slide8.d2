@@ -1,0 +1,63 @@
+grid-rows: 1
+
+ru: "Match rules" {
+  grid-rows: 4
+
+  d: "<ts>.data" {shape: page; style.fill: "#d6f5d6"}
+  de: "This file contains the object's data and metadata"
+  d -> de
+
+  m: "<ts>.meta" {shape: page; style.fill: "#dbeafe"}
+  me: "This file contains the object's metadata\nThe objects data is within the highest <ts>.data file"
+  m -> me
+
+  t: "<ts>.ts" {shape: page; style.fill: "#f4cccc"}
+  te: "This object was deleted\nWe behave as though the object never existed"
+  t -> te
+
+  e: "No files found" {shape: oval; style.stroke-dash: 3; style.font-color: "#9aa0a6"; style.stroke: "#9aa0a6"}
+  ee: "The object never existed in the first place" {style.font-color: "#9aa0a6"}
+  e -> ee
+}
+
+u: "Unsorted" {
+  grid-rows: 5
+
+  b: "120.ts" {shape: page; style.fill: "#f4cccc"}
+  d: "140.meta" {shape: page; style.fill: "#dbeafe"}
+  e: "150.meta" {shape: page; style.fill: "#dbeafe"}
+  a: "110.data" {shape: page; style.fill: "#d6f5d6"}
+  c: "130.data" {shape: page; style.fill: "#d6f5d6"}
+}
+
+s: "Sorted" {
+  grid-rows: 5
+
+  e: "150.meta" {shape: page; style.fill: "#dbeafe"}
+  d: "140.meta" {shape: page; style.fill: "#dbeafe"}
+  c: "130.data" {shape: page; style.fill: "#d6f5d6"}
+  b: "120.ts" {shape: page; style.fill: "#f4cccc"}
+  a: "110.data" {shape: page; style.fill: "#d6f5d6"}
+}
+
+r: "Read" {
+  grid-rows: 5
+
+  a: "Search for highest <ts> file\nFound 150.meta" {shape: oval}
+  b: "Save metadata"
+  c: "Serch for newest <ts>.data file\nFound 130.data" {shape: oval}
+  d: "Save object data"
+  e: "Validate etag and return" {shape: oval}
+
+  a -> b -> c -> d -> e
+}
+
+# u.a -> s.a
+# u.b -> s.b
+# u.c -> s.c
+# u.d -> s.d
+# u.e -> s.e
+u -> s
+
+r.a -> s.e
+r.c -> s.c
