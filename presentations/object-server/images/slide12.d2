@@ -1,0 +1,32 @@
+direction: right
+grid-rows: 1
+
+c: "create() / writer()" {
+  f: "tmp/<ts>#<frag>.data" {
+    grid-rows: 3
+    shape: page
+    style.fill: "#d6f5d6"
+    height: 90
+    empty: "empty" {height: 0}
+  }
+}
+
+p: "put(metadata)" {
+  f: "<suffix>/<hash>/<ts>#<frag>.data" {
+    grid-rows: 3
+    shape: page
+    style.font-color: "#1a7f37"
+    body: "..."
+    m: "metadata" {style.fill: "#d6f5d6"}
+  }
+}
+
+cm: "commit()" {
+  f: "<suffix>/<hash>/<ts>#<frag>#d.data" {
+    grid-rows: 3
+    style.font-color: "#1a7f37"
+    shape: page
+    body: "..."
+    m: "metadata"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Swift object server",
+  "private": true,
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "Ziv Entin",
+  "type": "commonjs",
+  "scripts": {
+	  "watch": "marp slides.md -w",
+	  "build": "marp slides.md --pdf --allow-local-files",
+	  "build-images": "for f in images/*.d2; do ./d2 --pad 0 \"$f\" \"${f%.d2}.svg\"; done"
+  },
+  "dependencies": {
+    "@marp-team/marp-cli": "^4.4.0"
+  }
+}

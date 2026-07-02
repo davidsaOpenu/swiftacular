@@ -1,0 +1,57 @@
+direction: right
+grid-rows: 1
+
+before: "During write" {
+  grid-rows: 1
+
+  tmp: "/tmp/" {
+    style.fill: "#fdecec"
+    grid-rows: 1
+    f: "120.data" {
+      grid-rows: 4
+      shape: page
+      style.stroke-dash: 3
+      c1: "chunk"
+      c2: "chunk"
+      c3: "chunk" {style.font-color: "#c9ccd1"}
+      m: "metadata" {style.font-color: "#c9ccd1"}
+    }
+  }
+  hash: "/<suffix>/<hash>/" {
+    grid-rows: 1
+    style.fill: "#e6f4ea"
+    a: "110.data" {
+      grid-rows: 3
+      shape: page
+      c1: "chunk"
+      c2: "chunk"
+      m: "metadata"
+    }
+  }
+}
+
+after: "After write" {
+  grid-rows: 1
+
+  hash: "/<suffix>/<hash>/" {
+    grid-rows: 1
+
+    style.fill: "#e6f4ea"
+    a: "110.data" {
+      grid-rows: 3
+      shape: page
+      c1: "chunk"
+      c2: "chunk"
+      m: "metadata"
+    }
+    b: "120.data" {
+      grid-rows: 4
+      shape: page
+      c1: "chunk"
+      c2: "chunk"
+      c3: "chunk"
+      m: "metadata"
+    }
+  }
+}
+

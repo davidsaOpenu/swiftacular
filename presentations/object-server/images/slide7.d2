@@ -1,0 +1,43 @@
+direction: right
+grid-rows: 1
+
+c: "create() / writer()" {
+  f: "tmp/<ts>.data" {
+    grid-rows: 3
+    shape: page
+
+    style.fill: "#d6f5d6"
+    height: 90
+
+    empty: "empty" {
+      height: 0
+    }
+  }
+}
+
+w: "write(chunk)" {
+  f: "tmp/<ts>.data" {
+    grid-rows: 4
+    vertical-gap: 20
+    shape: page
+
+    c1: "chunk"
+    c2: "chunk"
+    cN: "chunk" {style.fill: "#d6f5d6"} # only the newest chunk is new
+  }
+}
+
+p: "put(metadata)" {
+  f: "<suffix>/<hash>/<ts>.data" {
+    grid-rows: 4
+    vertical-gap: 20
+    style.font-color: "#1a7f37"
+    shape: page
+
+    c1: "chunk"
+    c2: "chunk"
+    cN: "chunk"
+    m: "metadata" {style.fill: "#d6f5d6"} # metadata added → green
+  }
+}
+

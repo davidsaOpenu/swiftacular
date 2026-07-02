@@ -1,0 +1,30 @@
+direction: right
+
+c: Client {shape: person}
+p: Proxy
+r: Ring {shape: cylinder}
+s: Object Server
+m: DiskFileManager {shape: package}
+d: DiskFile {shape: package}
+
+c -> p: requests
+p -> s: forwards
+s -> m: get_diskfile()
+m -> d: create()
+
+p -> r: consults
+r.near: top-center
+
+legend: "Legend" {
+  grid-rows: 1
+  near: bottom-center # pin it to a corner, out of the flow
+
+  actor: "external actor" {shape: person}
+  service: "Swift service" # rectangle
+  lookup: "lookup table" {shape: cylinder}
+  code: "code object" {shape: package}
+
+  *.width: 100
+  *.height: 100
+}
+
