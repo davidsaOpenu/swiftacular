@@ -1,0 +1,23 @@
+{
+  "name": "Swift object server",
+  "private": true,
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "Ziv Entin",
+  "type": "commonjs",
+  "scripts": {
+    "render-graphs": "node ./render.mjs graphs/*.d2",
+    "prebuild": "npm run render-graphs",
+    "build": "marp slides.md --pdf --allow-local-files < /dev/null",
+    "watch": "marp slides.md -w < /dev/null",
+    "clean": "rimraf graphs/*.svg slides.pdf slides.html"
+  },
+  "dependencies": {
+    "@marp-team/marp-cli": "^4.4.0",
+    "@terrastruct/d2": "^0.1.33"
+  },
+  "devDependencies": {
+    "rimraf": "^6.1.3"
+  }
+}

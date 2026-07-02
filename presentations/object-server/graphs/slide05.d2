@@ -1,0 +1,45 @@
+direction: right
+
+d: "DiskFile" {
+  grid-rows: 2
+  grid-gap: 1
+  style.fill: "#2eb872"
+
+  o: "When open" {
+    width: 150
+    height: 200
+
+    style.stroke-width: 0
+    style.fill: "#2eb872"
+  }
+  a: "Anytime" {
+    width: 150
+    height: 300
+
+    style.stroke-width: 0
+    style.fill: "#4a90d9"
+  }
+}
+
+r: "DiskFileReader"
+w: "DiskFileWriter"
+
+o: "Results" {
+  d: "Received data"
+  m: "Received metadata"
+  s: "Stored data+metadata"
+  u: "Stored metadata"
+  e: "Object deleted"
+  *.shape: hexagon
+}
+
+d -> r: "reader()"
+r -> o.d: "for chunk in"
+d -> o.m: "get_metadata()"
+
+d -> w: "create() / writer()"
+w -> w: "write(chunk)"
+w -> o.s: "put(metadata)"
+
+d -> o.e: "delete()"
+d -> o.u: "write_metadata(metadata)"
