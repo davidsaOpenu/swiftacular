@@ -1,0 +1,2 @@
+# This file is copied into site-available on install. Ensuring our hook always runs
+import bluestore.hook
