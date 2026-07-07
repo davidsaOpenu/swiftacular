@@ -1,0 +1,21 @@
+---
+- name: Install bluestore
+  hosts:
+    - proxy
+    - storage
+    - package_cache
+  tasks:
+    - name: Copy bluestore wheel to node
+      become: false
+      ansible.builtin.copy:
+        src: "{{ lookup('ansible.builtin.fileglob', '../bluestore/dist/bluestore-*.whl') }}"
+        dest: /home/vagrant/
+        mode: "0644"
+      register: bluestore_wheel
+      notify: Reinstall bluestore
+
+  handlers:
+    - name: Reinstall bluestore
+      ansible.builtin.pip:
+        extra_args: --force-reinstall --no-deps --prefix /usr
+        name: "{{ bluestore_wheel.dest }}"

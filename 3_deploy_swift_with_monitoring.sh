@@ -45,6 +45,7 @@ run_playbook() {
   # Build the command with optional tags
   # local cmd="ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook" #default backend
   local cmd="ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook -e 'swift_backend=bs' -v"
+  # local cmd="ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook -e 'swift_backend=bluestore' -v"
   if [ -n "$tags" ]; then
     cmd="$cmd --tags $tags"
   fi

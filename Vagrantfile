@@ -65,7 +65,7 @@ Vagrant.configure("2") do |config|
         if prefix == 'swift-storage'
           # Keep disabled for storage nodes
         else
-          box.vm.synced_folder ".", "/vagrant", type: "rsync", rsync__exclude: ['.git/', '.vagrant/']
+          box.vm.synced_folder ".", "/vagrant", type: "rsync", rsync__exclude: ['.git/', '.vagrant/', 'bluestore/']
         end
 
         box.vm.provision "shell", privileged: false, inline: <<-SHELL
