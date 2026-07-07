@@ -45,3 +45,13 @@
     - package_cache
   roles:
     - package_cache
+
+- name: Build bluestore wheel
+  ansible.builtin.import_playbook: playbooks/build_bluestore.yml
+  tags: [packages]
+  when: swift_backend is defined and swift_backend == 'bluestore'
+
+- name: Install bluestore wheel on swift nodes
+  ansible.builtin.import_playbook: playbooks/install_bluestore.yml
+  tags: [packages]
+  when: swift_backend is defined and swift_backend == 'bluestore'
