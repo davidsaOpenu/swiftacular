@@ -1,0 +1,53 @@
+[project]
+name = "bluestore"
+version = "1.0.0"
+# Both pinned: the engine compiles against one interpreter,
+# and the Python layer uses Swift internals that move between releases.
+# see DESIGN.md#building
+requires-python = ">=3.9,<3.10"
+dependencies = ["swift==2.35.0"]
+
+[dependency-groups]
+test = ["pytest"]
+
+# Publishes our manager under a name recorded in the installed metadata.
+# Swift resolves egg:bluestore#manager by looking it up here.
+# The name must match what policy.py asks for.
+# see DESIGN.md#interface
+[project.entry-points."swift.diskfile"]
+manager = "bluestore.manager:InMemoryFileSystem"
+
+# scikit-build-core stands where setuptools normally would,
+# so CMake runs as part of the build and its output ships in the same wheel.
+# see DESIGN.md#building
+[build-system]
+requires = ["scikit-build-core>=0.12"]
+build-backend = "scikit_build_core.build"
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+
+# This will work on newer versions of scikit-build-core.
+# Until then we install the hook inside CMake
+# [tool.scikit-build.sdist.force-include]
+# "bluestore/hook_apply.pth" = "bluestore_hook.pth"
+
+[tool.uv]
+default-groups = ["test"]
+# Files whose contents decide whether a cached build can be reused.
+# A new source location left out of this list can be edited without triggering a rebuild.
+# see DESIGN.md#building
+cache-keys = [
+	{ file = "pyproject.toml" },
+	{ file = "CMakeLists.txt" },
+	{ file = "bluestore/**/*.{h,c,hpp,cpp}" }
+]
+
+[tool.pytest.ini_options]
+testpaths = ["test/"]
+markers = [
+	# Marks a test class as a sequence: once a step fails,
+	# the rest are skipped.
+	# see DESIGN.md#testing
+    "incremental: sequence class; skip remaining tests after a failure",
+]
