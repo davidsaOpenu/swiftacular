@@ -3,7 +3,11 @@ devices = /srv/node
 bind_ip = {{ ansible_ens8.ipv4.address }}
 bind_port = 6000
 # bind_port = 8080
+{% if swift_backend is defined and swift_backend == 'bluestore' %}
+workers = 1
+{% else %}
 workers = 2
+{% endif %}
 
 [pipeline:main]
 pipeline = object-server
