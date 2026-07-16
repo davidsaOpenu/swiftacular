@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "012e3431_7e50d973",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 9
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-16T10:49:36Z",
+      "side": 1,
+      "message": "Ceph/BlueStore tools: this is not achieved — the tool list is duplicated in at least 5 places\nThe commit message claims ceph_patches/CMakeLists.txt\u0027s foreach(_tgt …) is \"the single list of tools to build,\" but the actual tool names (bs_util objectstore_bench test_kv bs_ondisk bs_xattr) are hardcoded independently in:\n\nceph_patches/CMakeLists.txt — the intended source of truth (add_executable targets)\nDockerfile.bluestore — ninja -j$(nproc) bs_util objectstore_bench test_kv bs_ondisk bs_xattr\nDockerfile.bluestore — the printf-appended --no-as-needed foreach(_tgt bs_util objectstore_bench test_kv bs_ondisk bs_xattr) block\nDockerfile.bluestore — the ldd invocation listing all 5 binary paths, plus 5 separate COPY --from\u003dbuilder .../usr/local/bin/ lines\nkube_deploy/scripts/smoke-test.sh (W2) — for b in bs_util objectstore_bench test_kv bs_ondisk bs_xattr; do command -v \"${b}\" ...\nsetup_workload_test.yml (VM flow, \"Verify BlueStore utilities\") — five separate named tasks (Verify bs_xattr utility exists, bs_util_path, objectstore_bench_path, test_kv_path, etc.) plus a debug message and a fail-condition that individually enumerates all five again\n\nThat\u0027s six independent places a developer must update in lockstep to add a sixth tool — exactly the problem this refactor was meant to eliminate. The Dockerfile.bluestore comment even flags this itself: \"keep in sync if a tool is added\" — an admission that the goal wasn\u0027t met.\nkube_deploy/README.md also spells out the five tool names in prose, so it too will silently go stale (a docs-only drift, lower severity, but still worth noting).\nConcrete fix\nIntroduce one plain-text list as the actual source of truth, e.g. ceph_patches/tools.list:\nbs_util\nobjectstore_bench\ntest_kv\nbs_ondisk\nbs_xattr\nThen have every consumer derive from it instead of hardcoding:\n\nceph_patches/CMakeLists.txt: file(STRINGS ${CMAKE_CURRENT_LIST_DIR}/tools.list TOOLS), drive both the add_executable foreach and the --no-as-needed foreach from ${TOOLS}. This also removes the awkward split where the linker-fix foreach lives in the Dockerfile instead of alongside the target declarations.\nDockerfile.bluestore: mapfile -t TOOLS \u003c ceph_patches/tools.list (copy the file in alongside the .cc sources), then use \"${TOOLS[@]}\" for the ninja target list, the ldd argument list, and a for t in \"${TOOLS[@]}\"; do cp .../$t /usr/local/bin/; done loop instead of 5 static COPY lines.\nkube_deploy/scripts/smoke-test.sh (W2): read the same ceph_patches/tools.list at the repo root instead of hardcoding the for b in ... line.\nsetup_workload_test.yml: replace the five named per-tool tasks with one loop: \"{{ lookup(\u0027file\u0027, playbook_dir+\u0027/ceph_patches/tools.list\u0027).splitlines() }}\" task that checks/reports each tool generically.\nkube_deploy/README.md: either drop the explicit tool names from prose or generate that section, so it can\u0027t silently drift.\n\nWith that change, adding a new BlueStore tool becomes: drop the .cc file in ceph_patches/, add its name to ceph_patches/tools.list, add it to the foreach in CMakeLists.txt (or better, also drive that foreach off tools.list so it\u0027s truly one edit) — no touching Dockerfile.bluestore, smoke-test.sh, or the Ansible playbook at all. That\u0027s the actual \"one place\" guarantee the PR description promises but doesn\u0027t yet deliver for the Ceph side, even though it delivers it correctly for the Swift side.",
+      "range": {
+        "startLine": 21,
+        "startChar": 0,
+        "endLine": 25,
+        "endChar": 61
+      },
+      "revId": "c1e87518e56c43700f81911edf861743f2886e91",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "36fd91cf_7bf3520a",
+        "filename": "swift_patches/apply.sh",
+        "patchSetId": 9
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-16T10:49:36Z",
+      "side": 1,
+      "message": "swift_patches/patches.manifest really is the only place that knows which patches exist. Both apply_patches.yml and Dockerfile.storage call the same apply.sh against the same manifest. Adding/removing a Swift patch is genuinely a one-file change. Looks good. However, read returns non-zero at EOF, and if the manifest\u0027s final line has no trailing \\n, bash\u0027s while read loop exits before processing the variables from that last read in some configurations (or, depending on shell version, the last line is only processed if terminated by a newline). Given .gitattributes doesn\u0027t guarantee a trailing newline on the manifest file itself, and the sample manifest in the diff appears to end right after 2_sharder.patch     0      container with no blank line after, this is a real risk: a future patch added as the last row could be silently skipped with no error, no warning, and a \"success\" exit code. Fix: ensure the file always ends with a newline and add a check.",
+      "revId": "c1e87518e56c43700f81911edf861743f2886e91",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
