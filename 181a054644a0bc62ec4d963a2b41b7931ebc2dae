@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6e3ae96b_fea79382",
+        "filename": "bluestore/bluestore/manager.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1039489
+      },
+      "writtenOn": "2026-07-16T20:56:23Z",
+      "side": 0,
+      "message": "This is a copy of in memory diskfile I believe (in trello it says copy diskfile.py)",
+      "revId": "181a054644a0bc62ec4d963a2b41b7931ebc2dae",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8d63f25_0d79461b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1039489
+      },
+      "writtenOn": "2026-07-16T20:56:23Z",
+      "side": 1,
+      "message": "Nice work! All comments are mostly nitpicks so +1 from me 🙂",
+      "revId": "46edb8b36ffe63b3d36f856c42eb1d2cc7fbf487",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "85c5cd14_508386b0",
+        "filename": "3_deploy_swift_with_monitoring.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 1039489
+      },
+      "writtenOn": "2026-07-16T20:56:23Z",
+      "side": 1,
+      "message": "Do we need this comment here?",
+      "revId": "46edb8b36ffe63b3d36f856c42eb1d2cc7fbf487",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3a490cba_962f41d8",
+        "filename": "bluestore/bluestore/hook.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1039489
+      },
+      "writtenOn": "2026-07-16T20:56:23Z",
+      "side": 1,
+      "message": "typo\n```suggestion\n#    Instead of crashing on unknown policy types the policy\n```",
+      "revId": "46edb8b36ffe63b3d36f856c42eb1d2cc7fbf487",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f2189de1_b7a2ea33",
+        "filename": "bluestore/bluestore/policy.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 1039489
+      },
+      "writtenOn": "2026-07-16T20:56:23Z",
+      "side": 1,
+      "message": "Mix of tab and space indented - JFYI",
+      "revId": "46edb8b36ffe63b3d36f856c42eb1d2cc7fbf487",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2f4b947f_e9bf719b",
+        "filename": "bluestore/test/test_basic.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1039489
+      },
+      "writtenOn": "2026-07-16T20:56:23Z",
+      "side": 1,
+      "message": "I saw in `swift.conf.j2` we are doing `[storage-policy:0]` so can this ever truly be 1? Please correct me if I missed something.",
+      "revId": "46edb8b36ffe63b3d36f856c42eb1d2cc7fbf487",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
