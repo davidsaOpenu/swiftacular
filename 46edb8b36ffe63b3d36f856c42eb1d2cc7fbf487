@@ -35,6 +35,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d60b6f4f_aa39c79a",
+        "filename": "3_deploy_swift_with_monitoring.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-07-19T12:24:02Z",
+      "side": 1,
+      "message": "This is meant to allow switching to the new backend easily like you can with the other backends. Although it may be worth turning this into a command line argument",
+      "parentUuid": "85c5cd14_508386b0",
+      "revId": "46edb8b36ffe63b3d36f856c42eb1d2cc7fbf487",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3a490cba_962f41d8",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-07-16T20:56:23Z",
       "side": 1,
       "message": "typo\n```suggestion\n#    Instead of crashing on unknown policy types the policy\n```",
+      "revId": "46edb8b36ffe63b3d36f856c42eb1d2cc7fbf487",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ae6829dc_321ca460",
+        "filename": "bluestore/bluestore/hook.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-07-19T12:24:02Z",
+      "side": 1,
+      "message": "Fix applied.",
+      "parentUuid": "3a490cba_962f41d8",
       "revId": "46edb8b36ffe63b3d36f856c42eb1d2cc7fbf487",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -69,6 +105,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "41d66542_5d882c73",
+        "filename": "bluestore/bluestore/policy.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-07-19T12:24:02Z",
+      "side": 1,
+      "message": "Oops",
+      "parentUuid": "f2189de1_b7a2ea33",
+      "revId": "46edb8b36ffe63b3d36f856c42eb1d2cc7fbf487",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2f4b947f_e9bf719b",
@@ -82,6 +136,24 @@
       "writtenOn": "2026-07-16T20:56:23Z",
       "side": 1,
       "message": "I saw in `swift.conf.j2` we are doing `[storage-policy:0]` so can this ever truly be 1? Please correct me if I missed something.",
+      "revId": "46edb8b36ffe63b3d36f856c42eb1d2cc7fbf487",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b9e8bd60_3603e3a4",
+        "filename": "bluestore/test/test_basic.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-07-19T12:24:02Z",
+      "side": 1,
+      "message": "The swift.conf in use here is declared in conftest.py . Where policy 1 is the new backend currently being tested. This is mostly there to make sure the code we are testing is actually loaded",
+      "parentUuid": "2f4b947f_e9bf719b",
       "revId": "46edb8b36ffe63b3d36f856c42eb1d2cc7fbf487",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     }
