@@ -24,6 +24,30 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f59216ab_e2631265",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 9
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-23T14:13:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "012e3431_7e50d973",
+      "range": {
+        "startLine": 21,
+        "startChar": 0,
+        "endLine": 25,
+        "endChar": 61
+      },
+      "revId": "c1e87518e56c43700f81911edf861743f2886e91",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "36fd91cf_7bf3520a",
@@ -37,6 +61,24 @@
       "writtenOn": "2026-07-16T10:49:36Z",
       "side": 1,
       "message": "swift_patches/patches.manifest really is the only place that knows which patches exist. Both apply_patches.yml and Dockerfile.storage call the same apply.sh against the same manifest. Adding/removing a Swift patch is genuinely a one-file change. Looks good. However, read returns non-zero at EOF, and if the manifest\u0027s final line has no trailing \\n, bash\u0027s while read loop exits before processing the variables from that last read in some configurations (or, depending on shell version, the last line is only processed if terminated by a newline). Given .gitattributes doesn\u0027t guarantee a trailing newline on the manifest file itself, and the sample manifest in the diff appears to end right after 2_sharder.patch     0      container with no blank line after, this is a real risk: a future patch added as the last row could be silently skipped with no error, no warning, and a \"success\" exit code. Fix: ensure the file always ends with a newline and add a check.",
+      "revId": "c1e87518e56c43700f81911edf861743f2886e91",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5d6c41ab_aa099e2c",
+        "filename": "swift_patches/apply.sh",
+        "patchSetId": 9
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-23T14:13:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "36fd91cf_7bf3520a",
       "revId": "c1e87518e56c43700f81911edf861743f2886e91",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     }
