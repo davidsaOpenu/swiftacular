@@ -2,6 +2,8 @@
 
 set -euo -x pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Check for required commands
 for cmd in python ansible-playbook ansible-galaxy; do
   if ! command -v $cmd &> /dev/null; then
@@ -10,14 +12,7 @@ for cmd in python ansible-playbook ansible-galaxy; do
   fi
 done
 
-# install ansible collections before running tox
-ansible-galaxy collection install community.general --force
-ansible-galaxy collection install community.mysql --force
-# Explicitly get v2.3.0. ansible-galaxy collection install performancecopilot.metrics
-# installs lates 2.4.0 without redis roles.
-# TODO: install latest, address the issue.
-ansible-galaxy collection install git+https://github.com/performancecopilot/ansible-pcp.git,v2.3.0 --force
-ansible-galaxy collection install ansible.posix --force
+"${SCRIPT_DIR}/scripts/install_ansible_collections.sh"
 
 # Pre-commit checks
 tox

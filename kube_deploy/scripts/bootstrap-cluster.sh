@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ── Linting ───────────────────────────────────────────────────────────────────
-tox
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib-common.sh"
+
+# ── Linting ───────────────────────────────────────────────────────────────────
+"${SCRIPT_DIR}/../../scripts/install_ansible_collections.sh"
+tox
 
 CLUSTER_NAME="swiftacular"
 REGISTRY_NAME="swiftacular-registry"
