@@ -9,6 +9,11 @@ swift_proxy_server: "{{ hostvars[groups['proxy'][0]]['ansible_ens6']['ipv4']['ad
 # swift_proxy_ssl_proxy_server: "{{ hostvars[groups['lbssl'][0]]['ansible_ens6']['ipv4']['address'] }}"
 package_cache_server: "{{ hostvars[groups['package_cache'][0]]['ansible_ens6']['ipv4']['address'] }}"
 
+# SSH key used when tasks delegate_to the swift proxy node (e.g. ring
+# building). Kept in one place since it's tied to the Vagrant provider
+# in use (see Vagrantfile) and needs to change whenever that does.
+swift_proxy_private_key_file: /opt/swiftacular/.vagrant/machines/swift-proxy-01/libvirt/private_key
+
 #
 # Timezone and NTP
 #
