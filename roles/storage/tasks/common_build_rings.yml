@@ -27,10 +27,7 @@
   ansible.builtin.debug:
     msg: swift-ring-builder account.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6002R{{ ansible_ens9.ipv4.address }}:6002/{{
       disk_prefix }}{{ item | int - 1 }} 100
-  delegate_to: "{{ swift_proxy_server }}"
-  vars:
-    ansible_ssh_user: vagrant
-    ansible_ssh_private_key_file: "{{ swift_proxy_private_key_file }}"
+  delegate_to: "{{ groups['proxy'][0] }}"
   with_sequence: count={{ disks }}
 
 - name: Build account ring
@@ -38,10 +35,7 @@
     chdir: /etc/swift
     cmd: swift-ring-builder account.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6002R{{ ansible_ens9.ipv4.address }}:6002/{{
       disk_prefix }}{{ item | int - 1 }} 100
-  delegate_to: "{{ swift_proxy_server }}"
-  vars:
-    ansible_ssh_user: vagrant
-    ansible_ssh_private_key_file: "{{ swift_proxy_private_key_file }}"
+  delegate_to: "{{ groups['proxy'][0] }}"
   with_sequence: count={{ disks }}
   when: rings_exist.rc > 0
   register: ring_build_result
@@ -52,10 +46,7 @@
     chdir: /etc/swift
     cmd: swift-ring-builder container.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6001R{{ ansible_ens9.ipv4.address }}:6001/{{
       disk_prefix }}{{ item | int - 1 }} 100
-  delegate_to: "{{ swift_proxy_server }}"
-  vars:
-    ansible_ssh_user: vagrant
-    ansible_ssh_private_key_file: "{{ swift_proxy_private_key_file }}"
+  delegate_to: "{{ groups['proxy'][0] }}"
   with_sequence: count={{ disks }}
   when: rings_exist.rc > 0
   register: container_ring_build_result
@@ -66,10 +57,7 @@
     chdir: /etc/swift
     cmd: swift-ring-builder object.builder add r{{ region }}z{{ zone }}-{{ ansible_ens8.ipv4.address }}:6000R{{ ansible_ens9.ipv4.address }}:6000/{{ disk_prefix
       }}{{ item | int - 1 }} 100
-  delegate_to: "{{ swift_proxy_server }}"
-  vars:
-    ansible_ssh_user: vagrant
-    ansible_ssh_private_key_file: "{{ swift_proxy_private_key_file }}"
+  delegate_to: "{{ groups['proxy'][0] }}"
   with_sequence: count={{ disks }}
   when: rings_exist.rc > 0
   register: object_ring_build_result
