@@ -20,6 +20,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "cb214477_029b1b46",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-07-31T22:01:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7132738a_2975fdbb",
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "99aca51b_67ef8c4c",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 4
@@ -75,6 +93,30 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "73a5e8a5_6dae8cf4",
+        "filename": "presentations/containers/README.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-07-31T22:01:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0c22d915_ac3822f2",
+      "range": {
+        "startLine": 75,
+        "startChar": 0,
+        "endLine": 75,
+        "endChar": 64
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4d79fbc2_d28f77fe",
@@ -88,6 +130,30 @@
       "writtenOn": "2026-07-31T05:40:56Z",
       "side": 1,
       "message": "because",
+      "range": {
+        "startLine": 1,
+        "startChar": 34,
+        "endLine": 1,
+        "endChar": 41
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b2151a56_ea53ba59",
+        "filename": "presentations/containers/d2marp/Dockerfile",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-07-31T22:01:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4d79fbc2_d28f77fe",
       "range": {
         "startLine": 1,
         "startChar": 34,
@@ -123,6 +189,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "c34251e0_aa33caa4",
+        "filename": "presentations/containers/d2marp/entrypoint.sh",
+        "patchSetId": 4
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-07-31T22:01:49Z",
+      "side": 1,
+      "message": "Unless I am misunderstanding something this isn\u0027t true. Since this is the entrypoint once this process dies docker will kill all other processes via the container\u0027s cgroup. Also I can\u0027t replicate the issue. On my computer any of the signals stop the process both with direct kill and with docker kill",
+      "parentUuid": "1c695985_906743b9",
+      "range": {
+        "startLine": 11,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 20
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "712ce29e_703b4587",
         "filename": "presentations/object-server/container",
         "patchSetId": 4
@@ -146,6 +236,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "b5c7e590_59b5a2a0",
+        "filename": "presentations/object-server/container",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-07-31T22:01:49Z",
+      "side": 1,
+      "message": "That depends on what you mean by avoid. You can just add a directory with a dockerfile (and whatever it needs) here instead but that means each presentation will build its own image without central control. We can in theory read a configuration file saying what image is used but that seems somewhat pointless when a symlink carries the intended meaning perfectly. Ultimately I think that symlinks is the best way to do this. I do have protections against symlinks misbehaving inside the realfile function in build-all.sh",
+      "parentUuid": "712ce29e_703b4587",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 20
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "ff605bcb_1141ab2c",
         "filename": "presentations/object-server/graphs/slide06.d2",
         "patchSetId": 4
@@ -157,6 +271,30 @@
       "writtenOn": "2026-07-31T05:40:56Z",
       "side": 1,
       "message": "its",
+      "range": {
+        "startLine": 33,
+        "startChar": 23,
+        "endLine": 33,
+        "endChar": 28
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3b654420_e6253339",
+        "filename": "presentations/object-server/graphs/slide06.d2",
+        "patchSetId": 4
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-07-31T22:01:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ff605bcb_1141ab2c",
       "range": {
         "startLine": 33,
         "startChar": 23,
@@ -192,6 +330,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "6de9862a_02bfe3b2",
+        "filename": "presentations/object-server/graphs/slide06.d2",
+        "patchSetId": 4
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-07-31T22:01:49Z",
+      "side": 1,
+      "message": "Not sure what you mean here?",
+      "parentUuid": "3d81d097_5f7d8b8a",
+      "range": {
+        "startLine": 31,
+        "startChar": 0,
+        "endLine": 36,
+        "endChar": 23
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "6db7c347_980a6ab9",
         "filename": "presentations/object-server/graphs/slide08.d2",
         "patchSetId": 4
@@ -203,6 +365,30 @@
       "writtenOn": "2026-07-31T05:40:56Z",
       "side": 1,
       "message": "Search",
+      "range": {
+        "startLine": 48,
+        "startChar": 6,
+        "endLine": 48,
+        "endChar": 11
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0035a172_3357b236",
+        "filename": "presentations/object-server/graphs/slide08.d2",
+        "patchSetId": 4
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-07-31T22:01:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6db7c347_980a6ab9",
       "range": {
         "startLine": 48,
         "startChar": 6,
@@ -236,6 +422,30 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3d8fe70c_2f9c1f36",
+        "filename": "presentations/object-server/graphs/slide08.d2",
+        "patchSetId": 4
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-07-31T22:01:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6bd7749d_513b6cbc",
+      "range": {
+        "startLine": 55,
+        "startChar": 0,
+        "endLine": 59,
+        "endChar": 12
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9142a531_7e653928",
@@ -259,6 +469,30 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7ebead8f_efda0198",
+        "filename": "presentations/object-server/slides.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-07-31T22:01:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9142a531_7e653928",
+      "range": {
+        "startLine": 110,
+        "startChar": 39,
+        "endLine": 110,
+        "endChar": 47
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4e9bd8d9_5d760e21",
@@ -272,6 +506,30 @@
       "writtenOn": "2026-07-31T05:40:56Z",
       "side": 1,
       "message": "DiskFileManager",
+      "range": {
+        "startLine": 111,
+        "startChar": 6,
+        "endLine": 111,
+        "endChar": 20
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e5d1475c_2398e575",
+        "filename": "presentations/object-server/slides.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-07-31T22:01:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4e9bd8d9_5d760e21",
       "range": {
         "startLine": 111,
         "startChar": 6,
