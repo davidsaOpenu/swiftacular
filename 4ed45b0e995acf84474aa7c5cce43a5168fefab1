@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "7132738a_2975fdbb",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-31T05:40:56Z",
+      "side": 1,
+      "message": "lets add https://trello.com/c/aNJSRx2n/140-add-a-swiftacular-presentations-job-and-a-presentation-build-mechanism here",
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "99aca51b_67ef8c4c",
@@ -14,6 +31,253 @@
       "writtenOn": "2026-07-30T05:15:05Z",
       "side": 1,
       "message": "recheck",
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a032b984_1d25af01",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-31T05:40:56Z",
+      "side": 1,
+      "message": "Thanks for working on this. Well done! Several comments inline.",
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0c22d915_ac3822f2",
+        "filename": "presentations/containers/README.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-31T05:40:56Z",
+      "side": 1,
+      "message": "d2marp/Dockerfile only pins MARP_VERSION/D2_VERSION; firefox-esr, npm, and golang are installed unpinned from apt, and the base image is debian:trixie-slim (a moving tag, not a digest). Since Marp\u0027s PDF export depends on the bundled browser, an unpinned browser is exactly the kind of thing likely to silently break reproducibility later. Consider pinning at least the browser package.",
+      "range": {
+        "startLine": 75,
+        "startChar": 0,
+        "endLine": 75,
+        "endChar": 64
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4d79fbc2_d28f77fe",
+        "filename": "presentations/containers/d2marp/Dockerfile",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-31T05:40:56Z",
+      "side": 1,
+      "message": "because",
+      "range": {
+        "startLine": 1,
+        "startChar": 34,
+        "endLine": 1,
+        "endChar": 41
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1c695985_906743b9",
+        "filename": "presentations/containers/d2marp/entrypoint.sh",
+        "patchSetId": 4
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-31T05:40:56Z",
+      "side": 1,
+      "message": "Signal handling doesn\u0027t propagate to the child process. The build is launched as command \"$@\" \u0026 wait \"$!\", and TERM/INT/HUP/QUIT traps just call exit. But exiting the parent doesn\u0027t send a signal to the backgrounded child, so on docker stop/timeout the actual build tool (d2) can be left running as an orphan until it finishes on its own. Consider trapping the signal, forwarding it to the child (kill -TERM \"$!\"), then waiting before exiting.",
+      "range": {
+        "startLine": 11,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 20
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "712ce29e_703b4587",
+        "filename": "presentations/object-server/container",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-31T05:40:56Z",
+      "side": 1,
+      "message": "Is it possible to avoid symlinks?",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 20
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ff605bcb_1141ab2c",
+        "filename": "presentations/object-server/graphs/slide06.d2",
+        "patchSetId": 4
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-31T05:40:56Z",
+      "side": 1,
+      "message": "its",
+      "range": {
+        "startLine": 33,
+        "startChar": 23,
+        "endLine": 33,
+        "endChar": 28
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3d81d097_5f7d8b8a",
+        "filename": "presentations/object-server/graphs/slide06.d2",
+        "patchSetId": 4
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-31T05:40:56Z",
+      "side": 1,
+      "message": "The second one seems overwritten",
+      "range": {
+        "startLine": 31,
+        "startChar": 0,
+        "endLine": 36,
+        "endChar": 23
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6db7c347_980a6ab9",
+        "filename": "presentations/object-server/graphs/slide08.d2",
+        "patchSetId": 4
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-31T05:40:56Z",
+      "side": 1,
+      "message": "Search",
+      "range": {
+        "startLine": 48,
+        "startChar": 6,
+        "endLine": 48,
+        "endChar": 11
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6bd7749d_513b6cbc",
+        "filename": "presentations/object-server/graphs/slide08.d2",
+        "patchSetId": 4
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-31T05:40:56Z",
+      "side": 1,
+      "message": "leftovers?",
+      "range": {
+        "startLine": 55,
+        "startChar": 0,
+        "endLine": 59,
+        "endChar": 12
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9142a531_7e653928",
+        "filename": "presentations/object-server/slides.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-31T05:40:56Z",
+      "side": 1,
+      "message": "efficient",
+      "range": {
+        "startLine": 110,
+        "startChar": 39,
+        "endLine": 110,
+        "endChar": 47
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4e9bd8d9_5d760e21",
+        "filename": "presentations/object-server/slides.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-07-31T05:40:56Z",
+      "side": 1,
+      "message": "DiskFileManager",
+      "range": {
+        "startLine": 111,
+        "startChar": 6,
+        "endLine": 111,
+        "endChar": 20
+      },
       "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     }
