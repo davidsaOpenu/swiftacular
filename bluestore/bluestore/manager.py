@@ -28,7 +28,28 @@ from swift.common.request_helpers import is_sys_meta
 from swift.common.swob import multi_range_iterator
 from swift.common.utils import md5
 from swift.obj.diskfile import DATAFILE_SYSTEM_META, RESERVED_DATAFILE_META
+from eventlet import tpool
 
+from ._raw import fake_read, fake_write
+
+class FakeBytesIO():
+    at_end = False
+
+    def seek(self, offset, loc):
+        self.at_end = loc == 2
+
+    def tell(self):
+        return 512 if self.at_end else 0
+
+    def write(self, chunk):
+        tpool.execute(fake_write, "fake_object", chunk)
+
+    def read(self):
+        if self.at_end:
+            return None
+
+        self.at_end = True
+        return tpool.execute(fake_read, "fake_object")
 
 class InMemoryFileSystem(object):
     """
@@ -116,7 +137,7 @@ class DiskFileWriter(object):
         Create a new ``BytesIO`` object for a started-but-not-yet-finished
         PUT.
         """
-        self._fp = io.BytesIO()
+        self._fp = FakeBytesIO()
         return self
 
     def close(self):

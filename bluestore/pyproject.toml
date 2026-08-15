@@ -2,7 +2,7 @@
 name = "bluestore"
 version = "1.0.0"
 requires-python = ">=3.9,<3.10"
-dependencies = ["swift==2.35.0"]
+dependencies = ["swift==2.35.0", "nanobind"]
 
 [dependency-groups]
 test = ["pytest"]
@@ -11,23 +11,24 @@ test = ["pytest"]
 manager = "bluestore.manager:InMemoryFileSystem"
 
 [build-system]
-requires = ["scikit-build-core>=0.12"]
+requires = ["scikit-build-core>=1.0.0", "nanobind"]
 build-backend = "scikit_build_core.build"
 
 [tool.scikit-build]
 minimum-version = "build-system.requires"
+build-dir = "build/over-{wheel_tag}"
+wheel.reproducible = true
+sdist.cmake = true
 
-# This will work on newer versions of scikit-build-core.
-# Until then we install the hook inside CMake
-# [tool.scikit-build.sdist.force-include]
-# "bluestore/hook_apply.pth" = "bluestore_hook.pth"
+[tool.scikit-build.wheel.force-include]
+"bluestore/hook_apply.pth" = "bluestore_hook.pth"
 
 [tool.uv]
 default-groups = ["test"]
 cache-keys = [
 	{ file = "pyproject.toml" },
 	{ file = "CMakeLists.txt" },
-	{ file = "bluestore/**/*.{h,c,hpp,cpp}" }
+	{ file = "src/*.{h,c,txt}" }
 ]
 
 [tool.pytest.ini_options]
