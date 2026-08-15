@@ -21,6 +21,7 @@
         - pyproject.toml
         - CMakeLists.txt
         - bluestore
+        - src
       register: bluestore_code
 
     - name: Build bluestore
