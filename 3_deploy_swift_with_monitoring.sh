@@ -38,9 +38,12 @@ run_playbook() {
   local start_time=$(date +%s%3N)  # Get start time in epoch milliseconds
 
   # Build the command with optional tags
-  # local cmd="ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook" #default backend
-  local cmd="ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook -e 'swift_backend=bs' -v"
-  # local cmd="ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook -e 'swift_backend=bluestore' -v"
+  #SWIFT_BACKEND=""
+  SWIFT_BACKEND="bs_fork"
+  #SWIFT_BACKEND="bs_bind"
+
+  local cmd="ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook -e 'swift_backend=$SWIFT_BACKEND' -v"
+
   if [ -n "$tags" ]; then
     cmd="$cmd --tags $tags"
   fi
@@ -85,7 +88,7 @@ run_playbook "install_packages_on_nodes.yml" "Install Packages" "packages"
 # Apply Swift patches (requires Swift packages to be installed)
 run_playbook "apply_patches.yml" "Apply Swift Patches"
 
-# Build BlueStore C++ utilities (only when swift_backend=bs)
+# Build BlueStore C++ utilities (only when swift_backend=bs_fork)
 run_playbook "update_ceph_bs_tools.yml" "Build BlueStore Utilities"
 
 # Deploy Swift Cluster (repository setup and configuration)
