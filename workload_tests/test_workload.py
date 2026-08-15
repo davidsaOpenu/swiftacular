@@ -3,11 +3,11 @@ import sys
 import uuid
 
 import pytest
-import swiftclient
 
-from config import KEYSTONE_HOST
+from config import make_conn
 from verifier import Verifier
 from workloader import Workloader
+from parallel_workload import ParallelWorkload
 
 MEAN_SIZE = 1 * 1024 # 1 KB
 MAX_SIZE = 10 * 1024 # 10 KB
@@ -17,31 +17,9 @@ LARGE_FILE_SIZE = int(1.1 * 1024 * 1024 * 1024) # 1.1 GB
 LARGE_STDEV_SIZE = 0
 RETENTION_TIME = 24 * 60 * 60 # 24 hours
 
-PROXY_BASE_URL = f"http://{KEYSTONE_HOST}:5000"
-AUTH_URL = f"{PROXY_BASE_URL}/v3"
-AUTH_VERSION = '3'
-USER = "achilles"
-KEY = "CHANGEME"
-PROJECT = 'demo'
-DEFAULT_VALUE = 'Default'
-OS_OPTIONS = {
-    'user_domain_name': DEFAULT_VALUE,
-    'project_domain_name': DEFAULT_VALUE,
-    'project_name': PROJECT
-}
-
-
 @pytest.fixture(scope="session")
 def connection():
-    _connection = swiftclient.Connection(
-        authurl=AUTH_URL,
-        user=USER,
-        key=KEY,
-        os_options=OS_OPTIONS,
-        auth_version=AUTH_VERSION
-    )
-    return _connection
-
+    return make_conn()
 
 @pytest.fixture
 def container(connection):
@@ -92,3 +70,8 @@ def test_all_at_once_workload(connection, container):
     run_workload_test(MEAN_SIZE, MAX_SIZE, MIN_SIZE, STDEV_SIZE,
                      RETENTION_TIME, upload_interval=0, total_uploads=1,
                      batch_size=1_000_000, connection=connection, container=container)
+
+def test_parallel_small(container):
+    ParallelWorkload.exit_on_thread_error()
+    workload = ParallelWorkload(container, 'parallel_small/')
+    workload.start(make_conn)
