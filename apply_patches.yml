@@ -37,7 +37,7 @@
         cmd: >-
           bash /tmp/swift_patches/apply.sh
           /usr/lib/python3.9/site-packages/swift
-          {{ '--with-bs' if (swift_backend | default('')) == 'bs' else '' }}
+          {{ '--with-bs' if (swift_backend | default('')) == 'bs_fork' else '' }}
       register: swift_apply
       changed_when: "': applied' in swift_apply.stdout"
 

@@ -3,7 +3,7 @@
 swift_hash_path_suffix = {{ swift_hash_path_suffix }}
 swift_hash_path_prefix = {{ swift_hash_path_prefix }}
 
-{% if swift_backend is defined and swift_backend == 'bluestore' %}
+{% if swift_backend is defined and swift_backend == 'bs_bind' %}
 [storage-policy:0]
 policy_type = bluestore
 name = default
