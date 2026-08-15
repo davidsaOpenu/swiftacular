@@ -5,7 +5,7 @@ version = "1.0.0"
 # and the Python layer uses Swift internals that move between releases.
 # see DESIGN.md#building
 requires-python = ">=3.9,<3.10"
-dependencies = ["swift==2.35.0"]
+dependencies = ["swift==2.35.0", "nanobind"]
 
 [dependency-groups]
 test = ["pytest"]
@@ -21,16 +21,17 @@ manager = "bluestore.manager:InMemoryFileSystem"
 # so CMake runs as part of the build and its output ships in the same wheel.
 # see DESIGN.md#building
 [build-system]
-requires = ["scikit-build-core>=0.12"]
+requires = ["scikit-build-core>=1.0.0", "nanobind"]
 build-backend = "scikit_build_core.build"
 
 [tool.scikit-build]
 minimum-version = "build-system.requires"
+build-dir = "build/{wheel_tag}"
+wheel.reproducible = true
+sdist.cmake = true
 
-# This will work on newer versions of scikit-build-core.
-# Until then we install the hook inside CMake
-# [tool.scikit-build.sdist.force-include]
-# "bluestore/hook_apply.pth" = "bluestore_hook.pth"
+[tool.scikit-build.wheel.force-include]
+"bluestore/hook_apply.pth" = "bluestore_hook.pth"
 
 [tool.uv]
 default-groups = ["test"]
@@ -40,7 +41,7 @@ default-groups = ["test"]
 cache-keys = [
 	{ file = "pyproject.toml" },
 	{ file = "CMakeLists.txt" },
-	{ file = "bluestore/**/*.{h,c,hpp,cpp}" }
+	{ file = "src/*.{cpp,h,txt}" }
 ]
 
 [tool.pytest.ini_options]
@@ -50,4 +51,5 @@ markers = [
 	# the rest are skipped.
 	# see DESIGN.md#testing
     "incremental: sequence class; skip remaining tests after a failure",
+	"slow: a test that takes a long time and should not be run by default"
 ]
