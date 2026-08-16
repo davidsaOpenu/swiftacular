@@ -213,6 +213,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "710ee5e6_a6991f09",
+        "filename": "presentations/containers/d2marp/entrypoint.sh",
+        "patchSetId": 4
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-08-16T11:31:00Z",
+      "side": 1,
+      "message": "Right, but still there is a reclaim()-runs-before-the-child-is-done problem...\n\nSuggested fix: in each signal trap, forward the signal to the backgrounded child and wait for it to actually finish before calling exit, so reclaim (fired by the EXIT trap afterward) runs only once the child is done writing.\n\numask 002\nreclaim\n\nchild\u003d\"\"\n\nforward() {\n\tlocal sig\u003d$1 code\u003d$2\n\tif [[ -n \"$child\" ]]; then\n\t\tkill -s \"$sig\" \"$child\" 2\u003e/dev/null || true\n\t\twait \"$child\" 2\u003e/dev/null\n\tfi\n\texit \"$code\"\n}\n\ntrap \u0027reclaim\u0027          EXIT\ntrap \u0027forward TERM 143\u0027 TERM\ntrap \u0027forward INT  130\u0027 INT\ntrap \u0027forward HUP  129\u0027 HUP\ntrap \u0027forward QUIT 131\u0027 QUIT\n\ncommand \"$@\" \u0026\nchild\u003d$!\nwait \"$child\"",
+      "parentUuid": "c34251e0_aa33caa4",
+      "range": {
+        "startLine": 11,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 20
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "712ce29e_703b4587",
         "filename": "presentations/object-server/container",
         "patchSetId": 4
@@ -248,6 +272,30 @@
       "side": 1,
       "message": "That depends on what you mean by avoid. You can just add a directory with a dockerfile (and whatever it needs) here instead but that means each presentation will build its own image without central control. We can in theory read a configuration file saying what image is used but that seems somewhat pointless when a symlink carries the intended meaning perfectly. Ultimately I think that symlinks is the best way to do this. I do have protections against symlinks misbehaving inside the realfile function in build-all.sh",
       "parentUuid": "712ce29e_703b4587",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 20
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fc3d8846_82d4a3cd",
+        "filename": "presentations/object-server/container",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-08-16T11:31:00Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "b5c7e590_59b5a2a0",
       "range": {
         "startLine": 1,
         "startChar": 0,
@@ -342,6 +390,30 @@
       "side": 1,
       "message": "Not sure what you mean here?",
       "parentUuid": "3d81d097_5f7d8b8a",
+      "range": {
+        "startLine": 31,
+        "startChar": 0,
+        "endLine": 36,
+        "endChar": 23
+      },
+      "revId": "4ed45b0e995acf84474aa7c5cce43a5168fefab1",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "494b7183_cf5e3b9b",
+        "filename": "presentations/object-server/graphs/slide06.d2",
+        "patchSetId": 4
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-08-16T11:31:00Z",
+      "side": 1,
+      "message": "Fixed by the latest patch.",
+      "parentUuid": "6de9862a_02bfe3b2",
       "range": {
         "startLine": 31,
         "startChar": 0,
