@@ -1,0 +1,54 @@
+a: "<device>/objects/<partition>" {
+  grid-rows: 1
+
+  t: "/tmp/" {
+    grid-rows: 3
+    n: "<ts>.data" {
+      shape: page
+      style.font-color: "#1f6feb"
+    }
+  }
+
+  o1: "/<suffix>/<hash>/" {
+    grid-rows: 3
+    style.font-color: "#0b8a8a"
+    d1: "<ts>.data" {shape: page; style.font-color: "#1a7f37"}
+    d2: "<ts>.data" {shape: page; style.font-color: "#1f6feb"; style.stroke-dash: 3}
+
+    e: |md
+      - The object is currently being updated.
+      - <span style="color:#1a7f37">&lt;ts&gt;.data</span> holds the current data.
+      - After the update, <span style="color:#1f6feb">&lt;ts&gt;.data</span> will hold the new data.
+    | {shape: document}
+  }
+
+  o2: "/<suffix>/<hash>/" {
+    style.font-color: "#8250df"
+    grid-rows: 3
+
+    d: "<ts>.data" {shape: page; style.font-color: "#cf222e"}
+    m: "<ts>.meta" {shape: page; style.font-color: "#d4a72c"}
+    e: "This object has its metadata updated\nThe object's data is in <ts>.data\nbut its metadata is in <ts>.meta" {shape: document}
+    e: |md
+      - This object had its metadata updated.
+      - Data stays in <span style="color:#cf222e">&lt;ts&gt;.data</span>
+      - metadata lives in <span style="color:#d4a72c">&lt;ts&gt;.meta</span>.
+    | {shape: document}
+  }
+
+  o3: "/<suffix>/<hash>/" {
+    style.font-color: "#bc4c00"
+    grid-rows: 3
+
+    t: "<ts>.ts" {shape: page; style.font-color: "#953800"}
+    e: |md
+      - The object was deleted at <span style="color:#953800">&lt;ts&gt;.ts</span>.
+    | {shape: document}
+  }
+
+  t.n -> o1.d2: "move" {
+    style.font-color: black
+    style.border-radius: 20
+    style.bold: true
+  }
+}
