@@ -36,6 +36,8 @@ int main(int argc, char** argv) {
 		return 2;
 	}
 
+	Backend back(file);
+
 	if (args[0] == "fake_read") {
 		if (args.size() < 2) {
 			std::cerr << "Missing object" << std::endl;
@@ -47,7 +49,7 @@ int main(int argc, char** argv) {
 			std::sscanf(args[2].c_str(), "%zu", &size);
 
 		std::vector<uint8_t> buf(size);
-		size_t out = fake_read(args[1], (void*)buf.data(), size);
+		size_t out = back.fake_read(args[1], (void*)buf.data(), size);
 
 		buf.resize(out);
 		for (auto &i: buf)
@@ -67,7 +69,7 @@ int main(int argc, char** argv) {
 		ss << std::cin.rdbuf();
 		std::string buf = ss.str();
 
-		size_t out = fake_write(args[1], buf.data(), buf.size());
+		size_t out = back.fake_write(args[1], buf.data(), buf.size());
 		std::cout << out;
 
 		if (!machine)
