@@ -1,6 +1,6 @@
 # Basic operation of the object server: the policy wiring that has to be in
 # place first, then one object through its whole lifecycle.
-# see DESIGN.md#testing
+# see ARCHITECTURE.md#testing
 
 from hashlib import md5
 import pytest

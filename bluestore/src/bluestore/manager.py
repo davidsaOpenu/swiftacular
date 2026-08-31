@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # The DiskFileManager and DiskFile interface this implements is covered by the object-server presentation.
-# see DESIGN.md#interface
+# see ARCHITECTURE.md#interface
 
 """ In-Memory Disk File Interface for Swift Object Server"""
 
@@ -33,8 +33,8 @@ from swift.common.utils import md5
 from swift.obj.diskfile import DATAFILE_SYSTEM_META, RESERVED_DATAFILE_META
 
 # The compiled half. Private to this package.
-# see DESIGN.md#binding
-from ._raw import fake_read, fake_write
+# see ARCHITECTURE.md#binding
+from ._raw import Backend
 
 class InMemoryFileSystem(object):
     """
@@ -52,6 +52,12 @@ class InMemoryFileSystem(object):
     def __init__(self, conf, logger):
         self._filesystem = {}
 
+        # Opened once and held for as long as the storage is in use. Every request
+        # reaches it through this one handle, so it is called from several pool
+        # threads at once.
+        # see ARCHITECTURE.md#concurrency
+        self._backend = Backend("fake")
+
     def get_object(self, name):
         """
         Return back an file-like object and its metadata
@@ -64,8 +70,8 @@ class InMemoryFileSystem(object):
 
         # Native work goes to a real thread and the native side drops the
         # interpreter lock. Both halves, every call.
-        # see DESIGN.md#concurrency
-        tpool.execute(fake_read, name, 512)
+        # see ARCHITECTURE.md#concurrency
+        tpool.execute(self._backend.fake_read, name, 512)
         val = self._filesystem.get(name)
         if val is None:
             fp, metadata, ts = None, None, None
@@ -75,7 +81,7 @@ class InMemoryFileSystem(object):
         if metadata:
             left = int(metadata.get("Content-Length", "0")) - 512
             if left > 0:
-                tpool.execut(fake_read, name, left)
+                tpool.execute(self._backend.fake_read, name, left)
 
         return fp, metadata, ts
 
@@ -88,7 +94,7 @@ class InMemoryFileSystem(object):
         :param metadata: dictionary of metadata to be written
         """
 
-        tpool.execute(fake_write, name, fp.getvalue())
+        tpool.execute(self._backend.fake_write, name, fp.getvalue())
         self._filesystem[name] = (fp, metadata, ts)
 
     def del_object(self, name, ts):

@@ -29,7 +29,7 @@ _class_failures = {}
 
 def pytest_runtest_makereport(item, call):
     # Class-scoped: a test class is one scenario carried out step by step against shared state.
-    # see DESIGN.md#testing
+    # see ARCHITECTURE.md#testing
     if "incremental" in item.keywords and call.excinfo is not None:
         _class_failures[item.cls] = item.name
 
@@ -64,7 +64,7 @@ REFERENCE_POLICY, BLUESTORE_POLICY = 0, 1
 TICKS_PER_SECOND = 100_000            # swift timestamps: 10.5 fixed decimal
 
 # Only headers that no implementation could make match.
-# see DESIGN.md#testing
+# see ARCHITECTURE.md#testing
 IGNORED_HEADERS = frozenset({
     "Date",                           # wall clock of response generation
 })
@@ -73,7 +73,7 @@ IGNORED_HEADERS = frozenset({
 # Both backends must see identical timestamps, so these come from an integer counter rather than the clock.
 # Comparison calls step a whole second and single-backend calls one tick,
 # so inserting the latter never shifts the former.
-# see DESIGN.md#testing
+# see ARCHITECTURE.md#testing
 class TickClock:
     """Integer-tick timestamp source. call() -> next second boundary;
     diff() -> +1 tick, never crossing into the next boundary's territory."""
@@ -134,7 +134,7 @@ def object_server(swift_conf_dir, tmp_path_factory):
         # reclaim so the posix reference keeps its tombstones (see TickClock).
         # The tick clock starts near the epoch,
         # so wall-clock reclamation would collect the reference backend's tombstones mid-run.
-        # see DESIGN.md#testing
+        # see ARCHITECTURE.md#testing
         "reclaim_age": str(10**10),      # ~317 years
     }
 
@@ -144,7 +144,7 @@ def object_server(swift_conf_dir, tmp_path_factory):
 
 # Every request goes to both backends and the responses are compared in full.
 # Anything that differs fails, including error responses.
-# see DESIGN.md#testing
+# see ARCHITECTURE.md#testing
 def _assert_identical(r_ref, r_bs, op):
     assert r_ref.status_int == r_bs.status_int, (
         "%s: status default=%s bluestore=%s"
@@ -190,7 +190,7 @@ def call(object_server):
 
     # Our backend only, for intentional divergence. Each use is a claim that a difference is correct;
     # the set of uses is the record of where the backends part ways.
-    # see DESIGN.md#testing
+    # see ARCHITECTURE.md#testing
     def _diff(method, path, body=None, headers=None, timestamp=None):
         t = clock.next_diff() if timestamp is None else timestamp
         return _send(method, path, body, headers, t, BLUESTORE_POLICY)

@@ -3,59 +3,67 @@ name = "bluestore"
 version = "1.0.0"
 # Both pinned: the engine compiles against one interpreter,
 # and the Python layer uses Swift internals that move between releases.
-# see DESIGN.md#building
+# see ARCHITECTURE.md#building
 requires-python = ">=3.9,<3.10"
-dependencies = ["swift==2.35.0", "nanobind"]
-
-[dependency-groups]
-test = ["pytest"]
+dependencies = ["swift==2.35.0"]
 
 # Publishes our manager under a name recorded in the installed metadata.
 # Swift resolves egg:bluestore#manager by looking it up here.
 # The name must match what policy.py asks for.
-# see DESIGN.md#interface
+# see ARCHITECTURE.md#interface
 [project.entry-points."swift.diskfile"]
 manager = "bluestore.manager:InMemoryFileSystem"
 
+# Wanted while building and never afterwards, so a group rather than a
+# dependency. `dev` is `build` plus what the tests need.
+# see ARCHITECTURE.md#building
+[dependency-groups]
+build = ["scikit-build-core>=1.0.0", "nanobind", "cython", "pyyaml"]
+dev = ["pytest", { include-group = "build" }]
+
 # scikit-build-core stands where setuptools normally would,
 # so CMake runs as part of the build and its output ships in the same wheel.
-# see DESIGN.md#building
+# see ARCHITECTURE.md#building
 [build-system]
-requires = ["scikit-build-core>=1.0.0", "nanobind"]
+requires = ["scikit-build-core>=1.0.0", "nanobind", "cython", "pyyaml"]
 build-backend = "scikit_build_core.build"
 
-[tool.scikit-build]
-minimum-version = "build-system.requires"
-build-dir = "build/{wheel_tag}"
-wheel.reproducible = true
-sdist.cmake = true
-
-# The .pth is not a module but has to land beside them in site-packages,
-# since Python only reads .pth files from there. The build backend puts it there
-# see DESIGN.md#policy
-[tool.scikit-build.wheel.force-include]
-"bluestore/hook_apply.pth" = "bluestore_hook.pth"
-
 [tool.uv]
-default-groups = ["test"]
+# Build in the environment we already set up rather than a fresh one each
+# time. The build is long enough that repeating the setup is not sensible.
+# see ARCHITECTURE.md#building
+no-build-isolation-package = ["bluestore"]
+
 # Files whose contents decide whether a cached build can be reused.
 # A new source location left out of this list can be edited without triggering a rebuild.
-# see DESIGN.md#building
+# see ARCHITECTURE.md#building
 cache-keys = [
 	{ file = "pyproject.toml" },
 	{ file = "CMakeLists.txt" },
-	{ file = "src/*.{cpp,h,txt}" }
+	{ file = "src/bluestore/**" },
+	{ file = "src/extension/**" },
+	{ file = "src/injection/**" }
 ]
 
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+build-dir = "build"
+wheel.reproducible = true
+
+# The .pth is not a module but has to land beside them in site-packages,
+# since Python only reads .pth files from there. The build backend puts it there
+# see ARCHITECTURE.md#policy
+[tool.scikit-build.wheel.force-include]
+"src/bluestore/hook_apply.pth" = "bluestore_hook.pth"
+
 [tool.pytest.ini_options]
-strict-markers = true
-testpaths = ["test/"]
+testpaths = ["src/test/"]
 # Every test carries a mark saying what it is, and the default run selects
 # one kind. A -m on the command line replaces the one below rather than
 # adding to it, so `pytest -m fork` runs those and `pytest -m ""` runs
 # everything. A test left unmarked is selected by nothing and never runs.
-# see DESIGN.md#testing
-addopts= ["-m", "diff"]
+# see ARCHITECTURE.md#testing
+addopts= ["--strict-markers", "-m", "diff"]
 markers = [
     "incremental: sequence class; skip remaining tests after a failure",
 	"diff: every request answered by both backends and compared",

@@ -1,4 +1,4 @@
 # Python runs this line at interpreter startup, before any application code.
 # It is the only point early enough to register our policy type before Swift reads its configuration.
-# see DESIGN.md#policy
+# see ARCHITECTURE.md#policy
 import bluestore.hook

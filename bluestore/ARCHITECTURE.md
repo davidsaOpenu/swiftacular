@@ -5,13 +5,18 @@ This directory contains a storage engine for Swift objects.
 Swift's object server does not write object data itself. It delegates that
 work to a class it is willing to have replaced, so a cluster can store
 objects some way other than the standard one without altering Swift. That is
-what this project does. The engine is C++; the code here wraps it, installs
-it next to Swift, and arranges for Swift to use it.
+what this project does. The objects are stored by BlueStore, which is the
+layer Ceph uses to put data on its own disks. The code here extracts
+BlueStore from Ceph, wraps it, installs it next to Swift, and arranges for
+Swift to use it.
 
-Six concerns follow from that, one per section below.
+Seven concerns follow from that, one per section below.
 
 - [Building](#building) — the engine and its Python layer have to be
   compiled and installed onto a machine running Swift.
+- [Engine](#engine) — BlueStore is machinery inside a large project that
+  does not offer it to anyone, so it has to be extracted before it can be
+  wrapped.
 - [Binding](#binding) — Python and native code cannot call each other
   directly, so something has to carry calls across.
 - [Concurrency](#concurrency) — one object server handles many requests at
@@ -23,19 +28,23 @@ Six concerns follow from that, one per section below.
 - [Testing](#testing) — "behaves the way Swift expects" has to mean
   something checkable.
 
-Code comments point back here by section, as `see DESIGN.md#policy`. Those
-references make the headings an interface: add sections rather than renaming
-or reordering them.
+Code comments point back here by section, as `see ARCHITECTURE.md#policy`.
+Those references make the headings an interface: add sections rather than
+renaming or reordering them.
 
 ## Layout
 
 ```
 bluestore/
+  ARCHITECTURE.md     this file
+  CMakeLists.txt      drives the builds below; compiles nothing itself
   pyproject.toml      project description: metadata, dependencies, build
-  CMakeLists.txt      the native build: what is compiled, and where it lands
-  bluestore/          the python code for the storage backend Swift will use
-  src/                the native engine, the binding to it, and a command line tool
-  test/               the tests and the harness they run in
+  src/
+    bluestore/        the python code for the storage backend Swift will use
+    injection/        the engine, built inside Ceph's own build
+    extension/        the binding and command line tool, built against it
+    test/             the tests and the harness they run in
+    vendor/           Ceph's source, fetched by the build and not committed
 ```
 
 ---
@@ -55,7 +64,21 @@ nothing but pip.
 
 The catch is that a wheel containing compiled code only works on the
 interpreter version and platform it was built for. The build has to happen
-somewhere that matches the machine that will install it.
+somewhere that matches the machine that will install it. Ours is stricter
+than most, because it carries a large library of its own compiled against
+the system it was built on.
+
+## The first build
+
+The engine is the expensive part. The first build fetches Ceph's source and
+compiles the pieces our library depends on, so it wants a network connection
+and some disk, and it takes minutes rather than seconds. Only those pieces
+are built — see [Engine](#engine) — so this is a good deal smaller than
+building Ceph.
+
+Later builds are quick, because that half is cached and only our own code is
+recompiled. The cache is worth protecting; see the note on clean builds at
+the end of this section.
 
 ## Two ways to build
 
@@ -78,22 +101,29 @@ uv sync
 
 ```sh
 python -m venv .venv && . .venv/bin/activate
-pip install -e '.[test]'
+pip install dependency-groups build
+pip-install-dependency-groups dev
 ```
+
+The tools needed to build are declared as a dependency group rather than as
+ordinary dependencies, since they are wanted while building and never
+afterwards. Groups are recent enough that older pip cannot read them, so the
+pip path installs a helper that can, along with the program that drives the
+build.
 
 ### Run the tests
 
 ```sh
 uv run pytest              # default tests
 uv run pytest -m <kind>    # one kind of test
-uv run pytest -m ""        # every kind tests
+uv run pytest -m ""        # every kind of test
 ```
 
 ```sh
 . .venv/bin/activate
 pytest                     # default tests
 pytest -m <kind>           # one kind of test
-pytest -m ""               # every kind tests
+pytest -m ""               # every kind of test
 ```
 
 ### Build a wheel
@@ -103,8 +133,12 @@ uv build --wheel
 ```
 
 ```sh
-pip wheel -w dist --no-deps .
+python -m build --no-isolation --wheel
 ```
+
+`--no-isolation` tells the build to use the environment we just set up rather
+than assembling a private one and fetching the build tools again. Ours are
+already there, and a build this long should not be repeating that work.
 
 ### Install it
 
@@ -112,10 +146,10 @@ pip wheel -w dist --no-deps .
 pip install --force-reinstall --no-deps dist/bluestore-*.whl
 ```
 
-`--no-deps` appears in both pip commands. We declare Swift as a dependency so
-that a development environment gets a version we are compatible with, but on
-a machine running Swift that requirement is already met by the system
-installation, and fetching a second copy from PyPI would be wrong.
+`--no-deps` is there because we declare Swift as a dependency, so that a
+development environment gets a version we are compatible with. On a machine
+running Swift that requirement is already met by the system installation, and
+fetching a second copy from PyPI would be wrong.
 
 `--force-reinstall` is needed because our version number does not change
 between iterations, so pip would otherwise decide the installed copy is
@@ -136,8 +170,29 @@ The first is our Python code, the second the compiled engine behind it (see
 [Binding](#binding)), the third the command line program. Silence from the
 first two and a path from the third means installed.
 
-Silence means installed. If Swift then still refuses to start on an unknown
-policy type, the problem is not the install; see [Policy](#policy).
+The second check is the one that catches the most. It loads the compiled
+module, which in turn has to find the engine library sitting beside it, so it
+fails if either is missing or if the two do not agree.
+
+If Swift then still refuses to start on an unknown policy type, the problem
+is not the install; see [Policy](#policy).
+
+## The wheel is self-contained
+
+The engine is a library of its own, and it travels inside the wheel rather
+than being installed on the machine. Nothing has to be put in place
+beforehand, no system package is required, and no environment variable has to
+be set to make it findable.
+
+That works because everything which loads our code looks for the library by a
+path relative to itself rather than in the usual system locations. The
+compiled module finds it in the same directory; the command line program
+finds it by walking from where it was installed to where our package lives.
+
+The cost is that those relationships are fixed at build time. Moving the
+library out of the package, or installing the program somewhere that does not
+stand in the expected relation to the package, breaks loading — and it breaks
+it at the moment something first tries to use it, not at install time.
 
 ## The pieces
 
@@ -156,19 +211,31 @@ scikit-build-core instead, which does the same job but runs CMake first and
 packs its output into the same wheel. The result is one artifact holding both
 halves, installed in one step.
 
-**`CMakeLists.txt`** owns the native build: which sources are compiled, what
-they produce, and where each product has to land. It produces two kinds of
-thing. One is a module Python can import, which has to end up inside our
-package to be importable as part of it; [Binding](#binding) explains what it
-is for. The other is an ordinary program, which has to end up wherever
-installed programs go, so that a wheel install leaves it on `PATH`.
+**`CMakeLists.txt`** compiles nothing itself. It sets up and runs the builds
+that do, and collects what they produce into the places the wheel is
+assembled from; [Engine](#engine) is about why the work is split up that way.
+What comes out is three kinds of thing: a module Python can import and the
+engine library it depends on, both of which have to end up inside our package,
+and an ordinary program, which has to end up wherever installed programs go so
+that a wheel install leaves it on `PATH`.
 
 ## Adding C++
 
-Add sources under `src/`, declare them in `CMakeLists.txt` as part of an
-existing target or a new one, and give anything that has to be importable or
-runnable afterwards an install destination. Both kinds of product are already
-built and installed there, so the existing targets are the example to copy.
+There is more than one build, so the first question is which one your code
+belongs to. Code that uses Ceph's own internals goes in `src/injection`,
+because only the build that runs inside Ceph's can see them. Everything else
+— the binding, the command line tool, anything reaching the engine through
+the surface it already offers — goes in `src/extension`, and is compiled
+against that surface rather than against Ceph.
+
+Getting this wrong is not subtle. Reaching for a Ceph header from the
+extension side fails while compiling, because it is not there to be found.
+
+Add sources to whichever directory that is, declare them in the
+`CMakeLists.txt` next to them as part of an existing target or a new one, and
+give anything that has to be importable or runnable afterwards an install
+destination. Every kind of product already exists in one of those files, so
+there is an example to copy.
 
 Before adding a function that Python will call, read
 [Binding](#binding) and [Concurrency](#concurrency). Both place requirements
@@ -180,9 +247,216 @@ It lists the files whose contents decide whether a cached build can be
 reused. A file not covered there can be edited without triggering a rebuild,
 which produces a frustrating loop where changes appear to do nothing. The
 list matches paths, so a source file in a directory no pattern reaches is
-invisible to it even though the build compiles it quite happily. To force a
-clean build, delete `dist/` and the build directory, or pass `--reinstall` to
-`uv sync`.
+invisible to it even though the build compiles it quite happily.
+
+To force our own code to be rebuilt, pass `--reinstall` to `uv sync`. Deleting
+the build directory also works and is almost never what you want: the engine's
+build lives there too, and throwing it away means waiting out the first build
+again.
+
+---
+
+# Engine
+
+The storage we want is BlueStore, and BlueStore is part of Ceph. Ceph is a
+large project that builds into a set of servers and command line tools, and
+BlueStore is machinery inside those rather than something Ceph offers to
+anyone else. There is no package to install and nothing to link against. The
+code is there and it compiles, but by the time Ceph's build has finished, the
+piece we want has been folded into Ceph's own programs and is not separately
+reachable.
+
+This section is about how we get from that source tree to a single library
+our own code can use.
+
+## Why we cannot simply link
+
+A build is a set of pieces — libraries and programs — together with a
+description of which pieces need which others, which headers they are
+compiled against, and which settings they must all agree on. Ceph's build has
+pieces for its object store, its configuration and logging, its key-value
+layer, and a great many more.
+
+That description exists only while Ceph is being built. When it finishes,
+Ceph installs its servers and tools and discards the rest. Nothing is left
+that tells a later build what the internal pieces were, what each needed, or
+how they fit together.
+
+We could try to reconstruct it: find the compiled pieces on disk, work out
+which ones are required and in what order, and reproduce every setting they
+were built with. That is guesswork, and the failures it produces are the
+unpleasant kind — a build that succeeds and a program that misbehaves later,
+because two halves were compiled under assumptions that did not match.
+
+The alternative is to stop being outside, and everything below follows from
+taking that option.
+
+## Deciding, then compiling
+
+CMake, the build system Ceph uses, works in two passes.
+
+The first reads the project's build files and decides everything: which
+pieces exist, what each needs, which options are on, what flags to use. No
+compiling happens. The second carries out those decisions.
+
+The distinction matters here more than it usually does. Choices are only
+open during the first pass — once it is over, the answers are fixed. Almost
+everything we do is done during that first pass, and much of it depends on
+happening at the right moment within it.
+
+## Joining Ceph's configuration
+
+CMake lets a project be handed the name of an extra file to read as it starts
+its first pass. Ceph neither knows nor cares: the name comes from outside,
+and Ceph reads the file as though it had always been part of the project. Its
+source is not modified and there is no patch to carry.
+
+That file is `src/injection/CMakeLists.txt`. Everything in it runs as part of Ceph's own
+configuration, which is what makes the rest possible. The following
+subsections are the things it does.
+
+## Answering questions before they are asked
+
+Ceph's build offers a long list of switches — build the gateway or not,
+build the filesystem or not, build the dashboard, the tracing, the management
+daemons. Each is a question Ceph asks itself during configuration, and each
+has a default.
+
+A question already answered is not asked again. Because our file is read
+before Ceph reaches those questions, setting a switch there settles it, and
+Ceph configures itself accordingly. That is the whole mechanism: we are early
+enough to have an opinion.
+
+What we turn off is everything that is not storage. The principle is the
+smallest Ceph that still contains what we came for; the list is long, it will
+keep changing, and it lives in the file rather than here.
+
+## Building only what we need
+
+Turning features off is one lever. The other is asking for less.
+
+When a build is asked for one particular piece, it builds that piece and
+whatever that piece needs, and stops. The outer build asks only for our
+library. Ceph's servers and tools are never compiled at all, not because they
+were switched off but because nothing we asked for requires them.
+
+Between the two, what actually gets compiled is the dependency chain behind
+our library, which is a fraction of the project.
+
+## Compiling for a shared library
+
+We want the result to be one shared library: a single file that can be loaded
+into a running program.
+
+Code has to be compiled differently depending on where it will end up. Code
+built into a program can assume it sits at a fixed address, because there is
+one program and it knows where it is. A shared library has no such promise —
+it is loaded wherever there is room, possibly at a different address in every
+process — so its code has to be written to work regardless. That form is
+slightly more expensive and is not what a build aimed at producing programs
+would choose, so Ceph does not choose it. Our file asks for it everywhere,
+because anything that will end up inside our library has to have it.
+
+The same reasoning drives the other choices in that file. Ceph's dependencies
+are built in the form that folds into our library rather than the form that
+sits beside it as a separate file, and the memory allocator is left as the
+system's own rather than replaced. Everything we need goes into one file, and
+that file relies on as little of its surroundings as possible.
+
+## Our library
+
+Inside Ceph's configuration we declare a library of our own and say which of
+Ceph's internal pieces it depends on.
+
+Because the declaration is inside, the build works all the rest out itself:
+which headers those pieces need, which definitions they were compiled with,
+what has to be linked and in what order. That is precisely the guesswork we
+could not do from outside, and here it is not guesswork at all — it is the
+same calculation Ceph does for its own programs.
+
+What comes out is one shared library. Our own small surface on the outside;
+the parts of Ceph we need sealed within.
+
+## Keeping to ourselves
+
+That library gets loaded into a process that is already full of other code —
+the Python interpreter, Swift, and whatever else those have brought with
+them.
+
+Shared libraries contribute names to the process they are loaded into, and
+when two contribute the same name, one of them wins for everybody. Ceph is
+large and its names are its own business, not something the rest of the
+process should be exposed to or able to interfere with. So calls inside our
+library are bound to their targets inside our library, rather than being left
+open to whatever the process resolves them to later. What we deliberately
+offer stays reachable; the rest stops being anyone else's concern.
+
+The same place drops code that nothing in the library reaches, which is a
+good deal of it given how much of Ceph comes along behind the pieces we
+asked for.
+
+This is the difference between a library that happens to build and one that
+can be loaded into somebody else's process safely, which is the only way ours
+is ever used.
+
+## Describing what we made
+
+The extension build has to link against this library, and cannot work out on
+its own where it ended up, what headers go with it, or which language version
+it was built to. So the inner build writes that down and the outer side reads
+it.
+
+The timing is the awkward part. Our file is read *before* Ceph configures
+itself — that is what lets us answer its questions — which means that at the
+moment we run, the answers we want to record do not exist yet. So the
+recording is deferred: we ask for a piece of work to be run at the very end
+of configuration, once every decision has been made, and it is then that the
+settings are read off and the description written out.
+
+What gets written is not instructions for building anything. It describes
+something that already exists: where the file is, the name it will be known
+by when loaded, which directory to take headers from, which language version
+to compile against. A build that reads it gets a piece it can link against as
+though it had built the thing itself.
+
+If that description is missing or out of date, the extension build fails
+while configuring, before anything is compiled. That is the direction we want
+this failure to point: an inner build that did not finish should stop the
+outer one at once rather than let it produce something subtly wrong.
+
+## Why the builds are separate
+
+Three builds run, and only one of them compiles anything of ours. The outer
+build downloads Ceph's source and drives the other two. One of those is
+Ceph's, with our file injected into it. The other is small, and builds the
+binding and the command line tool against the library that came out.
+
+An arrangement like this, where one build's job is to configure and run other
+builds rather than to compile anything itself, is usually called a
+superbuild. There are two reasons ours is one.
+
+The first is that Ceph's settings are right in one place and wrong in the
+other. Inside, we want them: they are what makes our library link correctly.
+Outside, we do not — the binding should be built the way the rest of our code
+is built, not the way Ceph builds itself. Separate builds are how each gets
+its own answers.
+
+The second is time. Ceph's build is the expensive one and our binding is not.
+Keeping them apart means editing the binding re-examines only the binding,
+and the large half sits untouched.
+
+There is a small consequence of the split worth knowing: because the inner
+builds are separate projects, their results cannot be placed straight into
+the wheel. Each puts its output in a staging area and the outer build copies
+from there into the places the wheel is assembled from.
+
+## What it costs
+
+Ceph's source is fetched rather than kept in this repository, and lands in a
+directory that is not under version control. Fetching it is unavoidable and
+the download is large, even though what gets compiled afterwards is only the
+part we need. Everything after the first build is cached, and only our own
+code is rebuilt. [Building](#building) has the practical side.
 
 ---
 
@@ -203,6 +477,19 @@ package should import it.
 We write it with the help of a binding library, nanobind, which supplies the
 conversions and the boilerplate rather than a new way of working. What
 follows is true of the boundary itself and does not depend on that choice.
+
+## The engine is an object
+
+What crosses the boundary is not a set of loose functions. The engine is a
+thing with a lifetime: it is opened, used for as long as it is wanted, and
+closed. Python holds a handle to it and the state stays on the native side,
+where it belongs — the Python layer never sees what is behind the handle and
+has no way to reach into it.
+
+Two things follow. The handle has to be kept for as long as the storage is
+in use, because letting go of it is what closes the engine. And opening one
+is not free, so it happens once when the storage is set up rather than per
+request.
 
 ## The binding does not decide anything
 
@@ -238,8 +525,8 @@ cheaper.
 
 ## The command line tool
 
-The engine can also be driven directly, by a program built from the same
-sources that does not involve Python at all:
+The engine can also be driven directly, by a program that does not involve
+Python at all:
 
 ```sh
 bluestore-cli --help
@@ -301,6 +588,22 @@ Both halves are already in place at every existing call. The Python side of
 one lives in `manager.py`, the native side in the binding it calls; between
 them they are the example to follow, and following it is not optional.
 
+## One engine, many threads
+
+There is a consequence of the rule that is easy to miss. The work goes to a
+pool of threads, and a pool has more than one thread in it. The Python layer
+holds a single engine and every request reaches it through that same handle.
+So the engine is not called from one thread at a time — it is called from
+several at once, and it is our own rule that makes this so.
+
+Anything the engine holds has to tolerate that. A value read by one call
+while another is writing it is a bug that belongs to us rather than to the
+caller, because nothing on the Python side is in a position to prevent it.
+
+Today this costs nothing: there is little behind the boundary and none of it
+is shared. That changes as soon as real storage is, and the moment to have
+written this down is before then rather than after.
+
 ## How this fails
 
 Breaking the rule does not look like breakage.
@@ -346,7 +649,7 @@ what is gained and lost by replacing it are the subject of the object-server
 presentation in this repository. Read it first. This section only says what we
 do about it.
 
-`manager.py` implements that interface on top of our engine. Two things are
+`manager.py` implements that interface on top of our engine. Three things are
 worth adding to what the presentation covers.
 
 **Swift finds the manager by name.** A storage policy names its backend as
@@ -469,66 +772,6 @@ symptom surfaces later as something apparently unrelated.
 
 # Testing
 
-A backend is correct when Swift cannot tell it apart from the reference
-implementation. The tests take that literally.
-
-Every request in the harness is sent twice through the same unmodified object
-server, once directed at the reference backend and once at ours, with
-identical timestamps. The two responses are compared in full: status, body,
-and headers. Anything that differs fails the test.
-
-Comparing everything is the point. A hand-written assertion catches only what
-someone thought to check, whereas here any divergence fails by default,
-including in error responses and in headers nobody was thinking about.
-
-This works because both backends are selectable per request inside one
-process. See [Policy](#policy) for why that is true.
-
-## The harness does not import our code
-
-`conftest.py` contains no import of this package. Registration has to happen
-the way it happens on a real machine, and if it does not happen the tests
-must fail as loudly as a real deployment would. An import in the harness
-would conceal exactly the failure that matters most.
-
-## The clock
-
-Swift orders operations by timestamp, so the two backends stay comparable
-only if they see the same ones. The harness generates timestamps from an
-integer tick counter rather than the wall clock.
-
-It advances two ways. A comparison call moves to the next whole second. A
-single-backend call moves by one tick. Since a tick is far smaller than a
-second, single-backend calls can be inserted anywhere without shifting the
-timestamps the comparison calls see. The two backends stay on the same grid
-however the two kinds of call are interleaved, and the arithmetic is integer
-throughout, so nothing drifts.
-
-## Declaring divergence
-
-`call.diff()` sends a request to our backend only. It is for behaviour that
-is intentionally different, and each use is a claim that a difference is
-correct rather than a bug. The set of uses is the complete record of where
-the two backends part ways.
-
-`IGNORED_HEADERS` does the same at a finer grain, for headers that cannot
-match by construction. The bar for adding one is that no implementation could
-make it match, not that ours currently does not.
-
-## Tests are sequences
-
-Fixtures are class-scoped and methods run in the order they are written. A
-test class is one scenario carried out step by step against shared server
-state, which is how a backend's real failures tend to show up: not in a
-single operation, but in what a series of them leaves behind. The
-`incremental` marker skips the remainder of a class once a step has failed,
-since everything after it would be testing from a state that was never
-reached.
-
----
-
-# Testing
-
 Tests come in kinds. Each kind asks one sort of question, has its own
 machinery, and is written under its own rules. A section below describes
 each; more can be added as more questions turn out to be worth asking.
@@ -539,7 +782,13 @@ Every test carries a mark naming its kind. The mark is not decoration: it is
 what selects the test, so it decides whether the test runs at all.
 
 The default run selects the kinds cheap enough to sit in a loop with.
-Anything else is asked for by name
+Anything else is asked for by name:
+
+```sh
+uv run pytest              # the default kinds
+uv run pytest -m <kind>    # one kind
+uv run pytest -m ""        # everything
+```
 
 A mark given on the command line replaces the default rather than adding to
 it, which is what makes the last two work. The consequence is worth knowing:
@@ -627,12 +876,10 @@ outweigh the noise, which makes it far slower than a differential test.
 
 A relationship, not a duration. Timings depend on the machine, its load, and
 whatever else is running, so no single number means anything on its own. Two
-timings taken together on one machine at one moment do: if one route is meant
-to be far cheaper than the other, that ordering holds anywhere we would run
-this, and a comfortable multiple can be demanded without the test becoming a
-report on the hardware. The multiples live in the test, sit well below what
-we expect to see, and exist to catch a route that has stopped being cheap
-rather than to pin down a figure.
+timings taken together on one machine at one moment do: since one route is far
+cheaper than the other, that ordering holds anywhere we would run this, and a
+comfortable multiple can be demanded without the test becoming a report on the
+hardware.
 
 ### Reading a failure
 
