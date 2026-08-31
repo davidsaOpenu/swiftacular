@@ -1,3 +1,5 @@
+<<<<<<< PATCH SET (17cdbc4e501dbc913dd911a23f86b68c2c266964 Build and link ceph)
+=======
 # Times the same work through the binding and through the command line tool.
 # Not in the default run; ask for it with -m fork.
 # see DESIGN.md#testing
@@ -69,3 +71,4 @@ def test_fork():
     print(f"{fork_write=}s")
 
     assert bind_write * 5 < fork_write
+>>>>>>> BASE      (49253d045a20a5f2076513756758a77ddeee06a9 Added mock binding and test)

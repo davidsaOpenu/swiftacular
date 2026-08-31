@@ -1,3 +1,5 @@
+<<<<<<< PATCH SET (17cdbc4e501dbc913dd911a23f86b68c2c266964 Build and link ceph)
+=======
 # Overview
 
 This directory contains a storage engine for Swift objects.
@@ -640,3 +642,4 @@ A failure here is a question rather than a verdict. It may mean what it says,
 or it may mean the machine was busy. Run it again somewhere quiet before
 believing it, and prefer to have believed it after two failures than to have
 dismissed it after one.
+>>>>>>> BASE      (49253d045a20a5f2076513756758a77ddeee06a9 Added mock binding and test)

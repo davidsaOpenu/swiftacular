@@ -1,3 +1,5 @@
+<<<<<<< PATCH SET (17cdbc4e501dbc913dd911a23f86b68c2c266964 Build and link ceph)
+=======
 // Reaches the engine without Python: useful for exercising it on its own,
 // and as the slow route the binding is timed against.
 // see DESIGN.md#binding
@@ -83,3 +85,4 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+>>>>>>> BASE      (49253d045a20a5f2076513756758a77ddeee06a9 Added mock binding and test)

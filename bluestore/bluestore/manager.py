@@ -1,3 +1,5 @@
+<<<<<<< PATCH SET (17cdbc4e501dbc913dd911a23f86b68c2c266964 Build and link ceph)
+=======
 # Copyright (c) 2010-2013 OpenStack, LLC.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -546,3 +548,4 @@ class DiskFile(object):
         if self._metadata is None:
             raise DiskFileNotOpen()
         return self._metadata.get('Content-Type')
+>>>>>>> BASE      (49253d045a20a5f2076513756758a77ddeee06a9 Added mock binding and test)

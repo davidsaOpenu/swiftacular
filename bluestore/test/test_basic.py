@@ -1,3 +1,5 @@
+<<<<<<< PATCH SET (17cdbc4e501dbc913dd911a23f86b68c2c266964 Build and link ceph)
+=======
 # Basic operation of the object server: the policy wiring that has to be in
 # place first, then one object through its whole lifecycle.
 # see DESIGN.md#testing
@@ -74,3 +76,4 @@ class TestObjectLifecycle:
     def test_put_after_delete(self, call):
         assert call("PUT", self.PATH, body=self.BODY_C).status_int == 201
         assert call("GET", self.PATH).body == self.BODY_C
+>>>>>>> BASE      (49253d045a20a5f2076513756758a77ddeee06a9 Added mock binding and test)

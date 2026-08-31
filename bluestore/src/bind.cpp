@@ -1,3 +1,5 @@
+<<<<<<< PATCH SET (17cdbc4e501dbc913dd911a23f86b68c2c266964 Build and link ceph)
+=======
 // The binding: convert the arguments, call the engine, convert the result.
 // Decisions belong on one side or the other, not here.
 // see DESIGN.md#binding
@@ -45,3 +47,4 @@ NB_MODULE(_raw, m) {
 	m.def("fake_read", &py_fake_read, nb::arg("object"), nb::arg("size"));
 	m.def("fake_write", &py_fake_write, nb::arg("object"), nb::arg("data") = nb::none());
 }
+>>>>>>> BASE      (49253d045a20a5f2076513756758a77ddeee06a9 Added mock binding and test)
