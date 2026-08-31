@@ -34,7 +34,7 @@ from swift.obj.diskfile import DATAFILE_SYSTEM_META, RESERVED_DATAFILE_META
 
 # The compiled half. Private to this package.
 # see DESIGN.md#binding
-from ._raw import fake_read, fake_write
+from ._raw import Backend
 
 class InMemoryFileSystem(object):
     """
@@ -50,6 +50,7 @@ class InMemoryFileSystem(object):
         return True
 
     def __init__(self, conf, logger):
+        self._backend = Backend("fake")
         self._filesystem = {}
 
     def get_object(self, name):
@@ -65,7 +66,7 @@ class InMemoryFileSystem(object):
         # Native work goes to a real thread and the native side drops the
         # interpreter lock. Both halves, every call.
         # see DESIGN.md#concurrency
-        tpool.execute(fake_read, name, 512)
+        tpool.execute(self._backend.fake_read, name, 512)
         val = self._filesystem.get(name)
         if val is None:
             fp, metadata, ts = None, None, None
@@ -75,7 +76,7 @@ class InMemoryFileSystem(object):
         if metadata:
             left = int(metadata.get("Content-Length", "0")) - 512
             if left > 0:
-                tpool.execut(fake_read, name, left)
+                tpool.execut(self._backend.fake_read, name, left)
 
         return fp, metadata, ts
 
@@ -88,7 +89,7 @@ class InMemoryFileSystem(object):
         :param metadata: dictionary of metadata to be written
         """
 
-        tpool.execute(fake_write, name, fp.getvalue())
+        tpool.execute(self._backend.fake_write, name, fp.getvalue())
         self._filesystem[name] = (fp, metadata, ts)
 
     def del_object(self, name, ts):
