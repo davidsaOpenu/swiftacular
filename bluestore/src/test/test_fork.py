@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from bluestore._raw import fake_read, fake_write
+from bluestore._raw import Backend
 
 ITERATIONS = 10_000
 
@@ -50,11 +50,13 @@ def duration_of(fn, *args, ret=None, **kwargs):
 
 @pytest.mark.fork
 def test_fork():
-    size = 2 ** 20 # 1 Mib
+    back = Backend("fake")
+
+    size = 2 ** 20 # 1 MiB
     body = b"A" * size
     file = "object"
 
-    bind_read = duration_of(fake_read, file, size, ret=body)
+    bind_read = duration_of(back.fake_read, file, size, ret=body)
     print(f"{bind_read=}s")
 
     fork_read = duration_of(fork_fake_read, file, size, ret=body)
@@ -62,7 +64,7 @@ def test_fork():
 
     assert bind_read * 10 < fork_read
 
-    bind_write = duration_of(fake_write, file, body, ret=size)
+    bind_write = duration_of(back.fake_write, file, body, ret=size)
     print(f"{bind_write=}s")
 
     fork_write = duration_of(fork_fake_write, file, body, ret=size)

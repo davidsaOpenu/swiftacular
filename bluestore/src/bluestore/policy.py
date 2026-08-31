@@ -23,6 +23,6 @@ class BluestorePolicy(BaseStoragePolicy):
 try:
     # Re-read the configuration now that the type is registered. Guarded because this module is also imported where there is no configuration to read.
     # see DESIGN.md#policy
-	reload_storage_policies()
+    reload_storage_policies()
 except Exception:
-	pass
+    pass

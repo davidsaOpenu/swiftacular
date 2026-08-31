@@ -1,12 +1,12 @@
 # Python-generated files
 __pycache__/
 *.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
 
-# Virtual environments
-.venv
+# Build directories
+/src/vendor
+/.venv
+/build
+/dist
 
+# User tool files
 uv.lock

@@ -5,10 +5,15 @@
     - storage
     - package_cache
   tasks:
+    - name: Install pip
+      ansible.builtin.dnf:
+        state: present
+        name: python3-pip
+
     - name: Copy bluestore wheel to node
       become: false
       ansible.builtin.copy:
-        src: "{{ lookup('ansible.builtin.fileglob', '../bluestore/dist/bluestore-*.whl') }}"
+        src: "{{ lookup('ansible.builtin.fileglob', '../bluestore/dist/swiftacular/bluestore-*.whl') }}"
         dest: /home/vagrant/
         mode: "0644"
       register: bluestore_wheel
