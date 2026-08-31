@@ -1,34 +1,64 @@
 ---
 - name: Build bluestore
   hosts: package_cache
+  vars:
+    tools: [python3-pip, cmake, ninja-build, git, gcc-c++, nasm]
+
+    dependencies: [systemd-devel, libblkid-devel, keyutils-libs-devel,
+      libaio-devel, snappy-devel, curl-devel, openssl-devel, python3-devel,
+      zlib-devel, libcap-devel, lua-devel, libuuid-devel]
+
   tasks:
+    - name: Enable CRB repository
+      ansible.builtin.command:
+        cmd: dnf config-manager --enable crb
+      changed_when: false
+
     - name: Install bluestore system dependencies
       ansible.builtin.dnf:
         state: present
-        name:
-          - python3-pip-wheel
-          - cmake
-          - ninja-build
-          - gcc-c++
+        name: "{{ tools + dependencies }}"
 
     - name: Upload bluestore code
       become: false
       ansible.builtin.copy:
         src: ../bluestore/{{ item }}
-        dest: /home/vagrant/bluestore/
+        dest: /home/vagrant/bluestore/{{ item }}
         mode: "0755"
       loop:
+        - src/bluestore/
+        - src/extension/
+        - src/injection/
         - pyproject.toml
         - CMakeLists.txt
-        - bluestore
-        - src
       register: bluestore_code
+
+    - name: Create build environment
+      become: false
+      ansible.builtin.pip:
+        name:
+          - dependency-groups
+          - build
+        virtualenv: /home/vagrant/bluestore/.venv
+        virtualenv_command: python -m venv
+
+    - name: Upgrade build environment
+      become: false
+      ansible.builtin.shell:
+        chdir: /home/vagrant/bluestore/
+        cmd: |
+          source .venv/bin/activate
+          pip-install-dependency-groups build
+      register: bluestore_setup
+      changed_when: "'Successfully installed' in bluestore_setup.stdout"
 
     - name: Build bluestore
       become: false
-      ansible.builtin.command:
+      ansible.builtin.shell:
         chdir: /home/vagrant/bluestore/
-        cmd: pip wheel -w dist --no-deps .
+        cmd: |
+          source .venv/bin/activate
+          python -m build --no-isolation --wheel
       register: bluestore_build
       changed_when: "'Successfully built' in bluestore_build.stdout"
 
@@ -41,5 +71,5 @@
     - name: Download wheel
       ansible.builtin.fetch:
         src: "{{ (bluestore_wheel.files | last).path }}"
-        dest: ../bluestore/dist/
+        dest: ../bluestore/dist/swiftacular/
         flat: true
