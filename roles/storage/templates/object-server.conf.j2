@@ -3,7 +3,11 @@ devices = /srv/node
 bind_ip = {{ ansible_ens8.ipv4.address }}
 bind_port = 6000
 # bind_port = 8080
+{% if swift_backend is defined and swift_backend == 'bs_bind' %}
+servers_per_port = 1
+{% else %}
 workers = 2
+{% endif %}
 
 [pipeline:main]
 pipeline = object-server
@@ -11,7 +15,7 @@ pipeline = object-server
 [app:object-server]
 {% if swift_backend is defined and swift_backend == 'memory' %}
 use = egg:swift#mem_object
-{% elif swift_backend is defined and swift_backend == 'bs' %}
+{% elif swift_backend is defined and swift_backend == 'bs_fork' %}
 use = egg:swift#bs_object
 {% else %}
 use = egg:swift#object

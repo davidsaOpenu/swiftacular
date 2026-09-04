@@ -1,0 +1,45 @@
+---
+- name: Build bluestore
+  hosts: package_cache
+  tasks:
+    - name: Install bluestore system dependencies
+      ansible.builtin.dnf:
+        state: present
+        name:
+          - python3-pip-wheel
+          - cmake
+          - ninja-build
+          - gcc-c++
+
+    - name: Upload bluestore code
+      become: false
+      ansible.builtin.copy:
+        src: ../bluestore/{{ item }}
+        dest: /home/vagrant/bluestore/
+        mode: "0755"
+      loop:
+        - pyproject.toml
+        - CMakeLists.txt
+        - bluestore
+        - src
+      register: bluestore_code
+
+    - name: Build bluestore
+      become: false
+      ansible.builtin.command:
+        chdir: /home/vagrant/bluestore/
+        cmd: pip wheel -w dist --no-deps .
+      register: bluestore_build
+      changed_when: "'Successfully built' in bluestore_build.stdout"
+
+    - name: Find bluestore wheel
+      ansible.builtin.find:
+        paths: /home/vagrant/bluestore/dist
+        patterns: "bluestore-*.whl"
+      register: bluestore_wheel
+
+    - name: Download wheel
+      ansible.builtin.fetch:
+        src: "{{ (bluestore_wheel.files | last).path }}"
+        dest: ../bluestore/dist/
+        flat: true
