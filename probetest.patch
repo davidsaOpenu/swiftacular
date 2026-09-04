@@ -1,0 +1,187 @@
+diff --git a/test/probe/test_invalid_object_creation.py b/test/probe/test_invalid_object_creation.py
+new file mode 100644
+index 0000000..1452d5f
+--- /dev/null
++++ b/test/probe/test_invalid_object_creation.py
+@@ -0,0 +1,181 @@
++# Copyright (c) 2026 Yali Haviv
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#    http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++# new probe test - test_invalid_object_creation
++
++from unittest import main
++import os
++import uuid
++
++from swift.common import direct_client
++from swift.common.exceptions import ClientException
++from swift.common.utils import hash_path, readconf
++from swift.obj.diskfile import get_data_dir
++from swiftclient import client
++
++from test.probe.common import ReplProbeTest
++
++
++# corruption function from the maman description
++def corrupt_obj(data_file):
++    with open(data_file, "wb") as output:
++        output.write(b"CORRUPTED")
++
++
++class TestInvalidObjectCreation(ReplProbeTest):
++
++    # finding an object path in memory is more complicated than it seems
++    # objects paths are determined by their nodes hashes and timestamps
++    def get_object_paths(self, container, obj):
++
++        # getting the nodes and the hash to compose the real object directory
++        partition, nodes = self.object_ring.get_nodes(
++            self.account,
++            container,
++            obj,
++        )
++
++        object_hash = hash_path(
++            self.account,
++            container,
++            obj,
++        )
++
++        paths = []
++
++        for node in nodes:
++            node_id = self.config_number(node)
++
++            conf = readconf(
++                self.configs["object-server"][node_id],
++                section_name="app:object-server",
++            )
++
++            object_dir = os.path.join(
++                conf["devices"],
++                node["device"],
++                get_data_dir(self.policy),
++                str(partition),
++                object_hash[-3:],
++                object_hash,
++            )
++
++            # object names are based on internal timestamps, which are harder
++            # to predict; therefore, return the latest object generated in the
++            # directory together with its node
++            if os.path.isdir(object_dir):
++                data_files = sorted(
++                    filename
++                    for filename in os.listdir(object_dir)
++                    if filename.endswith(".data")
++                )
++
++                if data_files:
++                    paths.append(
++                        (
++                            node,
++                            os.path.join(object_dir, data_files[-1]),
++                        )
++                    )
++
++        return partition, paths
++
++    def create_container(self, con_name):
++        print("Creating container: ", con_name)
++
++        client.put_container(
++            self.url,
++            self.token,
++            con_name,
++            headers={"X-Storage-Policy": self.policy.name},
++        )
++
++    def insert_object(self, con_name, obj_name, content):
++        print("inserting object - ", obj_name, " to container: ", con_name)
++
++        client.put_object(
++            self.url,
++            self.token,
++            con_name,
++            obj_name,
++            contents=content,
++        )
++
++    def test_invalid_object_creation(self):
++        container_name = "container-%s" % uuid.uuid4().hex
++        obj_name = "object-%s" % uuid.uuid4().hex
++        obj_content = (
++            b"Lorem ipsum dolor sit amet, consectetur adipiscing elit."
++        )
++
++        self.create_container(container_name)
++        self.insert_object(container_name, obj_name, obj_content)
++        partition, object_paths = self.get_object_paths(
++            container_name,
++            obj_name,
++        )
++
++        self.assertTrue(
++            object_paths,
++            "Could not find an on-disk replica to corrupt",
++        )
++
++        # showing the path of the object calculated in order to corrupt it
++        corrupt_node, corrupt_path = object_paths[0]
++        print("Corrupting one replica at:", corrupt_path)
++
++        # corrupting one file - other replicas will be healthy
++        corrupt_obj(corrupt_path)
++
++        backend_headers = {
++            "X-Backend-Storage-Policy-Index": str(self.policy.idx),
++        }
++
++        # use a direct GET to query the corrupted replica, causing a 404 and
++        # quarantine
++        with self.assertRaises(ClientException) as caught:
++            direct_client.direct_get_object(
++                corrupt_node,
++                partition,
++                self.account,
++                container_name,
++                obj_name,
++                headers=backend_headers,
++            )
++        self.assertEqual(404, caught.exception.http_status)
++
++        # ensure the file was quarantined after the first request
++        with self.assertRaises(ClientException) as caught:
++            direct_client.direct_get_object(
++                corrupt_node,
++                partition,
++                self.account,
++                container_name,
++                obj_name,
++                headers=backend_headers,
++            )
++        self.assertEqual(404, caught.exception.http_status)
++
++        # ensure healthy replicas return objects correctly
++        _headers, odata = client.get_object(
++            self.url,
++            self.token,
++            container_name,
++            obj_name,
++        )
++        self.assertEqual(obj_content, odata)
++
++
++if __name__ == "__main__":
++    main()
