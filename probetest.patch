@@ -1,0 +1,138 @@
+diff --git a/test/probe/test_invalid_object_creation.py b/test/probe/test_invalid_object_creation.py
+new file mode 100644
+--- /dev/null
++++ b/test/probe/test_invalid_object_creation.py
+@@ -0,0 +1,133 @@
++
++# new probe test - test_invalid_object_creation
++
++
++from unittest import main
++import os
++import uuid
++from swiftclient import client
++
++from swift.common.utils import hash_path, readconf
++from swift.obj.diskfile import get_data_dir
++
++from test.probe.common import ReplProbeTest
++
++
++
++
++# corruption function from the maman description
++def corrupt_obj(data_file):
++    with open(data_file, 'wb') as f:
++            f.write(b'CORRUPTED')
++
++
++
++class TestInvalidObjectCreation(ReplProbeTest):
++
++
++    # finding an object path in memory is more complicated then it seems
++    # It requires 
++    def get_object_paths(self, container, obj):
++        
++        # getting the nodes and the hash to compose the real object directory
++        partition, nodes = self.object_ring.get_nodes(
++            self.account,
++            container,
++            obj,
++        )
++
++        object_hash = hash_path(
++            self.account,
++            container,
++            obj,
++        )
++
++
++        paths = []
++
++        for node in nodes:
++            node_id = self.config_number(node)
++
++            conf = readconf(
++                self.configs["object-server"][node_id],
++                section_name="app:object-server",
++            )
++
++            object_dir = os.path.join(
++                conf["devices"],
++                node["device"],
++                get_data_dir(self.policy),
++                str(partition),
++                object_hash[-3:],
++                object_hash,
++            )
++
++            # object names are based on internal timestamp, which are harder to predict
++            # therefore we will return the latest object generated in the directory
++            if os.path.isdir(object_dir):
++                data_files = sorted(
++                    filename
++                    for filename in os.listdir(object_dir)
++                    if filename.endswith(".data")
++                )
++
++                if data_files:
++                    paths.append(
++                        os.path.join(object_dir, data_files[-1])
++                    )
++
++        return paths            
++
++
++
++    def create_container(self, con_name):
++        print("Creating container: ", con_name)
++
++        client.put_container(self.url, self.token, con_name,
++                             headers={'X-Storage-Policy':
++                                      self.policy.name})
++
++
++    def insert_object(self, con_name, obj_name, content):
++        print("inserting object - ", obj_name , " to container: ", con_name)
++
++        client.put_object(
++            self.url,
++            self.token,
++            con_name,
++            obj_name,
++            contents=content,
++        )
++
++
++    def test_invalid_object_creation(self):
++        container_name = 'container-%s' % uuid.uuid4().hex
++        obj_name = 'object-%s' % uuid.uuid4().hex
++        obj_content = b'Lorem ipsum dolor sit amet, consectetur adipiscing elit.'
++
++        self.create_container(container_name)
++        self.insert_object(container_name, obj_name, obj_content)
++        object_paths = self.get_object_paths(container_name, obj_name)
++        
++        self.assertTrue(
++            object_paths,
++            "Could not find an on-disk replica to corrupt")
++        
++        # showing the paths of the objects calculated in order to corrupt them
++        print(object_paths)
++        
++        # corrupting one file - replicas will be healthy 
++        print("Corrupting one replica at: object_paths[0]")
++        corrupt_obj(object_paths[0])
++        
++        # act on a get request, ensuring the system will identify replicas do not match
++        headers, odata = client.get_object(self.url, self.token,
++            container_name, obj_name)
++        print("object data is", odata)
++
++        # object infromation is abailable from replicas - but corrupted files should be identified and visible in the logs
++
++
++
++if __name__ == "__main__":
++    main()
