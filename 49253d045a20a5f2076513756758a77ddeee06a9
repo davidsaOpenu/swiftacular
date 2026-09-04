@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "80db4622_17360333",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-04T05:54:38Z",
+      "side": 1,
+      "message": "Thanks for the updates. Let\u0027s rebase this change on top of HEAD rather than on top of \"Added initial native bluestore support\".",
+      "revId": "49253d045a20a5f2076513756758a77ddeee06a9",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
