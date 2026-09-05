@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5a5951b3_2c97a6b4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-05T17:57:56Z",
+      "side": 1,
+      "message": "Forgot to add. The verification failed because of the trailing whitespace. Running tox before committing ensures this sort of thing doesn\u0027t happen",
+      "revId": "e84219e278fe0b5cdcbfe53649faf1f35cfe3817",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "da32beee_ad7513b1",
