@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "da32beee_ad7513b1",
+        "filename": "probetest.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-05T17:54:26Z",
+      "side": 1,
+      "message": "It feels the sentence got cut off. If you want to in SAIO you can cheat by globbing over /srv/**/ instead of actually checking in what servers did the object actually end up in. That said Your approach is probably better because it resists swift changes better",
+      "revId": "e84219e278fe0b5cdcbfe53649faf1f35cfe3817",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ee3bd212_08287198",
+        "filename": "probetest.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-05T17:54:26Z",
+      "side": 1,
+      "message": "Can you be certain that the file you corrupted will be the one you will read? If you only corrupt one of the replicas you may be served an uncorrupted file from one of the other servers.",
+      "range": {
+        "startLine": 124,
+        "startChar": 0,
+        "endLine": 126,
+        "endChar": 37
+      },
+      "revId": "e84219e278fe0b5cdcbfe53649faf1f35cfe3817",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c611c527_6f627e66",
+        "filename": "probetest.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-05T17:54:26Z",
+      "side": 1,
+      "message": "Shouldn\u0027t this be an assert? Also since the file should be quarantined after this call. Maybe add another request to verify",
+      "range": {
+        "startLine": 129,
+        "startChar": 0,
+        "endLine": 131,
+        "endChar": 39
+      },
+      "revId": "e84219e278fe0b5cdcbfe53649faf1f35cfe3817",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
