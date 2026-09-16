@@ -27,6 +27,8 @@ replicas: 2
 min_part_hours: 1
 # Size of the sparse image to be mounted *in gigabytes*
 loop_disk_size: 5
+# Capacity of each bluestore store *in gigabytes*
+bluestore_capacity: 4
 
 #
 # Swift hash settings

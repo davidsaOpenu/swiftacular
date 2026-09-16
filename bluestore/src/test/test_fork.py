@@ -4,17 +4,51 @@
 
 import subprocess
 import time
+import gc
 
 import pytest
 
 from bluestore._raw import Backend
 
-ITERATIONS = 10_000
+OBJECT_NAME = "AAAA/BBBB/CCCC"
+OBJECT_SIZE = 2 ** 20
+OBJECT_BODY = b"A" * OBJECT_SIZE
+OBJECT_META = '{"Content-Type": "text/plain"}'
+
+ITERATIONS_BIND = 10000
+ITERATIONS_FORK = 1000
+
+def measure(iterations, ret=None):
+    def wrap_a(fn):
+        def wrap_b(*args, **kwargs):
+            start = time.perf_counter()
+
+            for i in range(iterations):
+                assert fn(*args, **kwargs) == ret
+
+            total = time.perf_counter() - start
+            return total, total / iterations
+        return wrap_b
+    return wrap_a
 
 
-def fork_fake_read(file, size=512):
+@measure(ITERATIONS_FORK)
+def fork_put(store):
     result = subprocess.run(
-        ["bluestore-cli", "-m", "fake_read", file, str(size)],
+        ["bluestore-cli", "-q", "-d", store, "put", OBJECT_NAME, OBJECT_META],
+        input=OBJECT_BODY,
+        capture_output=True,
+        check=False
+    )
+
+    if result.returncode != 0:
+        raise ValueError(result.stderr)
+
+
+@measure(ITERATIONS_FORK, OBJECT_BODY)
+def fork_get(store):
+    result = subprocess.run(
+        ["bluestore-cli", "-q", "-d", store, "get", OBJECT_NAME],
         capture_output=True,
         check=False
     )
@@ -25,49 +59,51 @@ def fork_fake_read(file, size=512):
     return result.stdout
 
 
-def fork_fake_write(file, data):
-    result = subprocess.run(
-        ["bluestore-cli", "-m", "fake_write", file],
-        input=data,
-        capture_output=True,
-        check=False
-    )
+@measure(ITERATIONS_BIND)
+def bind_put(back):
+    prev = back.find(OBJECT_NAME)
+    prev.open()
 
-    if result.returncode != 0:
-        raise ValueError(result.stderr)
+    obj = back.create(OBJECT_NAME)
+    obj.write(OBJECT_BODY)
+    obj.write_metadata(OBJECT_META.encode())
 
-    return int(result.stdout)
+    back.put(obj, prev)
 
 
-def duration_of(fn, *args, ret=None, **kwargs):
-    start = time.perf_counter()
+@measure(ITERATIONS_BIND, OBJECT_BODY)
+def bind_get(back):
+    obj = back.find(OBJECT_NAME)
+    obj.open()
 
-    for i in range(ITERATIONS):
-        assert fn(*args, **kwargs) == ret
-
-    return time.perf_counter() - start
+    return obj.read(0, OBJECT_SIZE)
 
 
 @pytest.mark.fork
-def test_fork():
-    back = Backend("fake")
+def test_fork(tmp_path):
+    store = str(tmp_path / "store")
 
-    size = 2 ** 20 # 1 MiB
-    body = b"A" * size
-    file = "object"
+    back = Backend(store)
+    print("Store warmed up")
 
-    bind_read = duration_of(back.fake_read, file, size, ret=body)
-    print(f"{bind_read=}s")
+    bind_put_total, bind_put_one = bind_put(back)
+    print(f"{bind_put_total=}s")
+    print(f"{bind_put_one=}s")
 
-    fork_read = duration_of(fork_fake_read, file, size, ret=body)
-    print(f"{fork_read=}s")
+    bind_get_total, bind_get_one = bind_get(back)
+    print(f"{bind_get_total=}s")
+    print(f"{bind_get_one=}s")
 
-    assert bind_read * 10 < fork_read
+    del back
+    gc.collect()
 
-    bind_write = duration_of(back.fake_write, file, body, ret=size)
-    print(f"{bind_write=}s")
+    fork_put_total, fork_put_one = fork_put(store)
+    print(f"{fork_put_total=}s")
+    print(f"{fork_put_one=}s")
 
-    fork_write = duration_of(fork_fake_write, file, body, ret=size)
-    print(f"{fork_write=}s")
+    fork_get_total, fork_get_one = fork_get(store)
+    print(f"{fork_get_total=}s")
+    print(f"{fork_get_one=}s")
 
-    assert bind_write * 5 < fork_write
+    assert bind_put_one *  5 < fork_put_one
+    assert bind_get_one * 10 < fork_get_one

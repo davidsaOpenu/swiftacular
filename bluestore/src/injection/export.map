@@ -1,0 +1,13 @@
+# The library's entire public surface. Everything not named here is local:
+# unreachable from outside and, since nothing outside can reach it, free for
+# the linker to discard.
+# see ARCHITECTURE.md#engine
+
+BLUESTORE_1.0 {
+  global:
+    extern "C++" {
+      bluestore::*;
+    };
+  local:
+    *;
+};

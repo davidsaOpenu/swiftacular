@@ -22,9 +22,10 @@ class TestObjectLifecycle:
     """One object, cradle to grave, states in lockstep on both backends."""
 
     PATH = "/sda1/0/a/c/lifecycle"
-    BODY_A = b"A" * 512
-    BODY_B = b"B" * 512
-    BODY_C = b"C" * 512
+    SIZE = 2 ** 20 * 4 + 512
+    BODY_A = b"A" * SIZE
+    BODY_B = b"B" * SIZE
+    BODY_C = b"C" * SIZE
 
     def test_get_before_put_is_404(self, call):
         assert call("GET", self.PATH).status_int == 404

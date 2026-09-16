@@ -10,13 +10,16 @@ layer Ceph uses to put data on its own disks. The code here extracts
 BlueStore from Ceph, wraps it, installs it next to Swift, and arranges for
 Swift to use it.
 
-Seven concerns follow from that, one per section below.
+Eight concerns follow from that, one per section below.
 
 - [Building](#building) — the engine and its Python layer have to be
   compiled and installed onto a machine running Swift.
 - [Engine](#engine) — BlueStore is machinery inside a large project that
   does not offer it to anyone, so it has to be extracted before it can be
   wrapped.
+- [Object model](#object_model) — what BlueStore stores and what Swift expects
+  of a name are not the same thing, so the engine defines a model of its own
+  in between.
 - [Binding](#binding) — Python and native code cannot call each other
   directly, so something has to carry calls across.
 - [Concurrency](#concurrency) — one object server handles many requests at
@@ -460,6 +463,221 @@ code is rebuilt. [Building](#building) has the practical side.
 
 ---
 
+# Object model
+
+What BlueStore offers and what Swift needs are not the same thing. Swift
+wants a name that answers with whatever was written to it last, while a
+reader already part-way through what was there before carries on reading
+that. So the engine defines an object model of its own: built out of what
+BlueStore offers, and shaped so that Swift's behaviour can be built out of it
+in turn. It is not Swift's model and does not try to be — only something
+Swift's can be expressed in.
+
+What the engine deals in is Objects. Each is a thing of its own in the store,
+with a state saying what may be done with it. The connections between them
+are deliberately thin: an Object knows nothing of whatever held its name
+before it, and the engine keeps no history. There is one relation and no more
+— at most one Object holds a name at a time, and handing it over is one
+transaction, so a crash leaves the name held by one of them and never by
+neither. Which Object should hold it, and what holding it means to a client,
+is decided above the boundary by the Python layer.
+
+What follows is the vocabulary BlueStore brings, and then that model: what
+an Object is, where it sits, and what becomes of the ones nothing points at
+any more.
+
+## What BlueStore offers
+
+Everything below is built out of a handful of things BlueStore provides, and
+the rest of this section uses them by name.
+
+The first is an awkwardness rather than a feature. BlueStore stores things it
+calls objects, and so does Swift, and so do we — three meanings for one word.
+So in this section BlueStore's are **entries**, ours keep the capital letter,
+and Swift's are whatever a client put there.
+
+Entries live in **collections**. A collection is opened once and worked
+within, and asking BlueStore to create one that already exists kills the
+process, so ours are opened when the store is mounted — BlueStore's word for
+opening one — and held until it is unmounted again.
+
+An entry's **address** is a name and two numbers: which space it belongs to,
+ordinary or temporary, and a **generation**. The temporary space is numbered
+below the ordinary one, and a collection can be listed in order, so
+everything temporary comes first. That ordering is load-bearing later.
+
+An entry carries three kinds of content: its bytes, a handful of small named
+values beside them called **attributes**, and a key-value map, whose
+**header** is a blob of its own that can be read and written whole.
+
+Changes are applied in **transactions**. A transaction is all-or-nothing on
+disk — after a crash the whole batch is there or none of it is — but it is
+not all-or-nothing to anyone reading at the time, who sees its changes land
+one at a time. The engine waits for each transaction to reach the disk before
+the call that made it returns. A transaction can move an entry to another
+address inside its own collection, which is how one is put in place; it
+cannot move one to a different collection, and asking kills the process.
+
+A **store**, finally, is a directory with one large file inside it, and that
+file is the whole of the disk BlueStore has to work with.
+
+## An Object and its states
+
+An Object's state says what may be done with it, and every operation either
+requires a state or moves to one. There are two ways through them: a search,
+which finds whatever holds a name, and a write, which makes something that
+can take the name over.
+
+- **PRE_SEARCH** — what `find()` hands back, before anything has been looked
+  up.
+- **IN_SEARCH** — inside `open()`, and what tells it that finding nothing is
+  an answer rather than a failure. An Object left in this state is one whose
+  search did not finish.
+- **MISSING** — the search finished and nothing holds the name.
+- **PRE_WRITE** — what `create()` hands back. Nothing is on disk yet.
+- **IN_WRITE** — on disk and being written to. The first `write()` or
+  `write_metadata()` creates the entry and writes its attributes, which is
+  why a delete or an empty object needs no `write()` at all.
+- **ACTIVE** — holds the name. `put()` moves an IN_WRITE Object here.
+- **OLD** — held the name until `put()` handed it to something else.
+
+## Writing makes a new one
+
+A write never lands in the Object a name already resolves to. It goes to one
+created for the purpose, and `put()` then hands the name over: a single
+transaction renames the old Object out into the temporary space and the new
+one onto the name's address, writing both their attributes on the way. A
+crash lands on one side of that or the other, so the name is never left held
+by two Objects and never by neither. A reader looking while it happens is a
+different matter — the renames land one at a time, and between them the name
+resolves to nothing. A retired Object stays readable to whoever already holds
+it, and goes away when they let go.
+
+The reason writing works that way is the shape of a transaction. It can put
+an entry in place in one step, but it cannot be held open while a body
+arrives. An object server takes that body in chunks, over as long as the
+client cares to take sending them, and has to keep answering reads from what
+is already there throughout. Writing somewhere else and swapping is the only
+shape that offers both.
+
+## Deleting writes one too
+
+A delete is not the absence of an Object. It is an Object that never had data
+written to it: its deleted attribute is set before anything reaches the
+store, it carries metadata of its own, and `put()` hands it the name exactly
+as it would anything else. A delete and a write racing for the same name are
+settled by one rule rather than two, and whatever finds it afterwards can
+tell when it happened.
+
+## The timestamp arrives late
+
+Swift builds a writer before it knows what timestamp the object will have.
+The timestamp comes with the metadata, after the body has been received,
+which is too late to name the thing being written after it.
+
+So `create()` stamps an Object with the clock, counted in the same
+hundred-thousandths of a second Swift counts in, and `put()` replaces that
+with the timestamp Swift chose. The state says which of the two is in hand:
+one still being written has the guess, and one that has taken a name or been
+retired has the real thing. Counting in Swift's unit is the price of being
+able to replace one with the other, and the only opinion the engine has about
+a timestamp it never interprets.
+
+## What the caller serialises
+
+The engine serialises nothing itself. It asks one thing of the caller
+instead: changes to an Object's state and the submission of writes must not
+interleave. Reads are outside that, deliberately — they are the common case,
+and almost all of them collide with nothing. How the Python layer holds up
+its end is [Concurrency](#concurrency).
+
+What it costs is that a reader can be overtaken. It holds an Object and reads
+it in pieces, and between two of those pieces the Object may have been
+retired and removed. So after every read the engine re-reads the entry's
+attributes at the same address and compares the timestamp it finds against
+the one the Object holds; a mismatch, or nothing there at all, fails the read
+rather than handing back another Object's bytes. A failed read is something
+the layer above can retry; serialising every read would be paid for by all
+the ones that never needed it.
+
+Metadata is the exception. It is rewritten in place rather than by making a
+new Object, so a caller reading it across several calls can see parts of two
+updates. That is the price of a POST not having to copy the object it
+describes.
+
+Three failures are worth telling apart. StateError says the caller asked for
+something the Object's state does not allow, which is a bug above rather than
+a condition to handle. ChangedError says the ground moved while an Object was
+being read. ConflictError says an Object was offered that is not newer than
+the one it would replace, which is an ordinary thing to tell a client.
+
+## Where an Object sits
+
+A name is hashed — with rjenkins, the function Ceph uses for the same job —
+and the hash picks one of a fixed set of collections. Every Object under that
+name lives in that one collection, and the address is what says which of them
+holds it: the one that does sits in the ordinary space at generation 0, and
+the ones being written or retired sit in the temporary space, at a generation
+taken from their timestamp. For one that has not been settled yet, that is
+the estimate.
+
+Two things follow, and both are load-bearing. Because the temporary space
+sorts first, `clean()` can list a collection from the beginning, remove what
+it finds, and stop at the first entry that is not temporary — everything past
+that point holds a name, so it never has to be read. And because everything
+under a name is in one collection, handing the name over is a move inside
+that collection rather than a copy out of it, which matters because moving an
+entry between collections is the case that kills the process.
+
+## What is stored, and where
+
+An Object's timestamp and whether it is a deletion are attributes, along with
+one more that tells a retired Object from one still being written. Its state
+is not stored at all: an entry in the ordinary space is ACTIVE, and one in
+the temporary space is OLD or IN_WRITE according to that flag. A stored state
+can disagree with reality after a crash, and a derived one cannot.
+
+Swift's metadata goes in the map header, as bytes the engine never looks
+inside. That is what lets the Python layer pick its own format without the
+engine having an opinion about it, and it is why the command line tool can
+print an object's metadata without the two of them agreeing on anything.
+
+## What a crash leaves
+
+An Object being written, or one that has been retired, is reachable only
+through whoever holds it. When the last holder lets go it is removed, because
+nothing can find it again.
+
+A crash leaves no holders, so those Objects stay where they are. Sweeping
+them is a separate operation rather than part of mounting, so a store that
+failed can be opened and listed exactly as it was left, and swept afterwards
+once someone has looked at it.
+
+## Capacity
+
+A store's size is the size of that one large file, and BlueStore never grows
+it of its own accord. Nor does it fail politely when it runs out: a store
+that fills kills the process rather than returning an error.
+
+The file is sparse, so it costs only what has been written to it, but nothing
+is ever given back to the filesystem. Returning space means telling the
+device that a range is no longer in use — a discard — and a discard needs a
+real block device rather than a file, so whatever a store has used stays
+used.
+
+So a store grows toward its capacity and stays there, whatever is live inside
+it. Capacity is not a ceiling a store approaches slowly — it is the disk that
+store will eventually occupy, which is why it comes from configuration rather
+than from a default that suits nobody in particular.
+
+Growing a store is possible and shrinking it is not. Growing needs the store
+unmounted, and growing one that another process has open kills ours — so the
+store is mounted, unmounted, and only then grown. A store somebody else holds
+fails at that first mount, the way everything else does, with an error rather
+than a crash.
+
+---
+
 # Binding
 
 The engine is C++ and the code Swift calls is Python. Neither can call the
@@ -865,9 +1083,9 @@ while every answer stays correct. These tests exist to notice that happening.
 A duration on its own says nothing, so the test needs something to measure
 against. That is the command line tool, which reaches the same engine by
 starting a separate program. It is useful here precisely because it is slow
-and always will be — its cost is dominated by starting the program, which no
-change of ours will make cheap — and because it moves with the machine the
-same way the binding does. The mark names it.
+and always will be — its cost is dominated by starting a process and mounting
+a store, neither of which any change of ours will make cheap — and because it
+moves with the machine the same way the binding does. The mark names it.
 
 These are not in the default run. A measurement needs enough repetitions to
 outweigh the noise, which makes it far slower than a differential test.
@@ -887,3 +1105,6 @@ A failure here is a question rather than a verdict. It may mean what it says,
 or it may mean the machine was busy. Run it again somewhere quiet before
 believing it, and prefer to have believed it after two failures than to have
 dismissed it after one.
+
+A run that fails leaves its store behind, so the tool can be pointed at
+exactly the state that failed; a run that passes takes it away again.

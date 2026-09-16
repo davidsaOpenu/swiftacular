@@ -12,7 +12,7 @@ dependencies = ["swift==2.35.0"]
 # The name must match what policy.py asks for.
 # see ARCHITECTURE.md#interface
 [project.entry-points."swift.diskfile"]
-manager = "bluestore.manager:InMemoryFileSystem"
+manager = "bluestore.manager:BluestoreDiskFileManager"
 
 # Wanted while building and never afterwards, so a group rather than a
 # dependency. `dev` is `build` plus what the tests need.
@@ -57,6 +57,7 @@ wheel.reproducible = true
 "src/bluestore/hook_apply.pth" = "bluestore_hook.pth"
 
 [tool.pytest.ini_options]
+tmp_path_retention_policy = "failed"
 testpaths = ["src/test/"]
 # Every test carries a mark saying what it is, and the default run selects
 # one kind. A -m on the command line replaces the one below rather than
