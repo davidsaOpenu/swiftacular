@@ -37,7 +37,13 @@ set(WITH_QATZIP OFF)
 set(WITH_UADK OFF)
 set(WITH_NVMEOF_GATEWAY_MONITOR_CLIENT OFF)
 set(WITH_LIBURING OFF)
-set(WITH_LZ4 OFF)
+
+# One file that relies on as little of its surroundings as possible: Ceph's
+# dependencies folded in rather than sitting beside us, and the system's own
+# allocator rather than a replacement fighting whatever the host process uses.
+set(WITH_SYSTEM_ROCKSDB OFF)
+set(WITH_SYSTEM_BOOST OFF)
+set(ALLOCATOR "libc")
 
 # Ceph ties position-independent code to building its libraries as separate
 # shared objects, and we want the opposite: everything static so it can be
@@ -48,21 +54,17 @@ string(APPEND CMAKE_C_FLAGS   " -fPIC")
 string(APPEND CMAKE_CXX_FLAGS " -fPIC")
 string(APPEND CMAKE_ASM_FLAGS " -fPIC")
 
-# One file that relies on as little of its surroundings as possible: Ceph's
-# dependencies folded in rather than sitting beside us, and the system's own
-# allocator rather than a replacement fighting whatever the host process uses.
-set(WITH_SYSTEM_ROCKSDB OFF)
-set(WITH_SYSTEM_BOOST OFF)
-set(ALLOCATOR "libc")
-
 # Our library, declared inside Ceph's build so the build itself works out the
 # headers, definitions and link order for these internal targets. That
 # calculation is exactly what cannot be reproduced from outside.
 add_library(bluestore_export SHARED
 	"${BLUESTORE_INJECTION_DIR}/backend.cpp"
-	"${BLUESTORE_INJECTION_DIR}/backend.h")
-
-target_link_libraries(bluestore_export PRIVATE global ceph-common kv os)
+	"${BLUESTORE_INJECTION_DIR}/backend.h"
+	"${BLUESTORE_INJECTION_DIR}/object.cpp"
+	"${BLUESTORE_INJECTION_DIR}/object.h"
+	"${BLUESTORE_INJECTION_DIR}/internal.cpp"
+	"${BLUESTORE_INJECTION_DIR}/internal.h")
+target_link_libraries(bluestore_export PRIVATE os kv ceph-common global)
 set_target_properties(bluestore_export PROPERTIES
 	LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/export"
 	OUTPUT_NAME bluestore
@@ -73,9 +75,16 @@ set_target_properties(bluestore_export PROPERTIES
 # resolves them to, and drop what nothing reaches -- which is a great deal,
 # given how much comes along behind the targets we asked for.
 # see ARCHITECTURE.md#engine
+string(APPEND CMAKE_C_FLAGS   " -ffunction-sections -fdata-sections -fvisibility=hidden")
+string(APPEND CMAKE_CXX_FLAGS " -ffunction-sections -fdata-sections -fvisibility=hidden -fvisibility-inlines-hidden")
+target_compile_options(bluestore_export PRIVATE -fvisibility=default)
 target_link_options(bluestore_export PRIVATE
+	-Wl,--version-script=${BLUESTORE_INJECTION_DIR}/export.map
 	-Wl,--gc-sections
-	-Wl,-Bsymbolic-functions)
+	-Wl,-Bsymbolic-functions
+	-Wl,--no-undefined)
+set_target_properties(bluestore_export PROPERTIES
+	LINK_DEPENDS "${BLUESTORE_INJECTION_DIR}/export.map")
 
 # The extension build cannot work out where this library ended up or how to
 # use it, so we write it down. The settings are read off Ceph's own src
@@ -91,8 +100,8 @@ function(bluestore_export_update)
 
 	file(GENERATE OUTPUT "${BLUESTORE_EXPORT_FILE}" CONTENT "
 	include_guard(GLOBAL)
-	add_library(ceph SHARED IMPORTED GLOBAL)
-	set_target_properties(ceph PROPERTIES
+	add_library(export SHARED IMPORTED GLOBAL)
+	set_target_properties(export PROPERTIES
 		IMPORTED_LOCATION \"$<TARGET_FILE:bluestore_export>\"
 		IMPORTED_SONAME \"$<TARGET_SONAME_FILE_NAME:bluestore_export>\"
 		INTERFACE_INCLUDE_DIRECTORIES \"${BLUESTORE_INJECTION_DIR}\"

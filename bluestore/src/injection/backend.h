@@ -1,25 +1,61 @@
 #include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <vector>
 #include <string>
 #include <memory>
 
 #ifndef BLUESTORE_BACKEND_H
 #define BLUESTORE_BACKEND_H
 
-// The engine's surface. Deliberately mentions nothing of Ceph: the state
-// lives behind the pointer, so the extension can be compiled against this
-// header without Ceph's headers being present at all.
-// see ARCHITECTURE.md#engine
+namespace bluestore {
+// This header and object.h are the engine's surface; anything that needs a
+// Ceph type lives behind Backend::impl in internal.h.
+// see ARCHITECTURE.md#building
+
+enum class SCAN {
+	NEXT_ENTRY,
+	NEXT_COLLECTION
+};
+
+enum class STATE {
+	PRE_SEARCH,
+	IN_SEARCH,
+	MISSING,
+	PRE_WRITE,
+	IN_WRITE,
+	ACTIVE,
+	OLD
+};
+
+struct Stat {
+	std::string name;
+	uint64_t data_ts = 0;
+	uint64_t meta_ts = 0;
+	bool deleted = false;
+	STATE state;
+};
+
+class Object;
 
 class Backend {
 	struct impl;
-	std::unique_ptr<impl> p;
+	std::shared_ptr<impl> p;
 
+	friend class Object;
 public:
-	Backend(const std::string& _filename);
+	Backend(const std::string& path, uint64_t size);
 	~Backend();
 
-	size_t fake_read(std::string& object, void *data, size_t size);
-	size_t fake_write(std::string& object, const void *data, size_t size);
+	Object find(const std::string& name);
+	Object create(const std::string& name, uint64_t ts);
+
+	void scan(const std::function<SCAN(const Stat&)>& fn);
+
+	void clean();
+	void put(Object& next, Object& prev);
 };
+
+}
 
 #endif

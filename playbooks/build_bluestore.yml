@@ -22,6 +22,7 @@
       - libcap-devel
       - lua-devel
       - libuuid-devel
+      - lz4-devel
   tasks:
     - name: Enable CRB repository
       ansible.builtin.command:
