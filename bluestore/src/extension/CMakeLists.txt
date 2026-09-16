@@ -4,23 +4,23 @@ project(${SKBUILD_PROJECT_NAME}-ext LANGUAGES CXX)
 find_package(Python 3.9 COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(nanobind CONFIG REQUIRED)
 
-# What the inner build wrote down. Gives us `ceph` as something to link
+# What the inner build wrote down. Gives us `export` as something to link
 # against, as though we had built it ourselves.
 # see ARCHITECTURE.md#engine
 include("${BLUESTORE_EXPORT_FILE}")
 
-add_library(bluestore INTERFACE)
-target_compile_options(bluestore INTERFACE
+add_library(flags INTERFACE)
+target_compile_options(flags INTERFACE
 	-Wall -Wextra -fno-math-errno
 	-ffunction-sections -fdata-sections)
 
 nanobind_add_module(_raw NB_STATIC bind.cpp)
-target_link_libraries(_raw PRIVATE bluestore ceph)
+target_link_libraries(_raw PRIVATE flags export)
 set_target_properties(_raw PROPERTIES
 	INSTALL_RPATH "$ORIGIN")
 
-add_executable(cli cli.cpp)
-target_link_libraries(cli PRIVATE bluestore ceph)
+add_executable(cli cli.cpp args.cpp args.h options.cpp options.h)
+target_link_libraries(cli PRIVATE flags export)
 string(JOIN ";" rpath
 	"$ORIGIN/../lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/${SKBUILD_PROJECT_NAME}"
 	"$ORIGIN/../lib64/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/${SKBUILD_PROJECT_NAME}"
@@ -37,6 +37,6 @@ file(REMOVE_RECURSE "${CMAKE_INSTALL_PREFIX}")
 # loads it. The rpaths above are how each finds it at run time, without
 # anything installed on the machine or set in the environment.
 # see ARCHITECTURE.md#building
-install(IMPORTED_RUNTIME_ARTIFACTS ceph LIBRARY DESTINATION "${SKBUILD_PROJECT_NAME}")
+install(IMPORTED_RUNTIME_ARTIFACTS export LIBRARY DESTINATION "${SKBUILD_PROJECT_NAME}")
 install(TARGETS _raw LIBRARY DESTINATION "${SKBUILD_PROJECT_NAME}")
 install(TARGETS cli RUNTIME DESTINATION "${SKBUILD_SCRIPTS_DIR}")

@@ -1,86 +1,216 @@
-// Reaches the engine without Python: useful for exercising it on its own,
-// and as the slow route the binding is timed against.
+// The command line tool: each command is one Swift-style request against its
+// own mount of the store.
 // see ARCHITECTURE.md#binding
 
+#include <algorithm>
 #include <iostream>
-#include <sstream>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
-#include "backend.h"
+#include <bluestore.h>
 
-int main(int argc, char** argv) {
-    std::string file = "bluestore.db";
-    std::vector<std::string> args;
-	bool machine = false;
+#include "args.h"
+#include "options.h"
+#include "cli.h"
 
-    for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
+int main(int argc, char**argv) {
+	return bluestore::run(argc, argv);
+}
 
-        if (arg == "-d" || arg == "--database") {
-            if (++i >= argc) {
-				std::cerr << "missing value for " << arg << std::endl;
-				return 2;
-			}
-            file = argv[i];
-        } else if (arg == "-m" || arg == "--machine") {
-			machine = true;
-        } else if (arg.size() > 1 && arg[0] == '-') {
-            std::cerr << "Unknown flag " << arg << std::endl;
-            return 2;
-        } else {
-            args.push_back(arg);
-        }
-    }
+namespace bluestore {
 
-	if (args.empty()) {
-		std::cerr << "Nothing to do." << std::endl;
-		return 2;
+namespace {
+
+const size_t CHUNK = 1024 * 1024;
+
+void open_existing(Object& obj) {
+	obj.open();
+	if (obj.state == STATE::MISSING)
+		throw std::runtime_error("Missing " + obj.name);
+}
+
+// put and delete: write a new object, then hand it the name.
+int replace(bool deleted) {
+	std::string name = object();
+	std::string meta = metadata();
+	uint64_t limit = size();
+	std::istream& in = deleted ? std::cin : input();
+
+	Backend back = backend();
+	Object prev = back.find(name);
+	prev.open();
+
+	Object next = back.create(name, timestamp());
+
+	std::vector<char> buf(CHUNK);
+	for (uint64_t offset = 0; !deleted && offset < limit;) {
+		size_t want = std::min<uint64_t>(CHUNK, limit - offset);
+		in.read(buf.data(), want);
+		size_t got = in.gcount();
+
+		if (got > 0)
+			next.write(buf.data(), got);
+		offset += got;
+
+		if (got < want)
+			break;
 	}
 
-	Backend back(file);
+	if (deleted)
+		next.tombstone(meta.data(), meta.size());
+	else
+		next.write_metadata(meta.data(), meta.size());
 
-	if (args[0] == "fake_read") {
-		if (args.size() < 2) {
-			std::cerr << "Missing object" << std::endl;
-			return 2;
-		}
+	back.put(next, prev, timestamp());
+	return 0;
+}
 
-		size_t size = 512;
-		if (args.size() >= 3)
-			std::sscanf(args[2].c_str(), "%zu", &size);
+}
 
-		std::vector<uint8_t> buf(size);
-		size_t out = back.fake_read(args[1], (void*)buf.data(), size);
+int run(int argc, char** argv) {
+	parse_args(argc, argv);
 
-		buf.resize(out);
-		for (auto &i: buf)
-			std::cout << i;
-
-		if (!machine)
-			std::cout << std::endl;
-	} else if (args[0] == "fake_write") {
-		std::string object = "_";
-
-		if (args.size() < 2) {
-			std::cerr << "Missing object" << std::endl;
-			return 2;
-		}
-
-		std::ostringstream ss;
-		ss << std::cin.rdbuf();
-		std::string buf = ss.str();
-
-		size_t out = back.fake_write(args[1], buf.data(), buf.size());
-		std::cout << out;
-
-		if (!machine)
-			std::cout << std::endl;
-	} else {
-		std::cerr << "Unknown command " << args[0] << std::endl;
-		return 2;
+	if (opts["show_help"] == "true") {
+		log_help();
+		return 0;
+	} else if (opts["parse_error"] == "true") {
+		log_help();
+		return 1;
 	}
 
-    return 0;
+	try {
+		const std::string& command = opts["command"];
+
+		if (command == "list") {
+			return list();
+		} else if (command == "clean") {
+			return clean();
+		} else if (command == "get") {
+			return get();
+		} else if (command == "head") {
+			return head();
+		} else if (command == "put") {
+			return put();
+		} else if (command == "post") {
+			return post();
+		} else if (command == "delete") {
+			return remove();
+		}
+	} catch (const std::exception& e) {
+		log(e.what());
+		return 1;
+	}
+
+	return 2;
+}
+
+int list() {
+	std::ostream& out = output();
+
+	backend().scan([&](const Stat& stat) {
+		if (stat.state != STATE::ACTIVE)
+			out << state_name(stat.state) << ' ';
+
+		out << stat.name;
+
+		if (stat.state != STATE::ACTIVE)
+			out << " ts=" << stat.ts;
+
+		if (stat.state == STATE::IN_WRITE)
+			out << " (estimated)";
+
+		if (stat.deleted)
+			out << " (deleted)";
+
+		out << '\n';
+		return SCAN::NEXT_ENTRY;
+	});
+
+	return 0;
+}
+
+int clean() {
+	backend().clean();
+	return 0;
+}
+
+int get() {
+	std::string name = object();
+	uint64_t limit = size();
+	std::ostream& out = output();
+
+	Backend back = backend();
+	Object obj = back.find(name);
+	open_existing(obj);
+
+	if (obj.deleted)
+		log(name + " is deleted");
+
+	std::vector<char> buf(CHUNK);
+	for (uint64_t offset = 0; offset < limit;) {
+		size_t want = std::min<uint64_t>(CHUNK, limit - offset);
+		size_t got = obj.read(offset, buf.data(), want);
+
+		out.write(buf.data(), got);
+		offset += got;
+
+		if (got < want)
+			break;
+	}
+
+	return 0;
+}
+
+int head() {
+	std::string name = object();
+	std::ostream& out = output();
+
+	Backend back = backend();
+	Object obj = back.find(name);
+	open_existing(obj);
+
+	log("Timestamp: " + std::to_string(obj.ts));
+	log(std::string("Deleted: ") + (obj.deleted ? "true" : "false"));
+
+	std::vector<char> buf(CHUNK);
+	uint64_t offset = 0;
+	for (;;) {
+		size_t got = obj.read_metadata(offset, buf.data(), buf.size());
+		out.write(buf.data(), got);
+		offset += got;
+
+		if (got < buf.size())
+			break;
+	}
+
+	if (offset == 0)
+		log(name + " has no metadata");
+	else
+		log("");
+
+	return 0;
+}
+
+int put() {
+	return replace(false);
+}
+
+int post() {
+	std::string name = object();
+	std::string meta = metadata();
+
+	Backend back = backend();
+	Object obj = back.find(name);
+	open_existing(obj);
+
+	obj.write_metadata(meta.data(), meta.size());
+	return 0;
+}
+
+int remove() {
+	return replace(true);
+}
+
 }

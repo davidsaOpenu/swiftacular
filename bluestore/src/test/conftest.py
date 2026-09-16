@@ -62,6 +62,7 @@ policy_type = {policy_type}
 
 REFERENCE_POLICY, BLUESTORE_POLICY = 0, 1
 TICKS_PER_SECOND = 100_000            # swift timestamps: 10.5 fixed decimal
+BLUESTORE_CAPACITY = 2 ** 30          # a store occupies its capacity, so size it
 
 # Only headers that no implementation could make match.
 # see ARCHITECTURE.md#testing
@@ -130,6 +131,7 @@ def object_server(swift_conf_dir, tmp_path_factory):
         "devices": str(devices),
         "swift_dir": str(swift_conf_dir),
         "mount_check": "false",
+        "bluestore_capacity": str(BLUESTORE_CAPACITY),
         # test timestamps are epoch-1970-era; disable wall-clock tombstone
         # reclaim so the posix reference keeps its tombstones (see TickClock).
         # The tick clock starts near the epoch,
