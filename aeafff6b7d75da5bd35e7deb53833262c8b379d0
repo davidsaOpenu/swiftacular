@@ -1,0 +1,90 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dfc810f4_9250eb9f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-18T05:44:29Z",
+      "side": 1,
+      "message": "The ticket states: \"Static linking is a requirement, not a preference... Should the fully static path prove unworkable, the fallback is a set of .so files in the wheel linking against each other, accepting symbol exposure that cannot be suppressed and a runtime link on every object-server start.\"\n\nWhat\u0027s implemented — bluestore_export built SHARED, installed via IMPORTED_RUNTIME_ARTIFACTS, loaded by both _raw.so and cli via $ORIGIN-relative INSTALL_RPATH — is that fallback (a shared engine library, symbol exposure mitigated only by -Wl,-Bsymbolic-functions/--gc-sections, and a runtime dynamic link on every start).  ARCHITECTURE.md presents it as the primary design from the outset (\"We want the result to be one shared library…\") with no mention that this is the accepted fallback rather than the preferred fully-static approach, and no note on why static linking (e.g., _raw.so and cli each statically archiving BlueStore) was judged unworkable. This decision should be called out explicitly in the doc and/or commit message and/or Trello ticket comment.",
+      "revId": "aeafff6b7d75da5bd35e7deb53833262c8b379d0",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ff529626_acd64d7f",
+        "filename": "bluestore/CMakeLists.txt",
+        "patchSetId": 7
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-18T05:44:29Z",
+      "side": 1,
+      "message": "Maybe it should be Python_INCLUDE_DIRS?",
+      "range": {
+        "startLine": 72,
+        "startChar": 31,
+        "endLine": 72,
+        "endChar": 49
+      },
+      "revId": "aeafff6b7d75da5bd35e7deb53833262c8b379d0",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "17528e74_407b2ed2",
+        "filename": "bluestore/CMakeLists.txt",
+        "patchSetId": 7
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-18T05:44:29Z",
+      "side": 1,
+      "message": "Maybe Python_INCLUDE_DIRS?",
+      "range": {
+        "startLine": 104,
+        "startChar": 1,
+        "endLine": 104,
+        "endChar": 49
+      },
+      "revId": "aeafff6b7d75da5bd35e7deb53833262c8b379d0",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e51f9e06_f46507d2",
+        "filename": "playbooks/install_bluestore.yml",
+        "patchSetId": 7
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-18T05:44:29Z",
+      "side": 1,
+      "message": "what is the reason for the extra subdirectory?",
+      "range": {
+        "startLine": 16,
+        "startChar": 71,
+        "endLine": 16,
+        "endChar": 82
+      },
+      "revId": "aeafff6b7d75da5bd35e7deb53833262c8b379d0",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}

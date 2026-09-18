@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3def0f16_14c406e7",
+        "filename": "bluestore/CMakeLists.txt",
+        "patchSetId": 7
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-18T05:44:29Z",
+      "side": 0,
+      "message": "Was Python_INCLUDE_DIR/S populated without an explicit find_package(Python …) call? Maybe it worth restoring the call?",
+      "revId": "8846340b2b29a6350bf08a3a3a24f6063becfd9a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "391ce5b2_cb3cd5d8",
+        "filename": "bluestore/CMakeLists.txt",
+        "patchSetId": 7
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-09-18T05:44:29Z",
+      "side": 0,
+      "message": "What is the reason to drop those flags?",
+      "range": {
+        "startLine": 11,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 19
+      },
+      "revId": "8846340b2b29a6350bf08a3a3a24f6063becfd9a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
