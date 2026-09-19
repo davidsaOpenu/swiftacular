@@ -18,6 +18,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "700b79c0_60f6d5cd",
+        "filename": "bluestore/CMakeLists.txt",
+        "patchSetId": 7
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-19T12:24:09Z",
+      "side": 0,
+      "message": "Since we are building a Python project, the version of Python we need to use is determined by the build backend (\"scikit-build-core\", in our case). This creates the risk of find_package(Python ...) finding the wrong Python version and creating a broken build. scikit-build-core solves this by setting the Python_EXECUTABLE and Python_INCLUDE_DIR (not DIRS) overrides. Those tell find_package(Python ...) exactly which Python to use. We then pass on those variables (alongside some scikit-build-core-specific variables) to ensure the sub-builds find_package(Python ...) behaves as expected.",
+      "parentUuid": "3def0f16_14c406e7",
+      "revId": "8846340b2b29a6350bf08a3a3a24f6063becfd9a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "391ce5b2_cb3cd5d8",
@@ -31,6 +49,30 @@
       "writtenOn": "2026-09-18T05:44:29Z",
       "side": 0,
       "message": "What is the reason to drop those flags?",
+      "range": {
+        "startLine": 11,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 19
+      },
+      "revId": "8846340b2b29a6350bf08a3a3a24f6063becfd9a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "06dd89f9_7bf3e31b",
+        "filename": "bluestore/CMakeLists.txt",
+        "patchSetId": 7
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-19T12:24:09Z",
+      "side": 0,
+      "message": "These flags are not dropped they are moved. Since this file now supervises sub builds instead of build anything itself the flags were moved to src/extension/CMakeLists.txt where they are used.",
+      "parentUuid": "391ce5b2_cb3cd5d8",
       "range": {
         "startLine": 11,
         "startChar": 0,
