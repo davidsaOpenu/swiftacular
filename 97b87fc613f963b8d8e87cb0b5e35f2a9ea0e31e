@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c3ebec4b_718ba2d1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-22T11:32:09Z",
+      "side": 1,
+      "message": "Seems good. shame there is no way to know a file was quarantined.",
+      "revId": "97b87fc613f963b8d8e87cb0b5e35f2a9ea0e31e",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
