@@ -1,0 +1,208 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2f52b1ea_15bc05db",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1039387
+      },
+      "writtenOn": "2026-09-23T14:25:15Z",
+      "side": 1,
+      "message": "Nice, left a couple of comments",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1f550401_b91395bf",
+        "filename": "bluestore/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1039387
+      },
+      "writtenOn": "2026-09-23T14:25:15Z",
+      "side": 1,
+      "message": "is the removal of NINJA_MAX_COMPILE_JOBS and NINJA_MAX_LINK_JOBS Intentional? Ceph builds can use a lot of RAM.",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1e2bbb89_23cc7d55",
+        "filename": "bluestore/src/bluestore/diskfile.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 1039387
+      },
+      "writtenOn": "2026-09-23T14:25:15Z",
+      "side": 1,
+      "message": "StateError, ChangedError and ConflictError aren\u0027t caught, which could lead to a 500 error",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "441f9197_47890e5b",
+        "filename": "bluestore/src/bluestore/diskfile.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 1039387
+      },
+      "writtenOn": "2026-09-23T14:25:15Z",
+      "side": 1,
+      "message": "self.object \u003d tombstone drops the last reference to the retired object. ~Object() then does a blocking commit under the GIL. Same for the local prev in Writer.put(). Both hit the normal overwrite and delete path.",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3fcb0a0e_5f22b6d9",
+        "filename": "bluestore/src/bluestore/diskfile.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 1039387
+      },
+      "writtenOn": "2026-09-23T14:25:15Z",
+      "side": 1,
+      "message": "The old reader quarantined when bytes read didn\u0027t match Content-Length, or the streamed MD5 didn\u0027t match the ETag. This one streams whatever read() returns, so a truncated or corrupt object is served silently.",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1a0211cb_07040a85",
+        "filename": "bluestore/src/bluestore/manager.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 1039387
+      },
+      "writtenOn": "2026-09-23T14:25:15Z",
+      "side": 1,
+      "message": "Check-then-insert on self.backends has no locl, which can cause one of them to fail with an unhandled mount error.",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c5870f5d_f1de97c3",
+        "filename": "bluestore/src/extension/bind.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 1039387
+      },
+      "writtenOn": "2026-09-23T14:25:15Z",
+      "side": 1,
+      "message": "put() commits a transaction, and clean() (line 22) scans and removes every leftover entry. Neither releases the GIL.",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5005227b_b0d16d67",
+        "filename": "bluestore/src/extension/bind.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 1039387
+      },
+      "writtenOn": "2026-09-23T14:25:15Z",
+      "side": 1,
+      "message": "object_open, object_read and object_read_metadata release the GIL, but object_write (here), object_write_metadata (line 76) and object_tombstone (line 83) don\u0027t. Object::write() and write_metadata() block in commit() until the transaction is durable, so every PUT chunk and POST holds the GIL for the whole disk wait.",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5883b50a_f554e03d",
+        "filename": "bluestore/src/extension/bind.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 1039387
+      },
+      "writtenOn": "2026-09-23T14:25:15Z",
+      "side": 1,
+      "message": "The ctor does mkfs/mount, and possibly expand_devices, with the GIL held. Could we add nb::call_guard\u003cnb::gil_scoped_release\u003e() here?",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b86d6147_6fa217cc",
+        "filename": "bluestore/src/extension/cli.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 1039387
+      },
+      "writtenOn": "2026-09-23T14:25:15Z",
+      "side": 1,
+      "message": "This duplicates a subset of object.cpp\u0027s state_name(). Could we share one?",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8864c8c8_f4b7a28a",
+        "filename": "bluestore/src/extension/options.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 1039387
+      },
+      "writtenOn": "2026-09-23T14:25:15Z",
+      "side": 1,
+      "message": "opts[key] on a std::map inserts an empty entry as a side effect of a getter. The same applies to lines 53, 64, 68, 75, 83 and 95.",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "828df2af_91ba834f",
+        "filename": "bluestore/src/injection/object.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 1039387
+      },
+      "writtenOn": "2026-09-23T14:25:15Z",
+      "side": 1,
+      "message": "The destructor does a synchronous commit() to remove IN_WRITE/OLD entries. In Python it runs whenever the last reference drops, with the GIL held (nanobind doesn\u0027t release it for implicit destruction). It fires on every overwrite and delete.",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
