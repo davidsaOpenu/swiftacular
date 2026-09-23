@@ -18,6 +18,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a83d1094_60d7d430",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-23T22:44:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2f52b1ea_15bc05db",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1f550401_b91395bf",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-09-23T14:25:15Z",
       "side": 1,
       "message": "is the removal of NINJA_MAX_COMPILE_JOBS and NINJA_MAX_LINK_JOBS Intentional? Ceph builds can use a lot of RAM.",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2b730afb_7ea247e0",
+        "filename": "bluestore/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-23T22:44:25Z",
+      "side": 1,
+      "message": "Ceph already does its own checks to limit how much gets built at once. I added these lines because I believed that, by default, Ceph\u0027s own sub-builds would only run one job at a time. However, I was incorrect: Ceph\u0027s defaults were correct, so I removed the lines.",
+      "parentUuid": "1f550401_b91395bf",
       "revId": "633054551671766058f39473e6d1a1a88bf1906c",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -52,6 +88,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bcbe6d70_4d1a3e1e",
+        "filename": "bluestore/src/bluestore/diskfile.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-23T22:44:25Z",
+      "side": 1,
+      "message": "These are meant to be handled by a BluestoreDevice class that wraps the Backend and manages concurrency. This commit covers the engine and enough of the Python layer to pass test_basic.py.",
+      "parentUuid": "1e2bbb89_23cc7d55",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "441f9197_47890e5b",
@@ -65,6 +119,24 @@
       "writtenOn": "2026-09-23T14:25:15Z",
       "side": 1,
       "message": "self.object \u003d tombstone drops the last reference to the retired object. ~Object() then does a blocking commit under the GIL. Same for the local prev in Writer.put(). Both hit the normal overwrite and delete path.",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "01302901_aa5069fd",
+        "filename": "bluestore/src/bluestore/diskfile.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-23T22:44:25Z",
+      "side": 1,
+      "message": "True. in fact, all of our writes are currently done under the GIL. This is because our object model requires our state changes to happen under lock (in our case the GIL), but queuing our transactions can also block the thread. Since submitting our transactions outside the lock risks reordering them, for now we fully write under the GIL. In the next commit, which focuses on concurrency, I will change the engine api to prevent this.",
+      "parentUuid": "441f9197_47890e5b",
       "revId": "633054551671766058f39473e6d1a1a88bf1906c",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -86,6 +158,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "cfd83be8_d3b12fa7",
+        "filename": "bluestore/src/bluestore/diskfile.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-23T22:44:25Z",
+      "side": 1,
+      "message": "Since the check can only complete once the object has been fully read, it would be too late to change the response. Such a system would only give us a log line. Thankfully, BlueStore checksums its own data and fails the read on a mismatch, so this isn\u0027t a great concern.",
+      "parentUuid": "3fcb0a0e_5f22b6d9",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1a0211cb_07040a85",
@@ -99,6 +189,24 @@
       "writtenOn": "2026-09-23T14:25:15Z",
       "side": 1,
       "message": "Check-then-insert on self.backends has no locl, which can cause one of them to fail with an unhandled mount error.",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d5f90a04_17d42994",
+        "filename": "bluestore/src/bluestore/manager.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-23T22:44:25Z",
+      "side": 1,
+      "message": "I am not sure what you mean here. That said I just noticed we do a filesystem operation on every request for no reason.",
+      "parentUuid": "1a0211cb_07040a85",
       "revId": "633054551671766058f39473e6d1a1a88bf1906c",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -120,6 +228,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7385a246_26e4db89",
+        "filename": "bluestore/src/extension/bind.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-23T22:44:25Z",
+      "side": 1,
+      "message": "Yup, all write are under the GIL at the moment. See my reply in one of diskfile.py comments",
+      "parentUuid": "c5870f5d_f1de97c3",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5005227b_b0d16d67",
@@ -133,6 +259,24 @@
       "writtenOn": "2026-09-23T14:25:15Z",
       "side": 1,
       "message": "object_open, object_read and object_read_metadata release the GIL, but object_write (here), object_write_metadata (line 76) and object_tombstone (line 83) don\u0027t. Object::write() and write_metadata() block in commit() until the transaction is durable, so every PUT chunk and POST holds the GIL for the whole disk wait.",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "25468ddb_79f6b72d",
+        "filename": "bluestore/src/extension/bind.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-23T22:44:25Z",
+      "side": 1,
+      "message": "Yup, all write are under the GIL at the moment. See my reply in one of diskfile.py comments",
+      "parentUuid": "5005227b_b0d16d67",
       "revId": "633054551671766058f39473e6d1a1a88bf1906c",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -154,6 +298,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "fc105990_a8a95c89",
+        "filename": "bluestore/src/extension/bind.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-23T22:44:25Z",
+      "side": 1,
+      "message": "Good call.",
+      "parentUuid": "5883b50a_f554e03d",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b86d6147_6fa217cc",
@@ -167,6 +329,24 @@
       "writtenOn": "2026-09-23T14:25:15Z",
       "side": 1,
       "message": "This duplicates a subset of object.cpp\u0027s state_name(). Could we share one?",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ea98e95a_ec50b2e1",
+        "filename": "bluestore/src/extension/cli.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-23T22:44:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b86d6147_6fa217cc",
       "revId": "633054551671766058f39473e6d1a1a88bf1906c",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
@@ -188,6 +368,24 @@
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b05b768d_d18d152c",
+        "filename": "bluestore/src/extension/options.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-23T22:44:25Z",
+      "side": 1,
+      "message": "This is something I accepted as a cost for simplicity. Nothing iterates opts, so the empty entries are never observed. I just don\u0027t think it matters that much.",
+      "parentUuid": "8864c8c8_f4b7a28a",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "828df2af_91ba834f",
@@ -201,6 +399,24 @@
       "writtenOn": "2026-09-23T14:25:15Z",
       "side": 1,
       "message": "The destructor does a synchronous commit() to remove IN_WRITE/OLD entries. In Python it runs whenever the last reference drops, with the GIL held (nanobind doesn\u0027t release it for implicit destruction). It fires on every overwrite and delete.",
+      "revId": "633054551671766058f39473e6d1a1a88bf1906c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b102da72_aaee4640",
+        "filename": "bluestore/src/injection/object.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-09-23T22:44:25Z",
+      "side": 1,
+      "message": "Yup, all write are under the GIL at the moment. See my reply in one of diskfile.py comments",
+      "parentUuid": "828df2af_91ba834f",
       "revId": "633054551671766058f39473e6d1a1a88bf1906c",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     }
