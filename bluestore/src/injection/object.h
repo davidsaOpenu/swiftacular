@@ -1,5 +1,11 @@
+// An Object is one entry in the store, and its state says what may be done
+// with it. The states, the calls that move between them, and why a read
+// checks afterwards rather than locking are all in the document.
+// see ARCHITECTURE.md#object-model
+
 #include <cstddef>
 #include <cstdint>
+#include <future>
 #include <initializer_list>
 #include <optional>
 #include <string>
@@ -12,11 +18,6 @@
 
 namespace bluestore {
 
-// An Object is one entry in the store, and its state says what may be done
-// with it. The states, the calls that move between them, and why a read
-// checks afterwards rather than locking are all in the document.
-// see ARCHITECTURE.md#object_model
-
 struct StateError : std::logic_error {
 	StateError(const char *op, const std::string& name, const char *state);
 };
@@ -27,12 +28,11 @@ struct ChangedError : std::runtime_error {
 
 class Object : public Stat {
 	std::shared_ptr<Backend::impl> back;
+	std::shared_future<void> done;
 	uint64_t written = 0;
 
 	Object(std::shared_ptr<Backend::impl> back, const std::string& name, uint64_t ts);
 	Object(std::shared_ptr<Backend::impl> back, const std::string& name);
-
-	void check(const char *op, int r) const;
 
 	friend class Backend;
 public:
@@ -49,6 +49,7 @@ public:
 	void write(const void *data, size_t size);
 	void write_metadata(const void *data, size_t size);
 	void tombstone(const void *data, size_t size);
+	void sync();
 };
 
 }

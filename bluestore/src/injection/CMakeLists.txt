@@ -38,9 +38,10 @@ set(WITH_UADK OFF)
 set(WITH_NVMEOF_GATEWAY_MONITOR_CLIENT OFF)
 set(WITH_LIBURING OFF)
 
-# One file that relies on as little of its surroundings as possible: Ceph's
-# dependencies folded in rather than sitting beside us, and the system's own
-# allocator rather than a replacement fighting whatever the host process uses.
+# One file that relies on as little of its surroundings as possible: the
+# dependencies Ceph builds itself folded in rather than sitting beside us, and
+# the system's own allocator rather than a replacement fighting whatever the
+# host process uses.
 set(WITH_SYSTEM_ROCKSDB OFF)
 set(WITH_SYSTEM_BOOST OFF)
 set(ALLOCATOR "libc")

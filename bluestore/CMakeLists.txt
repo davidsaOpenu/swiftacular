@@ -15,9 +15,6 @@ set(BLUESTORE_EXPORT_STAGE "${CMAKE_BINARY_DIR}/stage")
 include(ExternalProject)
 include(FetchContent)
 
-# Fetch only. Pointing at a subdirectory that does not exist is how we get
-# the source downloaded without this build also trying to configure it;
-# Ceph is configured below, on our terms. Boost lands where Ceph expects it.
 FetchContent_declare(ceph-src
 	GIT_REPOSITORY         https://github.com/ceph/ceph
 	GIT_TAG                v21.3.0
@@ -54,8 +51,7 @@ ExternalProject_Add(ceph
 	SOURCE_DIR "${BLUESTORE_VENDOR_DIR}/ceph"
 
 	CMAKE_CACHE_ARGS
-		# The injection point: CMake reads this file at the top of Ceph's
-		# configuration. Ceph's source is not modified and there is no patch to carry.
+		# The injection point: CMake reads this file at the top of Ceph's configuration.
 		-DCMAKE_PROJECT_ceph_INCLUDE:FILEPATH=${BLUESTORE_INJECTION_DIR}/CMakeLists.txt
 
 		-DBLUESTORE_INJECTION_DIR:FILEPATH=${BLUESTORE_INJECTION_DIR}
@@ -68,9 +64,12 @@ ExternalProject_Add(ceph
 		-DPython3_EXECUTABLE:FILEPATH=${Python_EXECUTABLE}
 		-DPython3_INCLUDE_DIR:PATH=${Python_INCLUDE_DIR}
 
-	# Ask for our library and nothing else. A build asked for one thing builds
-	# that thing and what it needs, so Ceph's servers and tools never compile.
-	BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR>
+		-DBOOST_J:STRING=2
+
+	# Ask for our library and nothing else, so Ceph's servers and tools never
+	# compile.
+	BUILD_COMMAND CMAKE_BUILD_PARALLEL_LEVEL=2 ${CMAKE_COMMAND}
+		--build <BINARY_DIR>
 		--target bluestore_export
 
 	BUILD_ALWAYS TRUE
@@ -107,10 +106,9 @@ ExternalProject_Add(ext
 ExternalProject_Add_StepDependencies(ext configure
 	"${BLUESTORE_EXPORT_FILE}")
 
-# The inner builds are separate projects and cannot install into the wheel
-# directly, so they stage their output here and we copy it across: the
+# The inner builds stage their output, and this copies it into the wheel: the
 # module and the engine library into the package, the program onto PATH.
-# see ARCHITECTURE.md#building
+# see ARCHITECTURE.md#engine
 
 install(DIRECTORY "${BLUESTORE_EXPORT_STAGE}/${SKBUILD_PROJECT_NAME}/"
 	USE_SOURCE_PERMISSIONS DESTINATION "${SKBUILD_PROJECT_NAME}")

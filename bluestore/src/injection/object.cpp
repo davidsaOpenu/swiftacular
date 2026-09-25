@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <cstdint>
+#include <future>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -24,20 +26,8 @@ Object::Object(std::shared_ptr<Backend::impl> back, const std::string& name, uin
 Object::Object(std::shared_ptr<Backend::impl> back, const std::string& name):
 	Stat{name, 0, false, STATE::PRE_SEARCH}, back(std::move(back)) {}
 
-void Object::check(const char *op, int r) const {
-	Stat stored;
-	if (r >= 0)
-		r = back->load(back->address(*this), stored);
-
-	if (r == -ENOENT || (r >= 0 && stored.ts != ts))
-		throw ChangedError(op, name, ts);
-
-	if (r < 0)
-		throw std::runtime_error(std::string(op) + ": " + name + ": " + cpp_strerror(r));
-}
-
 Object::Object(Object&& other):
-	Stat(other), back(other.back), written(other.written) {
+	Stat(other), back(other.back), done(std::move(other.done)), written(other.written) {
 	static_cast<Stat&>(other) = Stat{other.name, 0, false, STATE::PRE_SEARCH};
 	other.written = 0;
 }
@@ -50,7 +40,7 @@ Object::~Object() {
 		auto& ch = back->collection(name);
 		ObjectStore::Transaction t;
 		t.remove(ch->cid, back->address(*this));
-		back->commit(ch, std::move(t));
+		back->prepare(ch, std::move(t));
 	} catch (...) {}
 }
 
@@ -60,25 +50,20 @@ void Object::require(const char *op, std::initializer_list<STATE> allowed) const
 }
 
 void Object::open() {
-	require("open", {STATE::PRE_SEARCH, STATE::ACTIVE, STATE::OLD});
-	if (state == STATE::PRE_SEARCH)
-		state = STATE::IN_SEARCH;
+	require("open", {STATE::PRE_SEARCH});
+	state = STATE::IN_SEARCH;
 
 	Stat stored;
 	int r = back->load(back->address(*this), stored);
 
-	if (r == -ENOENT && state == STATE::IN_SEARCH) {
+	if (r == -ENOENT) {
 		state = STATE::MISSING;
 		return;
 	}
 
-	if (r == -ENOENT || (r >= 0 && state != STATE::IN_SEARCH && stored.ts != ts))
-		throw ChangedError("open", name, ts);
-
 	if (r < 0)
 		throw std::runtime_error("open: " + name + ": " + cpp_strerror(r));
 
-	// A search takes whatever version it found, and becomes ACTIVE with it.
 	static_cast<Stat&>(*this) = stored;
 }
 
@@ -90,9 +75,10 @@ size_t Object::read(uint64_t offset, void *data, size_t size) {
 		return 0;
 
 	auto& ch = back->collection(name);
+	ghobject_t oid = back->address(*this);
 	ceph::buffer::list bl;
-	int r = back->store->read(ch, back->address(*this), offset, size, bl);
-	check("read", r);
+	int r = back->store->read(ch, oid, offset, size, bl);
+	back->check("read", oid, *this, r);
 
 	if (bl.length())
 		bl.begin().copy(bl.length(), static_cast<char*>(data));
@@ -104,9 +90,10 @@ size_t Object::read_metadata(uint64_t offset, void *data, size_t size) {
 	require("read_metadata", {STATE::ACTIVE, STATE::OLD});
 
 	auto& ch = back->collection(name);
+	ghobject_t oid = back->address(*this);
 	ceph::buffer::list bl;
-	int r = back->store->omap_get_header(ch, back->address(*this), &bl);
-	check("read_metadata", r);
+	int r = back->store->omap_get_header(ch, oid, &bl);
+	back->check("read_metadata", oid, *this, r);
 
 	if (offset >= bl.length())
 		return 0;
@@ -117,40 +104,46 @@ size_t Object::read_metadata(uint64_t offset, void *data, size_t size) {
 }
 
 void Object::write(const void *data, size_t size) {
-	if (state == STATE::PRE_WRITE)
-		write_metadata(nullptr, 0);
+	require("write", {STATE::PRE_WRITE, STATE::IN_WRITE});
 
-	require("write", {STATE::IN_WRITE});
-
-	auto& ch = back->collection(name);
 	ceph::buffer::list bl;
 	bl.append(static_cast<const char*>(data), size);
 
+	ghobject_t oid = back->address(*this);
+	auto& ch = back->collection(name);
 	ObjectStore::Transaction t;
-	t.write(ch->cid, back->address(*this), written, size, bl);
-	back->commit(ch, std::move(t));
 
+	if (state == STATE::PRE_WRITE) {
+		state = STATE::IN_WRITE;
+		t.touch(ch->cid, oid);
+		back->save(t, *this);
+	}
+
+	t.write(ch->cid, oid, written, size, bl);
 	written += size;
+
+	back->prepare(ch, std::move(t), &done);
 }
 
 void Object::write_metadata(const void *data, size_t size) {
 	require("write_metadata", {STATE::PRE_WRITE, STATE::IN_WRITE, STATE::ACTIVE});
 
-	auto& ch = back->collection(name);
 	ghobject_t oid = back->address(*this);
+	auto& ch = back->collection(name);
 	ObjectStore::Transaction t;
 
 	if (state == STATE::PRE_WRITE) {
-		t.touch(ch->cid, oid);
 		state = STATE::IN_WRITE;
+		t.touch(ch->cid, oid);
 	}
 
 	ceph::buffer::list bl;
 	bl.append(static_cast<const char*>(data), size);
 
-	back->save(t, *this);
 	t.omap_setheader(ch->cid, oid, bl);
-	back->commit(ch, std::move(t));
+	back->save(t, *this);
+
+	back->prepare(ch, std::move(t), &done);
 }
 
 void Object::tombstone(const void *data, size_t size) {
@@ -158,6 +151,19 @@ void Object::tombstone(const void *data, size_t size) {
 
 	deleted = true;
 	write_metadata(data, size);
+}
+
+void Object::sync() {
+	back->submit();
+
+	std::shared_future<void> local;
+	{
+		std::lock_guard l(back->queue_lock);
+		local = done;
+	}
+
+	if (local.valid())
+		local.wait();
 }
 
 }

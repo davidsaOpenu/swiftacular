@@ -1,21 +1,20 @@
-import sys, importlib.abc, importlib.machinery
-
-# Swift validates policy types while swift.common.storage_policy is still importing, so our registration has to run inside that import.
-# This installs a finder that lets each target module load, then registers against it.
+# Swift checks policy types while swift.common.storage_policy is still being
+# imported, so registering ours has to happen inside that import. This installs
+# a finder that lets each target module load and then registers against it.
 # see ARCHITECTURE.md#policy
+
+import sys, importlib.abc, importlib.machinery
 
 def patch_policy(loader, module):
     try:
         loader.exec_module(module)
     except Exception as e:
-        # The failure we expect is the configuration naming a policy type nobody has registered.
-        # _POLICIES only exists once policy parsing has begun,
-        # so its presence tells us we caught that failure and not an earlier, unrelated one.
-        # see ARCHITECTURE.md#policy
+        # Expected when the configuration names our type. _POLICIES only exists
+        # once parsing has begun, so anything raised before it is someone
+        # else's failure. An empty list lets the import finish, and
+        # bluestore.policy then registers the type and reads the configuration
+        # again.
         if hasattr(module, '_POLICIES'):
-            # Stand in with an empty list so the import can finish.
-            # bluestore.policy then registers the type and asks Swift to read the configuration again.
-            # see ARCHITECTURE.md#policy
             module.POLICIES = module.StoragePolicySingleton()
         else:
             raise e
@@ -55,6 +54,5 @@ class BluestorePatchFinder(importlib.abc.MetaPathFinder):
         real_spec.loader = BluestorePatchLoader(original_loader, self.targets[fullname])
         return real_spec
 
-# Front of the import machinery, so we intercept the target modules before the ordinary finder resolves them.
-# see ARCHITECTURE.md#policy
+# First in line, so the target modules reach us before the ordinary finder.
 sys.meta_path.insert(0, BluestorePatchFinder())

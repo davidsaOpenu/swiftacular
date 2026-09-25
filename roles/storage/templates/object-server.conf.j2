@@ -22,6 +22,7 @@ use = egg:swift#object
 {% endif %}
 {% if swift_backend is defined and swift_backend == 'bs_bind' %}
 disk_chunk_size = {{ 1024 * 1024 }}
+network_chunk_size = {{ 1024 * 1024 }}
 bluestore_capacity = {{ bluestore_capacity * 1024 * 1024 * 1024 }}
 eventlet_tpool_num_threads = 64
 {% endif %}

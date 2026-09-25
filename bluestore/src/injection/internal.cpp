@@ -1,6 +1,8 @@
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
+#include <future>
 #include <mutex>
 #include <stdexcept>
 #include <string>
@@ -10,7 +12,7 @@
 #include "global/global_context.h"
 #include "global/global_init.h"
 #include "include/ceph_hash.h"
-#include "common/Cond.h"
+#include "include/Context.h"
 #include "common/errno.h"
 
 #include "internal.h"
@@ -23,6 +25,11 @@ const std::map<std::string, std::string> defaults = {
 	{"bluestore_fsck_on_mkfs",   "false"},
 	{"bluestore_fsck_on_mount",  "false"},
 	{"bluestore_fsck_on_umount", "false"},
+	{"bluestore_cache_autotune",        "false"},
+	{"bluestore_cache_meta_ratio",      "0.5"},
+	{"bluestore_cache_kv_ratio",        "0.45"},
+	{"bluestore_cache_kv_onode_ratio",  "0.04"},
+	{"bluestore_default_buffered_read", "false"},
 	{"admin_socket", ""}
 };
 
@@ -30,6 +37,11 @@ const std::map<std::string, std::string> debug = {
 	{"bluestore_fsck_on_mkfs",   "false"},
 	{"bluestore_fsck_on_mount",  "false"},
 	{"bluestore_fsck_on_umount", "false"},
+	{"bluestore_cache_autotune",        "false"},
+	{"bluestore_cache_meta_ratio",      "0.5"},
+	{"bluestore_cache_kv_ratio",        "0.45"},
+	{"bluestore_cache_kv_onode_ratio",  "0.04"},
+	{"bluestore_default_buffered_read", "false"},
 	{"admin_socket", ""},
 	{"log_to_stderr",   "true"},
 	{"err_to_stderr",   "true"},
@@ -47,10 +59,8 @@ uint32_t name_hash(const std::string& name) {
 
 }
 
-// Made on first use rather than at load: the log thread it starts does not
-// survive a fork, so it has to start in the worker that uses it, and Ceph's
-// own g_ceph_context holds it rather than a pointer of ours. BLUESTORE_DEBUG
-// switches to verbose BlueStore logging on stderr.
+// Made on first use, and held by Ceph's own g_ceph_context.
+// see ARCHITECTURE.md#engine
 CephContext *context() {
 	static std::once_flag once;
 
@@ -72,18 +82,39 @@ CephContext *context() {
 }
 
 uint64_t estimate() {
+	static std::mutex lock;
+	static uint64_t last = 0;
+
 	auto now = std::chrono::system_clock::now().time_since_epoch();
 	auto us = std::chrono::duration_cast<std::chrono::microseconds>(now).count();
 
-	return us / (1000000 / TICKS_PER_SECOND);
+	std::lock_guard l(lock);
+	last = std::max<uint64_t>(us / (1000000 / TICKS_PER_SECOND), last + 1);
+	return last;
+}
+
+// Never freed: after a fast shutdown, deleting a store frees its caches out
+// from under its collections.
+// see ARCHITECTURE.md#object-model
+void retire(std::unique_ptr<ObjectStore> store) {
+	static std::mutex lock;
+	static auto *retired = new std::vector<std::unique_ptr<ObjectStore>>();
+
+	store->prepare_for_fast_shutdown();
+	store->umount();
+
+	std::lock_guard l(lock);
+	retired->push_back(std::move(store));
 }
 
 Backend::impl::~impl() {
+	submit();
+
 	// Collections have to be released before BlueStore unmounts.
 	collections.clear();
 
 	if (store)
-		store->umount();
+		retire(std::move(store));
 }
 
 ObjectStore::CollectionHandle& Backend::impl::collection(const std::string& name) {
@@ -113,7 +144,6 @@ void Backend::impl::save(ObjectStore::Transaction& t, const Stat& stat) {
 int Backend::impl::load(const ghobject_t& oid, Stat& stat) {
 	using ceph::decode;
 
-	// The address already carries the name's hash.
 	auto& ch = collections[oid.hobj.get_hash() & COLLECTION_MASK];
 
 	Attrs attrs;
@@ -131,15 +161,59 @@ int Backend::impl::load(const ghobject_t& oid, Stat& stat) {
 	return 0;
 }
 
-void Backend::impl::commit(ObjectStore::CollectionHandle& ch, ObjectStore::Transaction&& t) {
-	C_SaferCond done;
-	t.register_on_commit(&done);
+void Backend::impl::check(const char *op, const ghobject_t& oid, const Stat& stat, int r) {
+	Stat stored;
+	if (r >= 0)
+		r = load(oid, stored);
 
-	int r = store->queue_transaction(ch, std::move(t));
+	if (r == -ENOENT || (r >= 0 && stored.ts != stat.ts))
+		throw ChangedError(op, stat.name, stat.ts);
+
 	if (r < 0)
-		throw std::runtime_error("queue_transaction: " + cpp_strerror(r));
+		throw std::runtime_error(std::string(op) + ": " + stat.name + ": " + cpp_strerror(r));
+}
 
-	done.wait();
+void Backend::impl::prepare(ObjectStore::CollectionHandle& ch, ObjectStore::Transaction&& t, std::shared_future<void> *done) {
+	std::shared_future<void> future;
+	if (done) {
+		std::promise<void> committed;
+		future = committed.get_future().share();
+
+		t.register_on_commit(make_lambda_context([committed = std::move(committed)](int) mutable {
+			committed.set_value();
+		}));
+	}
+
+	std::lock_guard l(queue_lock);
+	queue.emplace_back(ch, std::move(t));
+
+	if (done)
+		*done = std::move(future);
+}
+
+void Backend::impl::submit() {
+	std::unique_lock s(submit_lock, std::try_to_lock);
+	if (!s.owns_lock())
+		return;
+
+	for (;;) {
+		Queue batch;
+		{
+			std::lock_guard l(queue_lock);
+			if (queue.empty()) {
+				s.unlock();
+				return;
+			}
+
+			batch.swap(queue);
+		}
+
+		for (auto& [ch, t] : batch) {
+			int r = store->queue_transaction(ch, std::move(t));
+			if (r < 0)
+				throw std::runtime_error("queue_transaction: " + cpp_strerror(r));
+		}
+	}
 }
 
 }

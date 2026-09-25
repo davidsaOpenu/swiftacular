@@ -1,3 +1,7 @@
+# The binding and the command line tool, built against the engine library the
+# build inside Ceph's produced.
+# see ARCHITECTURE.md#engine
+
 cmake_minimum_required(VERSION 3.21...4.0)
 project(${SKBUILD_PROJECT_NAME}-ext LANGUAGES CXX)
 
@@ -6,7 +10,6 @@ find_package(nanobind CONFIG REQUIRED)
 
 # What the inner build wrote down. Gives us `export` as something to link
 # against, as though we had built it ourselves.
-# see ARCHITECTURE.md#engine
 include("${BLUESTORE_EXPORT_FILE}")
 
 add_library(flags INTERFACE)
@@ -33,9 +36,7 @@ set_target_properties(cli PROPERTIES
 # anything left behind from an earlier build would be shipped.
 file(REMOVE_RECURSE "${CMAKE_INSTALL_PREFIX}")
 
-# The engine library travels inside the wheel and sits beside the module that
-# loads it. The rpaths above are how each finds it at run time, without
-# anything installed on the machine or set in the environment.
+# The engine library goes beside the module, where the rpaths above look.
 # see ARCHITECTURE.md#building
 install(IMPORTED_RUNTIME_ARTIFACTS export LIBRARY DESTINATION "${SKBUILD_PROJECT_NAME}")
 install(TARGETS _raw LIBRARY DESTINATION "${SKBUILD_PROJECT_NAME}")

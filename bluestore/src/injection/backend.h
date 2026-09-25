@@ -1,3 +1,8 @@
+// The engine's surface, with object.h: what the binding and the command line
+// tool compile against. They cannot see Ceph's headers, so anything that needs
+// a Ceph type lives behind Backend::impl in internal.h.
+// see ARCHITECTURE.md#building
+
 #include <stdexcept>
 #include <cstddef>
 #include <cstdint>
@@ -11,9 +16,6 @@
 #define BLUESTORE_BACKEND_H
 
 namespace bluestore {
-// This header and object.h are the engine's surface; anything that needs a
-// Ceph type lives behind Backend::impl in internal.h.
-// see ARCHITECTURE.md#building
 
 enum class SCAN {
 	NEXT_ENTRY,
@@ -58,9 +60,10 @@ public:
 	Object find(const std::string& name);
 
 	void scan(const std::function<SCAN(const Stat&)>& fn);
-
 	void clean();
+
 	void put(Object& next, Object& prev, std::optional<uint64_t> ts = {});
+	void submit();
 };
 
 }

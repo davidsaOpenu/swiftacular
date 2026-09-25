@@ -69,6 +69,7 @@ def bind_put(back):
     obj.write_metadata(OBJECT_META.encode())
 
     back.put(obj, prev)
+    obj.sync()
 
 
 @measure(ITERATIONS_BIND, OBJECT_BODY)

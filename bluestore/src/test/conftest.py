@@ -1,35 +1,15 @@
-# conftest.py
-#
-# Harness for in-process differential testing of the stock swift object
-# server against two backends selected purely by storage policy:
-#   policy 0 -> standard posix DiskFileManager (the reference)
-#   policy 1 -> bluestore DiskFileManager
-#
-# Design:
-#   * No bluestore import here. Registration of the policy type and its
-#     DiskFileManager is the job of the installed .pth hook, exactly as on a
-#     real swift node. If the hook did not fire, swift.conf parsing fails at
-#     'policy_type = bluestore' -- which is the correct, loud failure.
-#   * call(...)  sends every request to BOTH backends with an identical
-#     timestamp, asserts the responses are identical (status, body, headers),
-#     and returns the bluestore response. Unintentional divergence therefore
-#     fails by default, including on error responses.
-#   * call.diff(...) sends to bluestore only, for intentionally divergent
-#     behavior. Grep for '.diff(' to inventory all known divergence.
-#   * Timestamps: call() advances to the next whole-second boundary;
-#     call.diff() advances one swift tick (1e-5 s). call()'s timestamp grid
-#     is therefore invariant to interleaved diff calls, keeping the two
-#     backend states in lockstep. Integer tick arithmetic; no float drift.
-#   * Fixtures are class-scoped: a test class is a deliberate sequence
-#     operating on shared server state, in method definition order.
+# The harness every test runs in: one object server whose policy 0 is Swift's
+# own backend and policy 1 is ours, and call(), which sends a request to both
+# and compares the responses. Nothing here imports bluestore: the installed
+# .pth hook registers our policy, as on a real node, so a hook that did not
+# fire fails loudly while swift.conf is parsed.
+# see ARCHITECTURE.md#testing
 
 import pytest
 
 _class_failures = {}
 
 def pytest_runtest_makereport(item, call):
-    # Class-scoped: a test class is one scenario carried out step by step against shared state.
-    # see ARCHITECTURE.md#testing
     if "incremental" in item.keywords and call.excinfo is not None:
         _class_failures[item.cls] = item.name
 
@@ -39,11 +19,15 @@ def pytest_runtest_setup(item):
         if failed is not None:
             pytest.skip(f"earlier step in sequence failed: {failed}")
 
-from swift.common.utils import get_logger
+from types import SimpleNamespace
+
+import eventlet
+
+from swift.common.utils import closing_if_possible, get_logger
 from swift.common import storage_policy, swob, utils
 from swift.obj import server as object_server_mod
 
-BLUESTORE_POLICY_TYPE = "bluestore"   # policy_type string in swift.conf
+BLUESTORE_POLICY_TYPE = "bluestore"
 
 SWIFT_CONF_TEMPLATE = """
 [swift-hash]
@@ -65,20 +49,14 @@ TICKS_PER_SECOND = 100_000            # swift timestamps: 10.5 fixed decimal
 BLUESTORE_CAPACITY = 2 ** 30          # a store occupies its capacity, so size it
 
 # Only headers that no implementation could make match.
-# see ARCHITECTURE.md#testing
 IGNORED_HEADERS = frozenset({
     "Date",                           # wall clock of response generation
 })
 
 
-# Both backends must see identical timestamps, so these come from an integer counter rather than the clock.
-# Comparison calls step a whole second and single-backend calls one tick,
-# so inserting the latter never shifts the former.
-# see ARCHITECTURE.md#testing
+# Timestamps from an integer counter rather than the clock, so both backends
+# see the same ones.
 class TickClock:
-    """Integer-tick timestamp source. call() -> next second boundary;
-    diff() -> +1 tick, never crossing into the next boundary's territory."""
-
     def __init__(self, start_second=1_000_000):
         self._ticks = start_second * TICKS_PER_SECOND
 
@@ -132,11 +110,12 @@ def object_server(swift_conf_dir, tmp_path_factory):
         "swift_dir": str(swift_conf_dir),
         "mount_check": "false",
         "bluestore_capacity": str(BLUESTORE_CAPACITY),
-        # test timestamps are epoch-1970-era; disable wall-clock tombstone
-        # reclaim so the posix reference keeps its tombstones (see TickClock).
-        # The tick clock starts near the epoch,
-        # so wall-clock reclamation would collect the reference backend's tombstones mid-run.
-        # see ARCHITECTURE.md#testing
+        # The settings this backend is deployed with.
+        "disk_chunk_size": str(2 ** 20),
+        "network_chunk_size": str(2 ** 20),
+        "eventlet_tpool_num_threads": "64",
+        # The clock starts near 1970, so wall-clock reclaim would collect the
+        # reference backend's tombstones mid-run.
         "reclaim_age": str(10**10),      # ~317 years
     }
 
@@ -144,9 +123,17 @@ def object_server(swift_conf_dir, tmp_path_factory):
     return object_server_mod.ObjectController(conf, logger=logger)
 
 
-# Every request goes to both backends and the responses are compared in full.
-# Anything that differs fails, including error responses.
-# see ARCHITECTURE.md#testing
+# A request body that gives up the hub before every read, as a socket would,
+# so requests in flight together interleave at chunk boundaries.
+class YieldingInput:
+    def __init__(self, inner):
+        self.inner = inner
+
+    def read(self, size=-1):
+        eventlet.sleep(0)
+        return self.inner.read(size)
+
+
 def _assert_identical(r_ref, r_bs, op):
     assert r_ref.status_int == r_bs.status_int, (
         "%s: status default=%s bluestore=%s"
@@ -181,21 +168,47 @@ def call(object_server):
         if headers:
             hdrs.update(headers)
         req = swob.Request.blank(path, method=method, body=body, headers=hdrs)
-        return req.get_response(object_server)
+        req.environ["wsgi.input"] = YieldingInput(req.environ["wsgi.input"])
+        resp = req.get_response(object_server)
 
-    def _call(method, path, body=None, headers=None, timestamp=None):
+        length = resp.headers.get("Content-Length")
+        chunks = []
+        with closing_if_possible(resp.app_iter):
+            for chunk in resp.app_iter:
+                chunks.append(chunk)
+                eventlet.sleep(0)
+        resp.body = b"".join(chunks)
+        if length is not None:
+            resp.headers["Content-Length"] = length
+        return resp
+
+    def _call(method, path, body=None, timestamp=None, headers=None):
         t = clock.next_call() if timestamp is None else timestamp
         r_ref = _send(method, path, body, headers, t, REFERENCE_POLICY)
         r_bs = _send(method, path, body, headers, t, BLUESTORE_POLICY)
         _assert_identical(r_ref, r_bs, "%s %s @ %s" % (method, path, t))
         return r_bs
 
-    # Our backend only, for intentional divergence. Each use is a claim that a difference is correct;
-    # the set of uses is the record of where the backends part ways.
-    # see ARCHITECTURE.md#testing
-    def _diff(method, path, body=None, headers=None, timestamp=None):
+    def _diff(method, path, body=None, timestamp=None, headers=None):
         t = clock.next_diff() if timestamp is None else timestamp
         return _send(method, path, body, headers, t, BLUESTORE_POLICY)
 
+    def _stamps(n):
+        return [clock.next_diff() for _ in range(n)]
+
+    def _spawn(method, path, body=None, timestamp=None, headers=None):
+        t = clock.next_call() if timestamp is None else timestamp
+        r_ref = eventlet.spawn(_send, method, path, body, headers, t, REFERENCE_POLICY)
+        r_bs = eventlet.spawn(_send, method, path, body, headers, t, BLUESTORE_POLICY)
+
+        def wait():
+            ref, bs = r_ref.wait(), r_bs.wait()
+            _assert_identical(ref, bs, "%s %s @ %s" % (method, path, t))
+            return bs
+
+        return SimpleNamespace(timestamp=t, wait=wait)
+
     _call.diff = _diff
+    _call.stamps = _stamps
+    _call.spawn = _spawn
     return _call
