@@ -50,8 +50,10 @@ int replace(bool deleted) {
 		in.read(buf.data(), want);
 		size_t got = in.gcount();
 
-		if (got > 0)
+		if (got > 0) {
 			next.write(buf.data(), got);
+			back.submit();
+		}
 		offset += got;
 
 		if (got < want)
@@ -64,6 +66,7 @@ int replace(bool deleted) {
 		next.write_metadata(meta.data(), meta.size());
 
 	back.put(next, prev, timestamp());
+	next.sync();
 	return 0;
 }
 
@@ -206,6 +209,7 @@ int post() {
 	open_existing(obj);
 
 	obj.write_metadata(meta.data(), meta.size());
+	obj.sync();
 	return 0;
 }
 

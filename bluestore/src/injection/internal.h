@@ -1,6 +1,12 @@
+// The engine's Ceph-facing internals, which only the build inside Ceph's can see.
+// see ARCHITECTURE.md#building
+
 #include <cstdint>
+#include <future>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <utility>
 #include <vector>
 #include <map>
 
@@ -13,29 +19,27 @@
 #ifndef BLUESTORE_INTERNAL_H
 #define BLUESTORE_INTERNAL_H
 
-// The engine's Ceph-facing internals.
-// see ARCHITECTURE.md#building
-
 #define BLUESTORE_POOL 10
 #define BLUESTORE_BITS 8
 
 namespace bluestore {
 
+using Queue = std::vector<std::pair<ObjectStore::CollectionHandle, ObjectStore::Transaction>>;
 using Attrs = std::map<std::string, ceph::buffer::list, std::less<>>;
 
 CephContext *context();
 uint64_t estimate();
+void retire(std::unique_ptr<ObjectStore> store);
 
-// How entries are laid out: which collection a name hashes to, the address
-// that separates what holds a name from what does not, and which facts are
-// attributes rather than the map header.
-// see ARCHITECTURE.md#object_model
+// The store, how its entries are laid out, and the queue of prepared transactions.
+// see ARCHITECTURE.md#object-model
 struct Backend::impl {
-	// Every Object holds impl too, so the store stays mounted until the last
-	// of them is gone, not just the Backend.
-	// see ARCHITECTURE.md#binding
-	std::unique_ptr<ObjectStore> store;
 	std::vector<ObjectStore::CollectionHandle> collections;
+	std::unique_ptr<ObjectStore> store;
+
+	std::mutex submit_lock;
+	std::mutex queue_lock;
+	Queue queue;
 
 	~impl();
 
@@ -45,11 +49,10 @@ struct Backend::impl {
 
 	void save(ObjectStore::Transaction& t, const Stat& stat);
 	int load(const ghobject_t& oid, Stat& stat);
+	void check(const char *op, const ghobject_t& oid, const Stat& stat, int r);
 
-	// Blocks until the transaction is durable, so a call from Python has to
-	// follow the rule.
-	// see ARCHITECTURE.md#concurrency
-	void commit(ObjectStore::CollectionHandle& ch, ObjectStore::Transaction&& t);
+	void prepare(ObjectStore::CollectionHandle& ch, ObjectStore::Transaction&& t, std::shared_future<void> *done = nullptr);
+	void submit();
 };
 
 }

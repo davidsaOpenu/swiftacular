@@ -3,6 +3,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <sstream>
 #include <stdexcept>
 #include <memory>
@@ -40,13 +41,9 @@ ConflictError::ConflictError(const char *op, const std::string& name, uint64_t n
 	std::runtime_error(std::string(op) + ": " + name + " " + std::to_string(next) +
 		" is not newer than " + std::to_string(prev)) {}
 
-// A new store's file is made at the requested capacity, or at a small
-// default, and an existing store is only ever grown. expand_devices() needs
-// it unmounted and kills the process if another has it open, so a mount is
-// tried first to turn that into an ordinary error.
-// see ARCHITECTURE.md#object_model
+// Makes the store if it is missing, and grows it if asked, before mounting it.
+// see ARCHITECTURE.md#object-model
 Backend::Backend(const std::string& path, std::optional<uint64_t> capacity): p(std::make_shared<impl>()) {
-	// An empty block file would fall back to BlueStore's own default size.
 	if (capacity && *capacity == 0)
 		throw std::invalid_argument("bluestore " + path + ": capacity must not be 0");
 
@@ -80,6 +77,7 @@ Backend::Backend(const std::string& path, std::optional<uint64_t> capacity): p(s
 			if (r < 0)
 				throw std::runtime_error("mount: " + cpp_strerror(r));
 
+			store->prepare_for_fast_shutdown();
 			store->umount();
 
 			std::ostringstream out;
@@ -105,9 +103,11 @@ Backend::Backend(const std::string& path, std::optional<uint64_t> capacity): p(s
 			auto ch = p->store->create_new_collection(cid);
 			ObjectStore::Transaction t;
 			t.create_collection(cid, BLUESTORE_BITS);
-			p->commit(ch, std::move(t));
+			p->prepare(ch, std::move(t));
 			p->collections.push_back(ch);
 		}
+
+		p->submit();
 	} catch (const std::exception& e) {
 		throw std::runtime_error("bluestore " + path + ": " + e.what());
 	} catch (...) {
@@ -160,7 +160,7 @@ void Backend::clean() {
 		auto& ch = p->collection(stat.name);
 		ObjectStore::Transaction t;
 		t.remove(ch->cid, p->address(stat));
-		p->commit(ch, std::move(t));
+		p->prepare(ch, std::move(t));
 		return SCAN::NEXT_ENTRY;
 	});
 }
@@ -194,7 +194,11 @@ void Backend::put(Object& next, Object& prev, std::optional<uint64_t> ts) {
 	t.collection_move_rename(cid, from, cid, p->address(next));
 	p->save(t, next);
 
-	p->commit(ch, std::move(t));
+	p->prepare(ch, std::move(t), &next.done);
+}
+
+void Backend::submit() {
+	p->submit();
 }
 
 }

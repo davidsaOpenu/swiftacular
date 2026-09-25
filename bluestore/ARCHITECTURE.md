@@ -17,7 +17,7 @@ Eight concerns follow from that, one per section below.
 - [Engine](#engine) — BlueStore is machinery inside a large project that
   does not offer it to anyone, so it has to be extracted before it can be
   wrapped.
-- [Object model](#object_model) — what BlueStore stores and what Swift expects
+- [Object model](#object-model) — what BlueStore stores and what Swift expects
   of a name are not the same thing, so the engine defines a model of its own
   in between.
 - [Binding](#binding) — Python and native code cannot call each other
@@ -66,10 +66,13 @@ Because the compiling happened when the wheel was built, installing it needs
 nothing but pip.
 
 The catch is that a wheel containing compiled code only works on the
-interpreter version and platform it was built for. The build has to happen
-somewhere that matches the machine that will install it. Ours is stricter
-than most, because it carries a large library of its own compiled against
-the system it was built on.
+interpreter version and platform it was built for, so the build has to happen
+somewhere compatible with the machine that will install it. Ours asks a little
+more than most. It carries a large library of its own, compiled against the
+system it was built on, and that library still uses a few of the system's own
+libraries when it runs. Compatible is not the same as identical: what has to
+line up is the interpreter version, and system libraries that are binary
+compatible with the ones the build used.
 
 ## The first build
 
@@ -90,9 +93,13 @@ fetches a matching Python interpreter, the build tools, and every dependency
 into a directory inside the project. Nothing it does touches the rest of the
 machine.
 
-**pip** is for producing the wheel that gets deployed. There you supply the
-interpreter and the toolchain, and Swift is already present system-wide, so
-the build is told not to go looking for its own copy.
+**pip** is for producing the wheel that gets deployed, and is the one to
+script, since it assumes nothing about the machine beyond what you put there.
+You supply the interpreter, a C++ toolchain and CMake, and the development
+packages of the system libraries the engine uses; see
+[What the wheel carries](#what-the-wheel-carries). Swift is yours to supply as
+well: the build does not need it and nothing on this path installs it, since
+the Swift our code runs under belongs to whoever deploys it.
 
 Both run the same build and produce the same wheel.
 
@@ -151,7 +158,7 @@ pip install --force-reinstall --no-deps dist/bluestore-*.whl
 
 `--no-deps` is there because we declare Swift as a dependency, so that a
 development environment gets a version we are compatible with. On a machine
-running Swift that requirement is already met by the system installation, and
+running Swift that requirement is already met by the Swift it runs, and
 fetching a second copy from PyPI would be wrong.
 
 `--force-reinstall` is needed because our version number does not change
@@ -166,26 +173,29 @@ Check each:
 ```sh
 python -c "import bluestore.hook"
 python -c "import bluestore._raw"
-command -v bluestore-cli
+bluestore-cli --help
 ```
 
 The first is our Python code, the second the compiled engine behind it (see
 [Binding](#binding)), the third the command line program. Silence from the
-first two and a path from the third means installed.
+first two and a usage message from the third means installed.
 
 The second check is the one that catches the most. It loads the compiled
-module, which in turn has to find the engine library sitting beside it, so it
-fails if either is missing or if the two do not agree.
+module, which in turn has to find the engine library sitting beside it and
+the system libraries the engine uses. It fails if any of them is missing,
+naming the one it could not find, or if the module and the engine do not
+agree. The third does the same for the command line program, which finds the
+engine library by a different route.
 
 If Swift then still refuses to start on an unknown policy type, the problem
 is not the install; see [Policy](#policy).
 
-## The wheel is self-contained
+## What the wheel carries
 
 The engine is a library of its own, and it travels inside the wheel rather
-than being installed on the machine. Nothing has to be put in place
-beforehand, no system package is required, and no environment variable has to
-be set to make it findable.
+than being installed on the machine. Everything it takes from Ceph is inside
+it, so Ceph does not have to be installed, and no environment variable has to
+be set to make the engine findable.
 
 That works because everything which loads our code looks for the library by a
 path relative to itself rather than in the usual system locations. The
@@ -196,6 +206,17 @@ The cost is that those relationships are fixed at build time. Moving the
 library out of the package, or installing the program somewhere that does not
 stand in the expected relation to the package, breaks loading — and it breaks
 it at the moment something first tries to use it, not at install time.
+
+What the wheel does not carry is a handful of ordinary system libraries that
+the parts of Ceph inside the engine use, for compression, asynchronous disk
+access and the like. Those are found the usual way. Most come with any normal
+Linux installation; snappy and libaio are the ones most likely to be missing,
+and a distribution's packages provide them. Compiling needs their development
+packages as well, which are seldom installed by default.
+
+Which libraries these are follows from which parts of Ceph are switched on
+(see [Engine](#engine)), so the list can change with them. `readelf -d` on the
+engine library shows the current one.
 
 ## The pieces
 
@@ -252,10 +273,9 @@ which produces a frustrating loop where changes appear to do nothing. The
 list matches paths, so a source file in a directory no pattern reaches is
 invisible to it even though the build compiles it quite happily.
 
-To force our own code to be rebuilt, pass `--reinstall` to `uv sync`. Deleting
-the build directory also works and is almost never what you want: the engine's
-build lives there too, and throwing it away means waiting out the first build
-again.
+Deleting the build directory to force a rebuild is almost never what you
+want: the engine's build lives there too, and throwing it away means waiting
+out the first build again.
 
 ---
 
@@ -270,7 +290,7 @@ piece we want has been folded into Ceph's own programs and is not separately
 reachable.
 
 This section is about how we get from that source tree to a single library
-our own code can use.
+our own code can use, and how that library starts Ceph once it is loaded.
 
 ## Why we cannot simply link
 
@@ -360,11 +380,13 @@ slightly more expensive and is not what a build aimed at producing programs
 would choose, so Ceph does not choose it. Our file asks for it everywhere,
 because anything that will end up inside our library has to have it.
 
-The same reasoning drives the other choices in that file. Ceph's dependencies
-are built in the form that folds into our library rather than the form that
-sits beside it as a separate file, and the memory allocator is left as the
-system's own rather than replaced. Everything we need goes into one file, and
-that file relies on as little of its surroundings as possible.
+The same reasoning drives the other choices in that file. The dependencies
+Ceph builds for itself are built in the form that folds into our library
+rather than the form that sits beside it as a separate file, and the memory
+allocator is left as the system's own rather than replaced. Everything Ceph
+builds goes into one file. What it takes from the system instead, such as its
+compression libraries, stays with the system, and that is all the file relies
+on from its surroundings.
 
 ## Our library
 
@@ -401,6 +423,33 @@ asked for.
 This is the difference between a library that happens to build and one that
 can be loaded into somebody else's process safely, which is the only way ours
 is ever used.
+
+## Starting Ceph
+
+Ceph keeps its configuration, its logging and the threads behind them in one
+context shared by everything in the process. Our library makes that context
+the first time a store is opened, not when the library is loaded. The object
+server loads our code before it forks the processes that serve requests, and
+the thread that writes Ceph's log does not survive a fork, so the context has
+to be made in the process that will use it.
+
+It is made the way a library makes it rather than the way a Ceph server does.
+Ceph's configuration file is not read, no administrative socket is opened, and
+nothing is logged to the terminal. Nor does Ceph install its signal handlers,
+which its servers do as part of starting up: the object server uses signals
+to run its own processes, and they are not ours to take.
+
+What Ceph is told instead is a short list of settings kept in `internal.cpp`,
+and two of them are worth knowing about. BlueStore's cache is given over
+mostly to metadata, and what is read is not kept in it, which is how Swift's
+own backend treats the page cache: some data may end up cached, but nothing
+relies on it being there. And the check BlueStore runs over a whole store
+when asked to create one that already exists is off, since that is how the
+engine opens every store.
+
+Any setting can be overridden without a rebuild through the `CEPH_ARGS`
+environment variable, which Ceph reads while making the context, and
+`BLUESTORE_DEBUG` switches BlueStore to verbose logging on stderr.
 
 ## Describing what we made
 
@@ -461,6 +510,13 @@ the download is large, even though what gets compiled afterwards is only the
 part we need. Everything after the first build is cached, and only our own
 code is rebuilt. [Building](#building) has the practical side.
 
+Ceph is also pinned to one release, named in `CMakeLists.txt`. The engine uses
+parts of BlueStore that Ceph offers to no one and so promises nothing about,
+such as shutting a store down quickly or growing one, and both the switches
+we turn off and the system libraries Ceph uses move between releases. Moving
+to another release is therefore a change to make on purpose, not something to
+pick up along the way.
+
 ---
 
 # Object model
@@ -513,10 +569,11 @@ values beside them called **attributes**, and a key-value map, whose
 Changes are applied in **transactions**. A transaction is all-or-nothing on
 disk — after a crash the whole batch is there or none of it is — but it is
 not all-or-nothing to anyone reading at the time, who sees its changes land
-one at a time. The engine waits for each transaction to reach the disk before
-the call that made it returns. A transaction can move an entry to another
-address inside its own collection, which is how one is put in place; it
-cannot move one to a different collection, and asking kills the process.
+one at a time. Its changes can be read as soon as it is handed to BlueStore,
+and are durable only once BlueStore reports it committed, some time later. A
+transaction can move an entry to another address inside its own collection,
+which is how one is put in place; it cannot move one to a different collection,
+and asking kills the process.
 
 A **store**, finally, is a directory with one large file inside it, and that
 file is the whole of the disk BlueStore has to work with.
@@ -535,9 +592,9 @@ can take the name over.
   search did not finish.
 - **MISSING** — the search finished and nothing holds the name.
 - **PRE_WRITE** — what `create()` hands back. Nothing is on disk yet.
-- **IN_WRITE** — on disk and being written to. The first `write()` or
-  `write_metadata()` creates the entry and writes its attributes, which is
-  why a delete or an empty object needs no `write()` at all.
+- **IN_WRITE** — being written. The first `write()` or `write_metadata()`
+  prepares the entry and its attributes, which is why a delete or an empty
+  object needs no `write()` at all.
 - **ACTIVE** — holds the name. `put()` moves an IN_WRITE Object here.
 - **OLD** — held the name until `put()` handed it to something else.
 
@@ -583,13 +640,39 @@ retired has the real thing. Counting in Swift's unit is the price of being
 able to replace one with the other, and the only opinion the engine has about
 a timestamp it never interprets.
 
+## Prepared, submitted, synced
+
+Nothing the engine writes reaches BlueStore at the moment it is asked for.
+`write()`, `write_metadata()`, `tombstone()` and `put()` each prepare a
+transaction and add it to a queue the engine keeps, and so does everything
+else that changes the store: removing an Object nobody holds, sweeping, and
+setting up a new store's collections. `submit()` hands the queue to BlueStore
+in the order it was filled. Only one caller does that at a time; one that
+finds another already at it returns, and its transactions go with the rest.
+`sync()` submits and then waits until the Object's latest transaction is
+durable.
+
+The order is the point. BlueStore has to apply transactions in the order the
+decisions behind them were made, and preparing a transaction at the moment
+its decision is made is what keeps the two in step. The slow parts, handing
+the queue over and waiting for the disk, come afterwards, wherever suits the
+caller.
+
+One consequence is worth keeping in mind. BlueStore only answers from what it
+has been handed, so something prepared and not yet submitted cannot be read,
+even by the caller that prepared it. Code that has to read what it may just
+have written syncs first.
+
 ## What the caller serialises
 
-The engine serialises nothing itself. It asks one thing of the caller
-instead: changes to an Object's state and the submission of writes must not
-interleave. Reads are outside that, deliberately — they are the common case,
-and almost all of them collide with nothing. How the Python layer holds up
-its end is [Concurrency](#concurrency).
+The engine serialises what it owns: its queue, the handing over of it, and
+the clock its estimates come from. What it asks of the caller is narrower. A
+change to an Object's state and the preparing of the transaction that
+carries it have to happen as one step, with no other such step in between,
+or the queue's order stops matching the order of the decisions. Reads are
+outside that, deliberately — they are the common case, and almost all of
+them collide with nothing. How the Python layer holds up its end is
+[Concurrency](#concurrency).
 
 What it costs is that a reader can be overtaken. It holds an Object and reads
 it in pieces, and between two of those pieces the Object may have been
@@ -603,7 +686,8 @@ the ones that never needed it.
 Metadata is the exception. It is rewritten in place rather than by making a
 new Object, so a caller reading it across several calls can see parts of two
 updates. That is the price of a POST not having to copy the object it
-describes.
+describes. The Python layer notices when it happens and reads again; see
+[Concurrency](#concurrency).
 
 Three failures are worth telling apart. StateError says the caller asked for
 something the Object's state does not allow, which is a bug above rather than
@@ -619,7 +703,8 @@ name lives in that one collection, and the address is what says which of them
 holds it: the one that does sits in the ordinary space at generation 0, and
 the ones being written or retired sit in the temporary space, at a generation
 taken from their timestamp. For one that has not been settled yet, that is
-the estimate.
+the estimate, and estimates never repeat within a process, so two Objects
+being written never share an address.
 
 Two things follow, and both are load-bearing. Because the temporary space
 sorts first, `clean()` can list a collection from the beginning, remove what
@@ -645,13 +730,14 @@ print an object's metadata without the two of them agreeing on anything.
 ## What a crash leaves
 
 An Object being written, or one that has been retired, is reachable only
-through whoever holds it. When the last holder lets go it is removed, because
-nothing can find it again.
+through whoever holds it. When the last holder lets go its removal is
+prepared, because nothing can find it again.
 
 A crash leaves no holders, so those Objects stay where they are. Sweeping
 them is a separate operation rather than part of mounting, so a store that
 failed can be opened and listed exactly as it was left, and swept afterwards
-once someone has looked at it.
+once someone has looked at it. The Python layer sweeps every store it opens;
+the command line tool leaves that to its `clean` command.
 
 ## Capacity
 
@@ -675,6 +761,29 @@ unmounted, and growing one that another process has open kills ours — so the
 store is mounted, unmounted, and only then grown. A store somebody else holds
 fails at that first mount, the way everything else does, with an error rather
 than a crash.
+
+## Closing a store
+
+**A store is never unmounted the normal way.** BlueStore's unmount ends by
+checking that nothing is cached anywhere in the process, not just in the store
+being unmounted, so with a second store mounted it kills the process. When the
+last user of a store lets go, the engine shuts it down the quick way instead
+and keeps it until the process exits, never mounting it again; opening the
+same path makes a new store. This is effectively solved, and all it costs is
+the memory a closed store still holds. Growing a store is the one exception,
+shutting it down and mounting it again before anything has used it.
+
+## Large objects
+
+**Large objects are expensive to write.** What RocksDB writes for an object
+grows with the square of the object's size, until for anything near a
+gigabyte it is comparable to the object itself. A larger `network_chunk_size`
+in the object server lowers the curve without changing its shape. The cause
+is in BlueStore, which starts from the beginning of an object every time it
+reshards the map of where the object's data lies. Ceph never meets this,
+because it caps objects far below what Swift allows, and we do not split
+objects to do the same. Upstream is actively reworking the resharder, and a
+fix there should reach us with a later release of Ceph.
 
 ---
 
@@ -702,19 +811,25 @@ What crosses the boundary is not a set of loose functions. The engine is a
 thing with a lifetime: it is opened, used for as long as it is wanted, and
 closed. Python holds a handle to it and the state stays on the native side,
 where it belongs — the Python layer never sees what is behind the handle and
-has no way to reach into it.
+has no way to reach into it. Objects cross the same way: Python holds a
+handle, and the Object itself stays native.
 
 Two things follow. The handle has to be kept for as long as the storage is
-in use, because letting go of it is what closes the engine. And opening one
-is not free, so it happens once when the storage is set up rather than per
-request.
+in use, because letting go of it is what closes the engine — though not
+until every Object it handed out has been let go as well, since each of them
+keeps the store open too. Closing means the quick shutdown described in
+[Object model](#object-model). And opening one is not free, so it happens
+once when the storage is set up rather than per request.
 
 ## The binding does not decide anything
 
 A function in `_raw` should do three things: convert its arguments into what
 the engine wants, call the engine, and convert the result back. Nothing else.
 No validation beyond what conversion requires, no retries, no special cases,
-no deciding what to do when the engine says no.
+no deciding what to do when the engine says no. When it does say no, its
+three errors arrive in Python as exceptions of the same names —
+`StateError`, `ChangedError` and `ConflictError` — and that translation is
+all the binding does with them.
 
 This is worth holding to because a decision made in the binding is made in
 the worst available place. It cannot be exercised by the engine's own tests,
@@ -724,8 +839,10 @@ the decision in the engine if it is about storage, and in the Python layer if
 it is about what Swift expects, and the binding stays a thing you can read in
 one sitting.
 
-A binding function has one more obligation, which is not about translation at
-all and is not optional: see [Concurrency](#concurrency).
+A binding function has one more obligation, which is not about translation
+at all: it either gives up the interpreter lock while the engine works or
+deliberately keeps it, and which one depends on what the call does. See
+[Concurrency](#concurrency).
 
 ## Crossing is not free
 
@@ -757,6 +874,14 @@ or the layers above it are at fault. [Testing](#testing) also uses it as the
 thing to measure the binding against, since it reaches the same engine by an
 entirely different route.
 
+It mounts the store itself, and only one process can have a store mounted at
+a time, so it can only be pointed at a store no running object server holds:
+a stopped server's, or a copy. It also writes metadata exactly as it is
+given, knowing nothing of the format the Python layer keeps it in, so an
+object written through it is only readable by Swift if its metadata was given
+in that format. It is for looking at a store and exercising the engine, not
+for editing a store Swift will read.
+
 ---
 
 # Concurrency
@@ -785,9 +910,13 @@ Either of those alone is enough to stop the server. Together they mean that a
 native call written the obvious way does not slow down the request that made
 it. It stops all of them, for as long as the call runs.
 
-## The rule
+## Two kinds of call
 
-Every call into the engine has to satisfy both halves of that:
+Calls into the engine come in two kinds, and the two are handled in opposite
+ways.
+
+**Calls that wait** — mounting a store, `open()`, reading, `submit()`,
+`sync()` and `clean()` — have to satisfy both halves of that:
 
 - **It runs on a real operating system thread**, not on the server's one
   thread. The caller hands the work to a pool of such threads and waits for
@@ -802,29 +931,42 @@ leaves every other thread unable to run Python. A call that releases the lock
 but stays on the server's thread has still taken the thread hostage,
 and released the lock to an interpreter with nobody left to use it.
 
-Both halves are already in place at every existing call. The Python side of
-one lives in `manager.py`, the native side in the binding it calls; between
-them they are the example to follow, and following it is not optional.
+**Calls that do no waiting** — `create()` and `find()`, which make an Object,
+and `write()`, `write_metadata()`, `tombstone()` and `put()`, which prepare
+transactions — do the opposite, deliberately. They run on the server's thread
+and keep the lock. A change to an Object's state and the preparing of the
+transaction that carries it have to happen as one step, with no other in
+between (see [Object model](#object-model)), and keeping the lock on the
+server's one thread is what guarantees it: nothing else in the process can
+decide anything until the call returns. They can afford to, because all they
+do is build a transaction in memory.
+
+Every existing call is already handled the way its kind requires. The Python
+side lives in `device.py` and the native side in the binding it calls;
+between them they are the example to follow, and following it is not
+optional.
 
 ## One engine, many threads
 
-There is a consequence of the rule that is easy to miss. The work goes to a
-pool of threads, and a pool has more than one thread in it. The Python layer
-holds a single engine and every request reaches it through that same handle.
-So the engine is not called from one thread at a time — it is called from
-several at once, and it is our own rule that makes this so.
+There is a consequence of handing waiting calls to a pool that is easy to
+miss: a pool has more than one thread in it. The Python layer holds a single
+engine and every request reaches it through that same handle. So the engine
+is not called from one thread at a time — it is called from several at once,
+and it is our own choice that makes this so.
 
 Anything the engine holds has to tolerate that. A value read by one call
 while another is writing it is a bug that belongs to us rather than to the
 caller, because nothing on the Python side is in a position to prevent it.
 
-Today this costs nothing: there is little behind the boundary and none of it
-is shared. That changes as soon as real storage is, and the moment to have
-written this down is before then rather than after.
+So the engine guards what it shares. Its queue has a lock of its own, only
+one caller hands the queue to BlueStore at a time, estimates are handed out
+one at a time, and so are places on the list of closed stores. An
+Object's record of its latest transaction is read under the queue's lock as
+well, since a call on the server's thread may be replacing it at that moment.
 
 ## How this fails
 
-Breaking the rule does not look like breakage.
+A call that waits, handled the wrong way, does not look broken.
 
 The call returns the right answer and the request it belongs to succeeds. A
 test that issues one request at a time passes, because a server with nothing
@@ -842,20 +984,81 @@ line in a function that demonstrably works.
 So the compiler will not catch this, and neither will a test unless it was
 written to. Catching it takes concurrent load and a measurement, which is a
 deliberate thing to build rather than something a correctness test does
-incidentally.
+incidentally. The `smoke` tests are that: a heartbeat notices the server's
+thread going unserved while requests are in flight; see [Testing](#testing).
+
+Getting the other kind wrong fails differently. A call that decides, moved
+off the server's thread or made to give up the lock, lets another decision
+slip in before its transaction is prepared. Nothing slows down. Instead the
+queue stops matching the order things were decided in, and results go wrong,
+only under concurrency and only now and then.
 
 ## Adding a function to the engine
 
-Any new function that Python will call needs both halves before it is used
-in anger, not afterwards. Write the native side to release the lock around
-the work, and call it through the thread pool. Add nothing else — see
-[Binding](#binding) for what the binding may and may not contain.
+Any new function that Python will call is one of the two kinds, and has to be
+written as one before anything relies on it, not afterwards. One that waits
+releases the lock around the work on the native side and is called through
+the thread pool. One that does no waiting keeps the lock, is called directly,
+and does nothing slow; anything that reads from storage or waits on it is the
+first kind. Add nothing else — see [Binding](#binding) for what the binding
+may and may not contain.
 
-There is one exception, and it is narrow: a call that does no waiting and no
-appreciable work — one that only reads a value the engine already has — can
-cost more to hand to another thread than to do outright. If a call is a
-candidate for that, it should be obvious from the function itself. Anything
-that touches storage is not.
+## The Device
+
+Everything the Python layer does with a store goes through one object,
+`BluestoreDevice` in `device.py`, and nothing else in the Python layer calls
+the engine. There is one per store. It mounts its store in the background
+when it is made, and requests that arrive before the mount finishes wait for
+it.
+
+At its centre is a map from each name to the Object for the version that name
+currently resolves to. Every request that wants the name gets that same
+Object rather than one found for itself, and the sharing is what makes
+retiring simple. When a PUT or a DELETE hands the name to a new Object, the
+one it replaces becomes OLD in place, so every request still reading it
+carries on from where it was retired to, with nothing to tell them. It is
+removed once the last of them lets go; the map itself keeps nothing alive,
+and only remembers an Object while some request holds it. A second Object for
+the same version would have no such luck: the moment the first was retired,
+the second would point at an address that now holds something else.
+
+The map is also what decisions are made from. Whether a PUT is newer than
+what it replaces is judged against the Object in the map, not against
+whatever BlueStore reports, since BlueStore may not have been handed the
+latest put yet. A search still in progress sits in the map too, so requests
+that want the same name wait for it instead of starting their own.
+
+A read can still be overtaken. A request reading an Object that has just been
+retired asks for it at its new address, possibly before the renames have been
+handed to BlueStore, and gets a ChangedError. The Device retries such a read a
+few times, yielding first and then waiting a little longer each time; by then
+the renames have usually been handed over.
+
+Waiting for a write to become durable occupies a thread of the pool until
+BlueStore reports the commit, which is what Swift's own backend does when it
+finishes a PUT. The size of the object server's pool,
+`eventlet_tpool_num_threads`, therefore bounds how many requests can be
+waiting on the disk at once.
+
+Metadata needs one more thing. A POST rewrites an Object's metadata in place,
+so the Device keeps a metadata version for each Object, raised by every such
+rewrite. A metadata read syncs first, since a POST may be prepared and not yet
+handed over, and starts again whenever the version moves while it reads. What
+it returns is the complete, current metadata, never parts of two.
+
+## One process per store
+
+Only one process can have a store mounted, so every request for a device has
+to reach the process that holds its store. The object server has to run with
+`workers = 1`, or with `servers_per_port = 1`: then each port is served by a
+process of its own, a device's requests always reach the same process, and
+devices on different ports are still served in parallel. Each process opens a
+store when the first request for its device arrives; see [Engine](#engine).
+
+**Reloads are not supported.** A reload starts new processes while the old
+ones still hold their stores, so the new ones cannot open them. A store that
+cannot be opened stays unusable to that process until it is restarted; there
+is no recovering in place.
 
 ---
 
@@ -867,8 +1070,24 @@ what is gained and lost by replacing it are the subject of the object-server
 presentation in this repository. Read it first. This section only says what we
 do about it.
 
-`manager.py` implements that interface on top of our engine. Three things are
-worth adding to what the presentation covers.
+Our implementation of it is split across a few files in `src/bluestore`:
+
+- **`manager.py`** is the DiskFileManager Swift finds by name. It keeps one
+  Device per device and policy, made when a request first wants it and held
+  for as long as the manager lives. Each store is a directory under its
+  device, named after the policy the way Swift names its per-policy
+  directories: `bluestore-1` for policy 1.
+- **`device.py`** is the Device, the one place the engine is reached from;
+  see [Concurrency](#concurrency).
+- **`diskfile.py`**, **`reader.py`** and **`writer.py`** are Swift's DiskFile,
+  reader and writer. They translate Swift's calls into the Device's and hold
+  nothing beyond the request. The writer hands each chunk on as it arrives and
+  the reader reads in pieces of `disk_chunk_size`, so our code never holds a
+  whole object in memory.
+- **`metadata.py`** holds Swift's metadata rules; see
+  [Metadata](#metadata) below.
+
+Three things are worth adding to what the presentation covers.
 
 **Swift finds the manager by name.** A storage policy names its backend as
 `egg:bluestore#manager`, which Swift reads as: look in the installed
@@ -883,11 +1102,50 @@ signatures without satisfying the behaviour will survive casual use and then
 fail in ways that are hard to trace back. [Testing](#testing) is how we hold
 ourselves to it.
 
-**The manager is where the two halves meet.** Swift's expectations arrive at
-our manager and the engine is reached from there, so this is the file
-answering to both. What Swift requires of it is above; what the boundary
-requires is set out in [Binding](#binding) and [Concurrency](#concurrency),
-and applies to every call it makes across.
+**The Device is where the two halves meet.** Swift's expectations arrive
+through the DiskFile classes and the engine is reached from the Device, so
+that is the file answering to both. What Swift requires of it is above; what
+the boundary requires is set out in [Binding](#binding) and
+[Concurrency](#concurrency), and applies to every call it makes across.
+
+## Metadata
+
+Swift's metadata for an object is kept in the map header as one JSON blob, in
+a format that is ours to choose since the engine never looks inside it. The
+blob has two sections: `data`, what the PUT or DELETE wrote, and `meta`, what
+the newest POST wrote. They are merged when read, the way Swift's own backend
+merges an object's `.data` or `.ts` file with its `.meta` file, and the
+content type follows `Content-Type-Timestamp` the way it does there.
+
+A POST belongs to the name rather than to one version of it. A POST newer
+than a PUT or DELETE that lands after it is carried into the new version's
+blob, as Swift's own backend keeps a `.meta` that is newer than the data
+beside it. So a POST racing a PUT is settled by their timestamps, not by
+which arrived first.
+
+A POST rewrites the blob in place: it reads what is there, merges, and writes
+it back through the Device, whose metadata version keeps any read from seeing
+half of it. Deciding what to write is `MetadataModel`'s job. Given what holds
+the name now, it says what the next blob should be; it does no I/O, so it can
+be tested on its own. Its `delete` is kept apart from `put`, though today one
+only calls the other, so that a different behaviour for deletes has somewhere
+to go.
+
+## What is left out
+
+Some of what Swift's own backend does is not done here.
+
+- **Tombstones are never reclaimed.** Swift's own backend reclaims one nobody
+  has touched only through the replicator, which does not run here.
+- **`X-Delete-At` is not enforced.** Swift hands the DiskFile the request's
+  time to check expiry against and ours ignores it, so an expired object stays
+  readable until the expirer deletes it.
+- **Failed container updates are not saved.** `pickle_async_update` does
+  nothing, so the object-updater never retries them.
+- **`mount_check` and partitions are ignored.** A store is not a mount point,
+  and objects are placed by name rather than by partition.
+- **Replication is out of scope**, along with the daemons that do it; see
+  [Policy](#policy).
 
 ---
 
@@ -956,10 +1214,11 @@ and a line in it beginning with `import` is executed then and there, before
 the interpreter runs whatever it was actually asked to run. That is early
 enough.
 
-`hook_apply.pth` holds one such line, importing `bluestore.hook`. The hook
-installs a finder at the front of Python's import machinery, watching for two
-module names. When either is imported, it lets the module load as usual and
-then runs a small piece of our code.
+`hook_apply.pth`, installed as `bluestore_hook.pth`, holds one such line,
+importing `bluestore.hook`. The hook installs a finder at the front of
+Python's import machinery, watching for two module names. When either is
+imported, it lets the module load as usual and then runs a small piece of our
+code.
 
 For the proxy controller module that is the whole story: load, then register.
 
@@ -1050,7 +1309,9 @@ single-backend call moves by one tick. Since a tick is far smaller than a
 second, single-backend calls can be inserted anywhere without shifting the
 timestamps the comparison calls see. The two backends stay on the same grid
 however the two kinds of call are interleaved, and the arithmetic is integer
-throughout, so nothing drifts.
+throughout, so nothing drifts. `call.stamps(n)` hands a test a run of
+single-backend timestamps, for tests that need to choose which of their
+requests is the newer one.
 
 ### Declaring divergence
 
@@ -1072,6 +1333,20 @@ single operation, but in what a series of them leaves behind. The
 `incremental` marker skips the remainder of a class once a step has failed,
 since everything after it would be testing from a state that was never
 reached.
+
+### Racing requests
+
+The harness yields at every chunk of a request's body and of its response, as
+a socket would, so requests in flight together interleave at chunk boundaries.
+`call.spawn()` makes use of that: it sends a request to both backends without
+waiting for either, so a test can land other requests before joining it, and
+its `wait()` then compares the two responses like any other call.
+
+The `paused` fixture in `test_conflict.py` goes one step further. It holds a
+request on both backends just before its DiskFile write while the test lands
+a newer one, then lets it finish. Swift's own backend settles races like that
+by cleaning up afterwards while answering success, so it is the responses and
+what is left behind that get compared.
 
 ## Fork — `fork`
 
@@ -1108,3 +1383,43 @@ dismissed it after one.
 
 A run that fails leaves its store behind, so the tool can be pointed at
 exactly the state that failed; a run that passes takes it away again.
+
+## Engine — `engine`
+
+The engine, the binding and the command line tool, without an object server:
+`test_engine.py` and `test_cli.py`. They check what the differential tests
+cannot see from outside — the state rules, a stale handle, several stores in
+one process, capacity, the tool's exit codes, and what a crash leaves behind.
+Each test mounts a store of its own and closes it again.
+
+These run by default.
+
+## Device — `device`
+
+The Device and the metadata rules, without an object server: `test_device.py`
+and `test_metadata.py`. `MetadataModel` is tested on its own, with no store at
+all. The Device's tests cover its chunked metadata reads and what a read sees
+while a POST lands, the latter as a real race between two greenthreads.
+
+These run by default.
+
+## Smoke — `smoke`
+
+Many requests in flight at once against a few shared names, sent to our
+backend only. The order they land in is not deterministic, so there is no
+reference response to compare against request by request.
+
+Instead each request checks itself. It is written as a generator that records
+what it is about to do before anything is sent, so that when its response
+comes back it knows every state its name could have held while it ran, and
+checks the response against those. The write that decides what a name holds
+next confirms it with a follow-up GET once the round is over.
+
+A heartbeat runs alongside, measuring the longest the server's thread went
+unserved during each round, and a round over the bound fails. This is the
+measurement [Concurrency](#concurrency) asks for.
+
+These are not in the default run. The seed is printed, and
+`BLUESTORE_SMOKE_SEED` replays a run; a run makes enough rounds that it
+stands in for many seeds. A run that fails keeps its stores, and they are
+large, so remove them once they have been looked at.
