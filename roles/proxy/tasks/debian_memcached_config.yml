@@ -4,4 +4,4 @@
     dest: /etc/memcached.conf
     regexp: "^-l"
     line: "-l {{ ansible_ens8.ipv4.address }}"
-  notify: restart memcached
+  notify: Restart memcached

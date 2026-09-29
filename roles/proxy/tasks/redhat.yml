@@ -7,3 +7,6 @@
     name: "{{ proxy_redhat_packages }}"
     state: present
   tags: [packages]
+
+- name: Redhat tasks for memcached configuration
+  ansible.builtin.include_tasks: redhat_memcached_config.yml
