@@ -10,3 +10,17 @@ library/test-modules
 library/openstack
 library/ansible_collections
 vendor/*
+
+__pycache__/
+*.py[cod]
+
+# Generated local probe configuration
+probe/probe.env
+
+# Test and tooling output
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.log
+.codex-ssh/
