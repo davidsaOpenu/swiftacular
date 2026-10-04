@@ -38,8 +38,8 @@ run_playbook() {
   local start_time=$(date +%s%3N)  # Get start time in epoch milliseconds
 
   # Build the command with optional tags
-  #SWIFT_BACKEND=""
-  SWIFT_BACKEND="bs_fork"
+  SWIFT_BACKEND="bs"
+  #SWIFT_BACKEND="bs_fork"
   #SWIFT_BACKEND="bs_bind"
 
   local cmd="ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook -e 'swift_backend=$SWIFT_BACKEND' -v"
@@ -96,3 +96,7 @@ run_playbook "deploy_swift_cluster.yml" "Deploy Swift Cluster" "configure"
 
 # Setup and run workload tests
 run_playbook "setup_workload_test.yml" "Setup Workload Test"
+
+# Generate the active probe environment and run the example probe after deployment.
+"${SCRIPT_DIR}/probe/generate_probe_env.sh"
+"${SCRIPT_DIR}/probe/run_probe.sh"
