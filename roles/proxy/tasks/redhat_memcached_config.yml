@@ -5,4 +5,4 @@
     regexp: "^OPTIONS"
     line: 'OPTIONS="-l {{ ansible_ens8.ipv4.address }}"'
   notify:
-    - restart memcached
+    - Restart memcached
