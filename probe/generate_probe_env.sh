@@ -180,6 +180,48 @@ vagrant ssh "${PROBE_RUNNER}" -c "
     test -n \"\${OS_PROJECT_NAME:-\${OS_TENANT_NAME:-}}\"
 " >/dev/null || fail "credential file is missing required OpenStack variables"
 
+EXPECTED_SHARD_CONTAINER_THRESHOLD="$(
+    python3 -c '
+from probe.set_sharding_threshold import inspect_live_profile
+
+profile = inspect_live_profile(
+    setting_names=("shard_container_threshold",), verbose=False
+)
+values = {
+    value
+    for values_by_path in profile["shard_container_threshold"].values()
+    for value in (values_by_path,)
+}
+if len(values) != 1:
+    raise SystemExit("live shard thresholds are inconsistent")
+print(values.pop())
+'
+)" || fail "could not read the consistent live sharding threshold"
+
+[[ "${EXPECTED_SHARD_CONTAINER_THRESHOLD}" =~ ^[0-9]+$ ]] || \
+    fail "invalid live sharding threshold: ${EXPECTED_SHARD_CONTAINER_THRESHOLD}"
+
+SHARDING_PROFILE_LINES="$(
+    python3 - <<'PY'
+from probe.set_sharding_threshold import inspect_live_profile
+
+profile = inspect_live_profile(verbose=False)
+mapping = {
+    "SHARDING_AUTO_SHARD": "auto_shard",
+    "SHARDING_ROWS_PER_SHARD": "rows_per_shard",
+    "SHARDING_MINIMUM_SHARD_SIZE": "minimum_shard_size",
+    "SHARDING_SHRINK_THRESHOLD": "shrink_threshold",
+    "SHARDING_SCANNER_BATCH_SIZE": "shard_scanner_batch_size",
+    "SHARDING_CLEAVE_BATCH_SIZE": "cleave_batch_size",
+}
+for env_name, profile_name in mapping.items():
+    values = set(profile[profile_name].values())
+    if len(values) != 1:
+        raise SystemExit("live profile is inconsistent for " + profile_name)
+    print(env_name + "=" + values.pop())
+PY
+)" || fail "could not read the complete consistent live sharding profile"
+
 {
     echo "# Generated dynamically by generate_probe_env.sh"
     echo "# Active topology values were discovered and validated."
@@ -187,6 +229,9 @@ vagrant ssh "${PROBE_RUNNER}" -c "
     echo "# Do not edit this generated file manually."
     printf 'PROBE_RUNNER=%q\n' "${PROBE_RUNNER}"
     printf 'PROBE_RUNNER_GROUP=%q\n' "${PROBE_RUNNER_GROUP}"
+    printf 'EXPECTED_SHARD_CONTAINER_THRESHOLD=%q\n' \
+        "${EXPECTED_SHARD_CONTAINER_THRESHOLD}"
+    printf '%s\n' "${SHARDING_PROFILE_LINES}"
     printf 'SWIFT_PROXY_NODE=%q\n' "${SWIFT_PROXY_NODE}"
     printf 'SWIFT_PROXY_GROUP=%q\n' "${SWIFT_PROXY_GROUP}"
     printf 'SWIFT_TEST_RC=%q\n' "${SWIFT_TEST_RC}"
@@ -209,3 +254,4 @@ echo "  runner:       ${PROBE_RUNNER} (${PROBE_RUNNER_GROUP})"
 echo "  proxy:        ${SWIFT_PROXY_NODE} (${SWIFT_PROXY_GROUP})"
 echo "  Swift config: ${SWIFT_CONFIG_DIR}"
 echo "  credentials:  ${SWIFT_TEST_RC}"
+echo "  threshold:    ${EXPECTED_SHARD_CONTAINER_THRESHOLD}"

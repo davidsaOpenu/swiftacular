@@ -22,6 +22,7 @@ cd "${REPOSITORY_ROOT}"
 PROBE_RUNNER_GROUP="${PROBE_RUNNER_GROUP:-swiftclient}"
 SWIFT_PROXY_GROUP="${SWIFT_PROXY_GROUP:-proxy}"
 TEST_MODULE="${1:-probe.tests.test_example_probe}"
+: "${EXPECTED_SHARD_CONTAINER_THRESHOLD:?probe.env is missing EXPECTED_SHARD_CONTAINER_THRESHOLD}"
 
 # Verify TEST_MODULE is a safe dotted Python name.
 if [[ ! "${TEST_MODULE}" =~ ^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$ ]]; then
@@ -63,6 +64,7 @@ vagrant ssh "${PROBE_RUNNER}" -c "
     source '/vagrant/probe/probe.env'
     source '${SWIFT_TEST_RC}'
     set +a
+    export EXPECTED_SHARD_CONTAINER_THRESHOLD='${EXPECTED_SHARD_CONTAINER_THRESHOLD}'
     cd /vagrant
     sudo -E python3 -m unittest -v ${TEST_MODULE}
 "
