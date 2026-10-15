@@ -39,8 +39,6 @@ run_playbook() {
 
   # Build the command with optional tags
   SWIFT_BACKEND="bs"
-  #SWIFT_BACKEND="bs_fork"
-  #SWIFT_BACKEND="bs_bind"
 
   local cmd="ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook -e 'swift_backend=$SWIFT_BACKEND' -v"
 
@@ -88,7 +86,7 @@ run_playbook "install_packages_on_nodes.yml" "Install Packages" "packages"
 # Apply Swift patches (requires Swift packages to be installed)
 run_playbook "apply_patches.yml" "Apply Swift Patches"
 
-# Build BlueStore C++ utilities (only when swift_backend=bs_fork)
+# Build BlueStore C++ utilities.
 run_playbook "update_ceph_bs_tools.yml" "Build BlueStore Utilities"
 
 # Deploy Swift Cluster (repository setup and configuration)
@@ -97,13 +95,8 @@ run_playbook "deploy_swift_cluster.yml" "Deploy Swift Cluster" "configure"
 # Setup and run workload tests
 run_playbook "setup_workload_test.yml" "Setup Workload Test"
 
-# Verify sharding profile control directly on the Vagrant host.
-python3 -m unittest probe.tests.test_sharding_profile
-
-# Leave the cluster on the small profile used by the activation probe.
-python3 -c 'from probe.set_sharding_threshold import configure_sharding; configure_sharding(50, 10, False)'
-
-# Generate the active probe environment and run the example probe after deployment.
+# Apply the story profile, generate the runtime probe environment, and run the
+# explicit final Observer + Workloader story test.
+python3 probe/set_sharding_threshold.py 1000
 "${SCRIPT_DIR}/probe/generate_probe_env.sh"
-"${SCRIPT_DIR}/probe/run_probe.sh"
-"${SCRIPT_DIR}/probe/run_probe.sh" probe.tests.test_sharding_activation
+"${SCRIPT_DIR}/probe/run_probe.sh" probe.tests.test_final_sharding_workload
