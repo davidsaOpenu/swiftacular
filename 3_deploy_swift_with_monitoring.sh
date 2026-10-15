@@ -97,13 +97,5 @@ run_playbook "deploy_swift_cluster.yml" "Deploy Swift Cluster" "configure"
 # Setup and run workload tests
 run_playbook "setup_workload_test.yml" "Setup Workload Test"
 
-# Verify sharding profile control directly on the Vagrant host.
-python3 -m unittest probe.tests.test_sharding_profile
-
-# Leave the cluster on the small profile used by the activation probe.
-python3 -c 'from probe.set_sharding_threshold import configure_sharding; configure_sharding(50, 10, False)'
-
-# Generate the active probe environment and run the example probe after deployment.
-"${SCRIPT_DIR}/probe/generate_probe_env.sh"
-"${SCRIPT_DIR}/probe/run_probe.sh"
-"${SCRIPT_DIR}/probe/run_probe.sh" probe.tests.test_sharding_activation
+# Run the sharding story workflow from its dedicated script.
+"${SCRIPT_DIR}/sharding_test.sh"
