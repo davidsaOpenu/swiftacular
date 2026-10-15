@@ -1,0 +1,5 @@
+---
+backend: posix
+
+grafana:
+  enabled: true

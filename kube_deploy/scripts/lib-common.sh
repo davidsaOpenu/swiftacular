@@ -10,6 +10,7 @@
 #   start_registry              — start the local Docker registry idempotently
 #   ensure_registry_on_network  — reattach local registry to the kind network
 #   dump_cluster_diagnostics    — full pod/event/log dump for post-mortem in CI
+#   set_backend                 — set and validate the used backend
 
 # Colors only when stdout is a terminal; CI logs otherwise show raw escape codes.
 if [[ -t 1 ]]; then
@@ -166,3 +167,18 @@ dump_cluster_diagnostics() {
   info "--- PVCs ---"
   kubectl get pvc -n "${ns}" 2>&1 | sed 's/^/    /' || true
 }
+
+# ── set_backend ───────────────────────────────────────────────────────────────
+# set and validate the backend
+
+SWIFT_BACKEND="MISSING"
+set_backend() {
+	if [[ $1 =~ ^(posix|bs_fork|bs_bind)$ ]]; then
+		SWIFT_BACKEND="$1"
+	else
+		printf 'Unknown backend "%s"\n' "$1" >&2
+		exit 1
+	fi
+}
+
+set_backend posix

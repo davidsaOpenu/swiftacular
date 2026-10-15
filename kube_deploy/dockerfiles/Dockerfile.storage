@@ -1,4 +1,4 @@
-FROM localhost:5001/swiftacular-base:latest
+FROM localhost:5001/swiftacular/base:latest
 
 ARG ANSIBLE_PUBLIC_KEY
 ENV DEBIAN_FRONTEND=noninteractive
@@ -22,19 +22,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         xfsprogs \
     && rm -rf /var/lib/apt/lists/*
 
-# ── Swift patches — single source of truth: swift_patches/ at the repo root ──
-# Apply the shared recipe (swift_patches/patches.manifest driven by apply.sh) —
-# the exact same files and applier the VM/Ansible flow runs from
-# apply_patches.yml.  Done at build time so a patch that stops applying fails the
-# build loudly instead of silently shipping unpatched Swift.  Only SWIFT_DIR
-# discovery and the apt-installed `patch` binary are Ubuntu-specific; the patch
-# list and application logic live in the shared scripts, not here.
-COPY swift_patches/ /tmp/swift_patches/
-
-RUN SWIFT_DIR=$(python3 -c "import swift, os; print(os.path.dirname(swift.__file__))") \
- && bash /tmp/swift_patches/apply.sh "${SWIFT_DIR}" --with-bs \
- && rm -rf /tmp/swift_patches
-
 # Swift runtime directories
 RUN install -d -o swift -g swift -m 0755 \
         /srv/node \
@@ -54,5 +41,19 @@ RUN chmod 0755 /var/lib/pcp/pmdas/swiftdbinfo/pmdaswiftdbinfo.py \
     && sed -i '/^\[access\]/i swiftdbinfo\t400\tpipe\tbinary\t\tpython3 /var/lib/pcp/pmdas/swiftdbinfo/pmdaswiftdbinfo.py' \
        /etc/pcp/pmcd/pmcd.conf \
     && sed -i '/^root {/a\\    swiftdbinfo 400:*:*' /var/lib/pcp/pmns/root
+
+# ── Swift patches — single source of truth: swift_patches/ at the repo root ──
+# Apply the shared recipe (swift_patches/patches.manifest driven by apply.sh) —
+# the exact same files and applier the VM/Ansible flow runs from
+# apply_patches.yml.  Done at build time so a patch that stops applying fails the
+# build loudly instead of silently shipping unpatched Swift.  Only SWIFT_DIR
+# discovery and the apt-installed `patch` binary are Ubuntu-specific; the patch
+# list and application logic live in the shared scripts, not here.
+COPY swift_patches/ /tmp/swift_patches/
+
+ARG SWIFT_BACKEND
+RUN SWIFT_DIR=$(python3 -c "import swift, os; print(os.path.dirname(swift.__file__))") \
+ && bash /tmp/swift_patches/apply.sh "${SWIFT_DIR}" --backend "${SWIFT_BACKEND}" \
+ && rm -rf /tmp/swift_patches
 
 EXPOSE 6000 6001 6002 873 44322

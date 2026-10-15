@@ -6,7 +6,7 @@ be measured from inside the cluster without touching Swift data.
 
 Enable with:
   helm upgrade --install swiftacular kube_deploy/charts/swiftacular \
-    -f kube_deploy/charts/swiftacular/values.dev.yaml \
+    -f kube_deploy/values/<backend>.yaml \
     --set bluestore.enabled=true
 
 Results are written to stdout — fetch with:

@@ -24,28 +24,28 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Storage image reference
 */}}
 {{- define "swiftacular.storageImage" -}}
-{{- printf "%s/%s:%s" .Values.registry .Values.storage.image .Values.storage.tag }}
+{{- printf "%s/swiftacular/%s/%s:%s" .Values.registry .Values.backend .Values.storage.image .Values.storage.tag }}
 {{- end }}
 
 {{/*
 Proxy image reference
 */}}
 {{- define "swiftacular.proxyImage" -}}
-{{- printf "%s/%s:%s" .Values.registry .Values.proxy.image .Values.proxy.tag }}
+{{- printf "%s/swiftacular/%s/%s:%s" .Values.registry .Values.backend .Values.proxy.image .Values.proxy.tag }}
 {{- end }}
 
 {{/*
 Keystone image reference
 */}}
 {{- define "swiftacular.keystoneImage" -}}
-{{- printf "%s/%s:%s" .Values.registry .Values.keystone.image .Values.keystone.tag }}
+{{- printf "%s/swiftacular/%s/%s:%s" .Values.registry .Values.backend .Values.keystone.image .Values.keystone.tag }}
 {{- end }}
 
 {{/*
 Package cache image reference
 */}}
 {{- define "swiftacular.packageCacheImage" -}}
-{{- printf "%s/%s:%s" .Values.registry .Values.packageCache.image .Values.packageCache.tag }}
+{{- printf "%s/swiftacular/%s/%s:%s" .Values.registry .Values.backend .Values.packageCache.image .Values.packageCache.tag }}
 {{- end }}
 
 {{/*
@@ -59,7 +59,7 @@ Grafana image reference — uses the public image directly, no local registry pr
 BlueStore image reference
 */}}
 {{- define "swiftacular.bluestoreImage" -}}
-{{- printf "%s/%s:%s" .Values.registry .Values.bluestore.image .Values.bluestore.tag }}
+{{- printf "%s/swiftacular/%s/%s:%s" .Values.registry .Values.backend .Values.bluestore.image .Values.bluestore.tag }}
 {{- end }}
 
 {{/*

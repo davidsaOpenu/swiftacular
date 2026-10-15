@@ -1,0 +1,22 @@
+FROM localhost:5001/swiftacular/proxy
+
+COPY --from=ghcr.io/astral-sh/uv:0.13.1 /uv /uvx /bin/
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libsnappy1v5 \
+        liblua5.4-0 \
+        libaio1t64 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN uv venv -p 3.9 --seed /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN pip install \
+    swift==2.35.0 \
+    keystonemiddleware==10.9.1 \
+    python-memcached==1.62 \
+    pytest \
+    python-swiftclient
+
+COPY --from=localhost:5001/swiftacular/wheel / /tmp/wheel
+RUN uv pip install /tmp/wheel/*

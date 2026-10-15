@@ -14,7 +14,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: swiftclient
-          image: localhost:5001/swiftacular-proxy:latest
+          image: localhost:5001/swiftacular/proxy:latest
           imagePullPolicy: Always
           command:
             - bash
