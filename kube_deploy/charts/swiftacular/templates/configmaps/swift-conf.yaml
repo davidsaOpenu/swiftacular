@@ -10,3 +10,9 @@ data:
     [swift-hash]
     swift_hash_path_suffix = {{ .Values.swift.hashPathSuffix }}
     swift_hash_path_prefix = {{ .Values.swift.hashPathPrefix }}
+
+    {{- if eq .Values.backend "bs_bind" }}
+    [storage-policy:0]
+    policy_type = bluestore
+    name = default
+    {{- end }}

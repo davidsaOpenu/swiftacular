@@ -1,5 +1,6 @@
 ---
 registry: localhost:5001
+backend: missing
 
 namespace: swiftacular
 
@@ -15,7 +16,7 @@ swift:
 
 storage:
   storageClassName: local-path
-  image: swiftacular-storage
+  image: storage
   tag: latest
 
 mariadb:
@@ -23,16 +24,16 @@ mariadb:
   tag: "11.4"
 
 proxy:
-  image: swiftacular-proxy
+  image: proxy
   tag: latest
 
 keystone:
-  image: swiftacular-keystone
+  image: keystone
   tag: latest
   region: Edmonton
 
 packageCache:
-  image: swiftacular-package-cache
+  image: package-cache
   tag: latest
   enabled: true
 
@@ -43,7 +44,7 @@ grafana:
 
 bluestore:
   enabled: false
-  image: swiftacular-bluestore
+  image: bluestore
   tag: latest
   storeSizeGi: 12
   cpuLimit: "2"
@@ -53,6 +54,8 @@ secrets:
   keystoneAdminPassword: CHANGEME
   keystoneMysqlPassword: CHANGEME
   keystoneGenericServicePassword: CHANGEME
+  # Must stay CHANGEME: the shared workload_tests/test_workload.py (also used
+  # by the VM/Ansible flow) hardcodes KEY = "CHANGEME" for the achilles user.
   keystoneTestUserPassword: CHANGEME
   grafanaAdminPassword: CHANGEME
 

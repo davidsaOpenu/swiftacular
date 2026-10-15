@@ -15,7 +15,7 @@
         group: vagrant
         recurse: true
         follow: false # Don't follow symlinks to avoid infinite loops
-      when: swift_backend is defined and swift_backend == 'bs_fork'
+      when: swift_backend == 'bs_fork'
       register: ceph_ownership_result
       failed_when: ceph_ownership_result.failed and not (ceph_ownership_result.msg is defined and 'does not exist' in ceph_ownership_result.msg)
 
@@ -24,4 +24,4 @@
   tasks:
     - name: Include BlueStore utilities build tasks
       ansible.builtin.include_tasks: roles/storage/tasks/build_bluestore_utilities.yml
-      when: swift_backend is defined and swift_backend == 'bs_fork'
+      when: swift_backend == 'bs_fork'

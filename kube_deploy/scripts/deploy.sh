@@ -7,7 +7,6 @@ source "${SCRIPT_DIR}/lib-common.sh"
 RELEASE="swiftacular"
 NAMESPACE="swiftacular"
 CHART_PATH="${SCRIPT_DIR}/../charts/swiftacular"
-VALUES_FILE="${CHART_PATH}/values.dev.yaml"
 SKIP_BOOTSTRAP=0
 SKIP_BUILD=0
 SKIP_SMOKE=0
@@ -16,11 +15,11 @@ usage() {
   echo "Usage: $0 [OPTIONS]"
   echo ""
   echo "Options:"
-  echo "  --skip-bootstrap   Skip kind cluster creation (cluster already exists)"
-  echo "  --skip-build       Skip Docker image builds (images already in registry)"
-  echo "  --skip-smoke       Skip smoke tests after deploy"
-  echo "  --values <file>    Helm values file (default: values.dev.yaml)"
-  echo "  -h, --help         Show this help"
+  echo "  --skip-bootstrap      Skip kind cluster creation (cluster already exists)"
+  echo "  --skip-build          Skip Docker image builds (images already in registry)"
+  echo "  --skip-smoke          Skip smoke tests after deploy"
+  echo "  --backend <backend>   Swift backend used (default: posix)"
+  echo "  -h, --help            Show this help"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -28,7 +27,7 @@ while [[ $# -gt 0 ]]; do
     --skip-bootstrap) SKIP_BOOTSTRAP=1; shift ;;
     --skip-build)     SKIP_BUILD=1;     shift ;;
     --skip-smoke)     SKIP_SMOKE=1;     shift ;;
-    --values)         VALUES_FILE="$2"; shift 2 ;;
+    --backend)        set_backend "$2"; shift 2 ;;
     -h|--help)        usage; exit 0 ;;
     *) error "Unknown flag: $1"; usage; exit 1 ;;
   esac
@@ -104,9 +103,10 @@ fi
 # ── 2. Image builds ───────────────────────────────────────────────────────────
 
 phase "build-images"
+
 if [[ "${SKIP_BUILD}" -eq 0 ]]; then
   step "Building and pushing Docker images"
-  "${SCRIPT_DIR}/build-images.sh"
+  "${SCRIPT_DIR}/build-images.sh" --backend "$SWIFT_BACKEND"
 else
   info "Skipping image builds (--skip-build)"
 fi
@@ -142,11 +142,12 @@ HUB_IMAGES=(
   alpine:3.19
   grafana/grafana:10.4.3
 )
+
 LOCAL_IMAGES=(
-  localhost:5001/swiftacular-storage:latest
-  localhost:5001/swiftacular-keystone:latest
-  localhost:5001/swiftacular-proxy:latest
-  localhost:5001/swiftacular-package-cache:latest
+    "localhost:5001/swiftacular/$SWIFT_BACKEND/storage:latest"
+    "localhost:5001/swiftacular/$SWIFT_BACKEND/keystone:latest"
+    "localhost:5001/swiftacular/$SWIFT_BACKEND/proxy:latest"
+    "localhost:5001/swiftacular/$SWIFT_BACKEND/package-cache:latest"
 )
 
 step "Pre-loading ${#HUB_IMAGES[@]} hub + ${#LOCAL_IMAGES[@]} local images into kind"
@@ -234,6 +235,9 @@ _helm_monitor "${NAMESPACE}" &
 _MONITOR_PID=$!
 
 step "Deploying swiftacular Helm chart"
+
+VALUES_FILE="${SCRIPT_DIR}/../values/$SWIFT_BACKEND.yaml"
+
 helm upgrade --install "${RELEASE}" "${CHART_PATH}" \
   --namespace "${NAMESPACE}" \
   --create-namespace \
@@ -278,7 +282,7 @@ info "  kube_deploy/scripts/teardown-cluster.sh"
 phase "smoke-tests"
 if [[ "${SKIP_SMOKE}" -eq 0 ]]; then
   step "Running smoke tests"
-  "${SCRIPT_DIR}/smoke-test.sh"
+  "${SCRIPT_DIR}/smoke-test.sh" --backend "$SWIFT_BACKEND"
 else
   info "Skipping smoke tests (--skip-smoke)"
 fi

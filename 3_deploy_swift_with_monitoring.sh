@@ -4,6 +4,17 @@ set -euo -x pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+SWIFT_BACKEND="${SWIFT_BACKEND:-bs_fork}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --backend) SWIFT_BACKEND="$2"; shift 2 ;;
+    *) shift 1;;
+  esac
+done
+
+[[ $SWIFT_BACKEND =~ ^(posix|bs_fork|bs_bind)$ ]] || { printf 'Unknown backend "%s"\n' "$SWIFT_BACKEND" >&2; exit 1; }
+
 # Check for required commands
 for cmd in python ansible-playbook ansible-galaxy; do
   if ! command -v $cmd &> /dev/null; then
@@ -16,7 +27,6 @@ done
 
 # Pre-commit checks
 tox
-
 
 # Array of dashboard JSON files and their UIDs
 declare -A dashboards
@@ -38,10 +48,6 @@ run_playbook() {
   local start_time=$(date +%s%3N)  # Get start time in epoch milliseconds
 
   # Build the command with optional tags
-  #SWIFT_BACKEND=""
-  SWIFT_BACKEND="bs_fork"
-  #SWIFT_BACKEND="bs_bind"
-
   local cmd="ANSIBLE_CONFIG=ansible.cfg ANSIBLE_LIBRARY=library ansible-playbook -i hosts $playbook -e 'swift_backend=$SWIFT_BACKEND' -v"
 
   if [ -n "$tags" ]; then
