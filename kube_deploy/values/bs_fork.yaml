@@ -1,0 +1,8 @@
+---
+backend: bs_fork
+
+grafana:
+  enabled: true
+
+bluestore:
+  enabled: true

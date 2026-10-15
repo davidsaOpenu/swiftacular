@@ -27,6 +27,17 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib-common.sh"
 
+SWIFT_BACKEND="${SWIFT_BACKEND:-MISSING}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --backend) SWIFT_BACKEND="$2"; shift 2 ;;
+    *) shift 1;;
+  esac
+done
+
+[[ $SWIFT_BACKEND =~ ^(posix|bs_fork|bs_bind)$ ]] || { printf 'Unknown backend "%s"\n' "$SWIFT_BACKEND" >&2; exit 1; }
+
 # ── configuration ─────────────────────────────────────────────────────────────
 NAMESPACE="${NAMESPACE:-swiftacular}"
 REGISTRY="${REGISTRY:-localhost:5001}"
@@ -38,7 +49,7 @@ else
   KEYSTONE_HOST_PORT="${KEYSTONE_HOST_PORT:-5000}"
 fi
 CHART_PATH="${SCRIPT_DIR}/../charts/swiftacular"
-VALUES_FILE="${CHART_PATH}/values.dev.yaml"
+VALUES_FILE="${SCRIPT_DIR}/../values/$SWIFT_BACKEND.yaml"
 STRESS_OBJECTS="${STRESS_OBJECTS:-30}"
 STRESS_SIZE_KB="${STRESS_SIZE_KB:-64}"
 SMOKE_CONTAINER="swiftacular-smoke"
@@ -244,7 +255,7 @@ section "1 / UNIT TESTS"
 
 # U1 — helm lint
 if command -v helm >/dev/null 2>&1; then
-  if helm lint "${CHART_PATH}" >/dev/null 2>&1; then
+  if helm lint "${CHART_PATH}" --values "${VALUES_FILE}" >/dev/null 2>&1; then
     t_pass "U1 helm lint"
   else
     t_fail "U1 helm lint" "run 'helm lint ${CHART_PATH}' for details"
@@ -267,10 +278,10 @@ else
 fi
 
 # U3 — bluestore image in registry (S8; non-blocking, just a skip if absent)
-if curl -sf "http://${REGISTRY}/v2/swiftacular-bluestore/tags/list" >/dev/null 2>&1; then
-  t_pass "U3 swiftacular-bluestore image in registry"
+if curl -sf "http://${REGISTRY}/v2/swiftacular/$SWIFT_BACKEND/bluestore/tags/list" >/dev/null 2>&1; then
+  t_pass "U3 swiftacular/$SWIFT_BACKEND/bluestore image in registry"
 else
-  t_skip "U3 swiftacular-bluestore image in registry" "S8 build not completed yet"
+  t_skip "U3 swiftacular/$SWIFT_BACKEND/bluestore image in registry" "S8 build not completed yet"
 fi
 
 # U4 — swiftdbinfo PMDA Python syntax (exec into first storage pod)
@@ -334,8 +345,15 @@ fi
 
 # I2 — all service images present in registry
 IMGS_OK=1
-for img in swiftacular-base swiftacular-storage swiftacular-proxy \
-           swiftacular-keystone swiftacular-package-cache; do
+IMGS=(
+	"swiftacular/$SWIFT_BACKEND/base"
+	"swiftacular/$SWIFT_BACKEND/storage"
+	"swiftacular/$SWIFT_BACKEND/proxy"
+	"swiftacular/$SWIFT_BACKEND/keystone"
+	"swiftacular/$SWIFT_BACKEND/package-cache"
+)
+
+for img in "${IMGS[@]}"; do
   if curl -sf "http://${REGISTRY}/v2/${img}/tags/list" >/dev/null 2>&1; then
     t_pass "I2 registry: ${img}"
   else
@@ -765,13 +783,13 @@ else
   fi
 fi
 
-# W2/W3 — BlueStore utilities, run in the swiftacular-bluestore image on the
+# W2/W3 — BlueStore utilities, run in the swiftacular/bluestore image on the
 # host Docker daemon (the utilities operate on local files; no cluster needed).
-_BS_IMG="localhost:5001/swiftacular-bluestore:latest"
+_BS_IMG="localhost:5001/swiftacular/$SWIFT_BACKEND/bluestore:latest"
 if ! command -v docker >/dev/null 2>&1 \
    || ! docker image inspect "${_BS_IMG}" >/dev/null 2>&1; then
-  t_skip "W2 BlueStore utilities present" "swiftacular-bluestore image not in local Docker store"
-  t_skip "W3 BlueStore utility tests" "swiftacular-bluestore image not in local Docker store"
+  t_skip "W2 BlueStore utilities present" "swiftacular/$SWIFT_BACKEND/bluestore image not in local Docker store"
+  t_skip "W3 BlueStore utility tests" "swiftacular/$SWIFT_BACKEND/bluestore image not in local Docker store"
 else
   # Tool names come from the single source of truth: ceph_patches/tools.list.
   _BS_TOOLS=$(tr '\n' ' ' < "$(cd "${SCRIPT_DIR}/../.." && pwd)/ceph_patches/tools.list" 2>/dev/null)
