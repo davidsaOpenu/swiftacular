@@ -58,8 +58,9 @@
 
 # Inject the tool sources + CMake targets via the shared recipe in ceph_patches/
 # (inject.sh + CMakeLists.txt) — the same single source of truth the Kubernetes
-# build runs from kube_deploy/dockerfiles/Dockerfile.bluestore.  Which tools get
-# built is declared once, in the foreach inside ceph_patches/CMakeLists.txt.
+# build runs from kube_deploy/dockerfiles/bs_fork/Dockerfile.bluestore.
+# Which tools get built is declared once, in the
+# foreach inside ceph_patches/CMakeLists.txt.
 - name: Copy ceph_patches to the storage node
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/ceph_patches"

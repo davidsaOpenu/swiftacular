@@ -15,8 +15,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib-common.sh"
 
 NAMESPACE="${NAMESPACE:-swiftacular}"
-CHART_PATH="${SCRIPT_DIR}/../charts/swiftacular"
-VALUES_FILE="${CHART_PATH}/values.dev.yaml"
 FULL_TEST=0
 for _arg in "$@"; do [[ "$_arg" == "--full" ]] && FULL_TEST=1; done
 

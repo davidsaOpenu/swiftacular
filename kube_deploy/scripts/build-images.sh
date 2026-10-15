@@ -4,6 +4,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib-common.sh"
 
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --backend) set_backend "$2"; shift 2 ;;
+    *) shift 1;;
+  esac
+done
+
 # On Docker 26+, DOCKER_BUILDKIT=1 routes through the buildx CLI plugin; if
 # that plugin is absent the build fails immediately.  Use BuildKit only when
 # buildx is present.  Without BuildKit the legacy builder's "unknown parent
@@ -57,12 +64,14 @@ fi
 # Streams prefixed build output, tees the raw log to a file, and records a
 # status line (OK/FAIL + duration) so the parent can print a summary table —
 # parallel builds run in subshells, so files are the only channel back.
+# Tagged swiftacular/${SWIFT_BACKEND}/<name> and swiftacular/<name>;
+# Dockerfiles use the latter in FROM.
 
 _BUILD_STATUS_DIR=$(mktemp -d)
 
 build_and_push() {
   local name="$1"
-  local dockerfile="$2"
+  local dockerfile="${DOCKERFILES}/$2"
   local extra_opts="${3:-}"
   local t0 t1 dur log="${_BUILD_STATUS_DIR}/${name}.log"
   t0=$(date +%s)
@@ -71,55 +80,120 @@ build_and_push() {
       ${_PROGRESS_FLAG} \
       ${extra_opts} \
       --build-arg "ANSIBLE_PUBLIC_KEY=${PUB_KEY}" \
-      -t "${name}:latest" \
+      --build-arg "SWIFT_BACKEND=${SWIFT_BACKEND}" \
+      -t "${REGISTRY}/swiftacular/${SWIFT_BACKEND}/${name}:latest" \
+      -t "${REGISTRY}/swiftacular/${name}:latest" \
       -f "${dockerfile}" \
       "${REPO_ROOT}" 2>&1 | tee "${log}" | sed "s/^/    [${name}] /" \
-     && docker tag  "${name}:latest" "${REGISTRY}/${name}:latest" \
-     && docker push "${REGISTRY}/${name}:latest" >>"${log}" 2>&1; then
+     && docker push "${REGISTRY}/swiftacular/${SWIFT_BACKEND}/${name}:latest" >>"${log}" 2>&1 \
+     && docker push "${REGISTRY}/swiftacular/${name}:latest" >>"${log}" 2>&1; then
     t1=$(date +%s); dur=$((t1 - t0))
-    echo "OK ${dur}" > "${_BUILD_STATUS_DIR}/${name}.status"
     info "✓ ${name} built+pushed in $((dur / 60))m$((dur % 60))s"
+    echo "OK ${dur}" > "${_BUILD_STATUS_DIR}/${name}.status"
   else
     t1=$(date +%s); dur=$((t1 - t0))
-    echo "FAIL ${dur}" > "${_BUILD_STATUS_DIR}/${name}.status"
     error "✗ ${name} build/push failed after ${dur}s — last 30 log lines:"
     tail -30 "${log}" | sed 's/^/      /' >&2
+    echo "FAIL ${dur}" > "${_BUILD_STATUS_DIR}/${name}.status"
     return 1
   fi
 }
 
-# ── swiftacular-base (must finish before parallel builds start) ───────────────
-
-step "Building swiftacular-base"
-build_and_push swiftacular-base "${DOCKERFILES}/Dockerfile.base"
-
-# ── Remaining five images ─────────────────────────────────────────────────────
+# ── build / await ─────────────────────────────────────────────────────────────
 # BuildKit (content-addressed cache) is safe to run in parallel.
 # The legacy builder GC-s in-flight intermediate images under memory pressure
 # when multiple builds run concurrently, causing "unknown parent image ID"
 # failures mid-build — even within a single image's own steps.  Serialize.
-# Grafana uses the stock public image; no build needed.
+#
+# build <name> <dockerfile> [extra_opts]
+#   Starts one image: in the background under BuildKit, inline under the
+#   legacy builder.  Skipped once an await has seen a failure.
+# await <name>...
+#   Blocks until those images are pushed.  Call it before building anything
+#   FROM them; if one failed, every later build is skipped.
 
 FAIL=0
+_STOP=0
+
+build() {
+  if [[ -e "${_BUILD_STATUS_DIR}/$1.status" ]]; then
+      idx="$(cat "${_BUILD_STATUS_DIR}/$1.idx" 2> /dev/null || true)"
+      idx="$(( idx + 1 ))"
+
+      printf "%s" "$idx" > "${_BUILD_STATUS_DIR}/$1.idx"
+
+      mv "${_BUILD_STATUS_DIR}/$1.status" "${_BUILD_STATUS_DIR}/$1.prev-$idx.status"
+      mv "${_BUILD_STATUS_DIR}/$1.log" "${_BUILD_STATUS_DIR}/$1.prev-$idx.log" 2> /dev/null || true
+  fi
+
+  rm -f "${_BUILD_STATUS_DIR}/$1.status"
+
+  if [[ "${_STOP}" -ne 0 ]]; then
+    echo "SKIP 0" > "${_BUILD_STATUS_DIR}/$1.status"
+    warn "⊘ $1 skipped — an image awaited before it failed"
+    return 0
+  fi
+  echo "PENDING 0" > "${_BUILD_STATUS_DIR}/$1.status"
+  if [[ "${DOCKER_BUILDKIT}" == "1" ]]; then
+    build_and_push "$@" &
+  else
+    build_and_push "$@" || true
+  fi
+}
+
+await() {
+  local n st
+  for n in "$@"; do
+    [[ -f "${_BUILD_STATUS_DIR}/${n}.status" ]] || { error "await ${n}: not built yet"; exit 1; }
+    until read -r st _ < "${_BUILD_STATUS_DIR}/${n}.status"; [[ "${st:-}" =~ ^(OK|FAIL|SKIP)$ ]]; do
+      sleep 2
+    done
+    if [[ "${st}" != "OK" ]]; then _STOP=1; FAIL=1; fi
+  done
+}
+
+# ── What each backend builds ──────────────────────────────────────────────────
+# images_<backend> runs for SWIFT_BACKEND=<backend>.  Every image is built with
+# that SWIFT_BACKEND; Dockerfiles that don't read it reuse the cached layers
+# from any other backend's build.  Start long independent builds before an
+# await, so they run while it blocks.  Grafana uses the stock public image.
+
+common_images() {
+  build base          Dockerfile.base
+  await base
+
+  build keystone      Dockerfile.keystone
+  build package-cache Dockerfile.package-cache
+  build storage Dockerfile.storage
+  build proxy   Dockerfile.proxy
+}
+
+images_posix() {
+  common_images
+}
+
+images_bs_fork() {
+  build bluestore bs_fork/Dockerfile.bluestore "${_BLUESTORE_BUILD_OPTS}"
+  images_posix
+}
+
+images_bs_bind() {
+    build wheel   bs_bind/Dockerfile.wheel
+    common_images
+
+    await wheel storage proxy
+    build storage bs_bind/Dockerfile.storage
+    build proxy   bs_bind/Dockerfile.proxy
+}
 
 if [[ "${DOCKER_BUILDKIT}" == "1" ]]; then
-  step "Building service images in parallel"
-  declare -a PIDS=()
-  build_and_push swiftacular-storage       "${DOCKERFILES}/Dockerfile.storage"       & PIDS+=($!)
-  build_and_push swiftacular-proxy         "${DOCKERFILES}/Dockerfile.proxy"          & PIDS+=($!)
-  build_and_push swiftacular-keystone      "${DOCKERFILES}/Dockerfile.keystone"       & PIDS+=($!)
-  build_and_push swiftacular-package-cache "${DOCKERFILES}/Dockerfile.package-cache"  & PIDS+=($!)
-  build_and_push swiftacular-bluestore     "${DOCKERFILES}/Dockerfile.bluestore"      & PIDS+=($!)
-  for pid in "${PIDS[@]}"; do wait "${pid}" || FAIL=1; done
+  step "Building ${SWIFT_BACKEND} images in parallel"
 else
-  step "Building service images sequentially (legacy builder)"
-  build_and_push swiftacular-storage       "${DOCKERFILES}/Dockerfile.storage"       || FAIL=1
-  build_and_push swiftacular-proxy         "${DOCKERFILES}/Dockerfile.proxy"          || FAIL=1
-  build_and_push swiftacular-keystone      "${DOCKERFILES}/Dockerfile.keystone"       || FAIL=1
-  build_and_push swiftacular-package-cache "${DOCKERFILES}/Dockerfile.package-cache"  || FAIL=1
-  build_and_push swiftacular-bluestore     "${DOCKERFILES}/Dockerfile.bluestore" \
-    "${_BLUESTORE_BUILD_OPTS}"                                                         || FAIL=1
+  step "Building ${SWIFT_BACKEND} images sequentially (legacy builder)"
 fi
+
+"images_${SWIFT_BACKEND}"
+for _f in "${_BUILD_STATUS_DIR}"/*.status; do await "$(basename "${_f}" .status)"; done
 
 # ── Build summary table ───────────────────────────────────────────────────────
 
@@ -161,10 +235,3 @@ info "Registry catalog:"
 curl -sf "http://${REGISTRY}/v2/_catalog" \
   | python3 -c "import sys,json; d=sys.stdin.read(); [print('    ' + r) for r in (json.loads(d)['repositories'] if d.strip() else [])]" \
   || true
-
-step "Next step — deploy the cluster"
-echo ""
-echo "    helm upgrade --install swiftacular kube_deploy/charts/swiftacular \\"
-echo "      -n swiftacular --create-namespace \\"
-echo "      -f kube_deploy/charts/swiftacular/values.dev.yaml"
-echo ""

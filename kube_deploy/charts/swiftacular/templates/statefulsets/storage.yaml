@@ -1,3 +1,7 @@
+{{- if has .Values.backend (list "posix" "bs_fork" "bs_bind") | not }}
+{{- print "Unknown backend: " .Values.backend | fail }}
+{{- end -}}
+
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:

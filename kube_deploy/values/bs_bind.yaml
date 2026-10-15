@@ -1,0 +1,8 @@
+---
+backend: bs_bind
+
+swift:
+  bluestore_capacity: 4
+
+grafana:
+  enabled: true

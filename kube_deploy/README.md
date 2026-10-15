@@ -74,8 +74,8 @@ kube_deploy/scripts/deploy.sh --skip-build
 # Skip the smoke-test suite after deploy
 kube_deploy/scripts/deploy.sh --skip-smoke
 
-# Use a custom values file
-kube_deploy/scripts/deploy.sh --values kube_deploy/charts/swiftacular/values.dev.yaml
+# Use a different backend
+kube_deploy/scripts/deploy.sh --backend bs_bind
 ```
 
 ### CI port offsets
@@ -148,7 +148,7 @@ curl http://localhost:8080/healthcheck
 # List containers (requires Keystone auth — see smoke test section)
 swift --os-auth-url http://localhost:5000/v3 \
   --os-username admin \
-  --os-password devpassword \
+  --os-password CHANGEME \
   --os-project-name admin \
   --os-user-domain-name Default \
   --os-project-domain-name Default \
@@ -160,7 +160,7 @@ swift --os-auth-url http://localhost:5000/v3 \
 
 Open `http://localhost:3000` in a browser.
 
-Login: `admin` / `devgrafanapass` (or the value of `secrets.grafanaAdminPassword` in your values file).
+Login: `admin` / `CHANGEME` (or the value of `secrets.grafanaAdminPassword` in your values file).
 
 Three dashboards are provisioned automatically:
 - **Swift Storage** — per-node disk I/O, network, CPU, memory
@@ -178,7 +178,7 @@ curl http://localhost:5000/v3
 # Issue a token (Python openstack CLI)
 export OS_AUTH_URL=http://localhost:5000/v3
 export OS_USERNAME=admin
-export OS_PASSWORD=devpassword
+export OS_PASSWORD=CHANGEME
 export OS_PROJECT_NAME=admin
 export OS_USER_DOMAIN_NAME=Default
 export OS_PROJECT_DOMAIN_NAME=Default
@@ -214,7 +214,7 @@ The summary prints every test's PASS/FAIL/SKIP plus per-section durations.
 
 Note: the Keystone test user is `achilles` with password `CHANGEME` —
 hardcoded in the shared `workload_tests/test_workload.py`, which is why
-`values.dev.yaml` must keep `keystoneTestUserPassword: CHANGEME`.
+we must keep `keystoneTestUserPassword: CHANGEME` in all value files.
 
 A minimal standalone Job also exists at `kube_deploy/jobs/swiftclient-smoke.yaml`
 (container/upload/download/verify only) if you want a quick in-cluster check
@@ -237,10 +237,10 @@ The `swiftdbinfo` PMDA scans `/srv/node` for Swift container SQLite databases an
 
 ## Configuration
 
-All tunables live in `charts/swiftacular/values.yaml`. Override them in a values file:
+All tunables live in `charts/swiftacular/values.yaml`. Override them in a values file per backend:
 
 ```yaml
-# values.dev.yaml
+# values/<backend>.yaml
 swift:
   hashPathSuffix: my-suffix
   hashPathPrefix: my-prefix
@@ -306,11 +306,13 @@ kubectl logs deploy/keystone -n swiftacular | tail -30
 
 The storage image may be outdated. Rebuild with `--no-cache` and restart:
 ```bash
+SWIFT_BACKEND=posix
 PUB_KEY=$(cat kube_deploy/ssh/ansible_user.pub)
 docker build --no-cache --build-arg "ANSIBLE_PUBLIC_KEY=${PUB_KEY}" \
-  -t swiftacular-storage:latest -f kube_deploy/dockerfiles/Dockerfile.storage .
-docker tag swiftacular-storage:latest localhost:5001/swiftacular-storage:latest
-docker push localhost:5001/swiftacular-storage:latest
+  --build-arg "SWIFT_BACKEND=${SWIFT_BACKEND}" -t swiftacular/storage:latest \
+  -t swiftacular/$SWIFT_BACKEND/storage:latest -f kube_deploy/dockerfiles/Dockerfile.storage .
+docker tag swiftacular/storage:latest localhost:5001/swiftacular/$SWIFT_BACKEND/storage:latest
+docker push localhost:5001/swiftacular/$SWIFT_BACKEND/storage:latest
 kubectl rollout restart statefulset/storage -n swiftacular
 ```
 

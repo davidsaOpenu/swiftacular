@@ -107,13 +107,31 @@ data:
     devices = /srv/node
     bind_ip = ${MY_POD_IP}
     bind_port = 6000
+    {{- if eq .Values.backend "bs_bind" }}
+    workers = 1
+    {{- else }}
     workers = 2
+    {{- end }}
 
     [pipeline:main]
     pipeline = object-server
 
     [app:object-server]
+    {{- if eq .Values.backend "memory" }}
+    use = egg:swift#mem_object
+    {{- else if eq .Values.backend "bs_fork" }}
+    use = egg:swift#bs_object
+    {{- else if eq .Values.backend "bs_bind" }}
+    {{- $MiB := mul 1024 1024 }}
+    {{- $GiB := mul $MiB 1024 }}
+    disk_chunk_size = {{ $MiB }}
+    network_chunk_size = {{ $MiB }}
+    bluestore_capacity = {{ mul $GiB .Values.swift.bluestore_capacity }}
+    eventlet_tpool_num_threads = 64
     use = egg:swift#object
+    {{- else }}
+    use = egg:swift#object
+    {{- end }}
 
     [object-replicator]
 

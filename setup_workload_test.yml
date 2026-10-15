@@ -58,7 +58,7 @@
   tasks:
     - name: Check if BlueStore utilities should be verified
       ansible.builtin.set_fact:
-        verify_bs_utils: "{{ swift_backend is defined and swift_backend == 'bs_fork' }}"
+        verify_bs_utils: "{{ swift_backend == 'bs_fork' }}"
 
     # Tool names come from the single source of truth: ceph_patches/tools.list.
     - name: Verify each BlueStore utility is present
@@ -97,7 +97,7 @@
   tasks:
     - name: Check if BlueStore tests should run
       ansible.builtin.set_fact:
-        run_bs_tests: "{{ swift_backend is defined and swift_backend == 'bs_fork' }}"
+        run_bs_tests: "{{ swift_backend == 'bs_fork' }}"
 
     # Glob the bs suite (test_bs_*.py) + the shared runner, so a future bs test
     # is picked up with no change here — same files run.sh bs runs in the image.
