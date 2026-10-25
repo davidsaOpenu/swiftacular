@@ -16,6 +16,23 @@
       "message": "verified: https://192.114.0.189:8080/jenkins/job/swiftacular/8/",
       "revId": "6de7371c94a5364c88f17797a34f72947236fae9",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ddc2040d_1d0198ff",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-10-25T11:53:53Z",
+      "side": 1,
+      "message": "Make CI happy again (after massive upgrades on the server)",
+      "revId": "6de7371c94a5364c88f17797a34f72947236fae9",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     }
   ],
   "submitRequirementResults": []
