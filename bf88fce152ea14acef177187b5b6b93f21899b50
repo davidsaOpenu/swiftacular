@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f040e776_ba4e444a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-10-25T11:55:18Z",
+      "side": 1,
+      "message": "@ziventin@gmail.com, mind rebasing this change after the Jenkins server updates?",
+      "revId": "bf88fce152ea14acef177187b5b6b93f21899b50",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
