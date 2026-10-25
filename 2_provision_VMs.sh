@@ -18,6 +18,18 @@ else
     echo "vagrant-libvirt plugin is already installed."
 fi
 
+# vagrant-libvirt 0.12.x passes libvirt_ip_command, which fog-libvirt >= 0.13 dropped
+# ("[fog][WARNING] Unrecognized arguments: libvirt_ip_command"). Pin fog-libvirt 0.12.2,
+# and fog-json 1.2.0 since newer fog-json needs a json gem newer than Vagrant 2.4.0 embeds.
+pin_vagrant_plugin() {
+    if ! vagrant plugin list | grep -qF "$1 ($2,"; then
+        echo "Pinning $1 to $2..."
+        vagrant plugin install "$1" --plugin-version "$2"
+    fi
+}
+pin_vagrant_plugin fog-json 1.2.0
+pin_vagrant_plugin fog-libvirt 0.12.2
+
 ./vagrant_box.sh
 
 # Run the playbooks with timing and logging
