@@ -74,11 +74,25 @@ post_install_common() {
     usermod -a -G libvirt "$USERNAME"
     check_success "!!"
 
+    # Vagrant plugins and boxes live in the invoking user's ~/.vagrant.d, not root's.
+    # fog-libvirt is pinned to 0.12.2 because vagrant-libvirt 0.12.x passes
+    # libvirt_ip_command, which fog-libvirt >= 0.13 rejects with a warning.
+    # fog-json is pinned to 1.2.0 because newer releases need a json gem newer
+    # than the one embedded in Vagrant 2.4.0. Pins go first, or a clean install
+    # of vagrant-libvirt pulls fog-json 1.5.0 and fails with Gem::ConflictError.
+    local vagrant_user="${SUDO_USER:-root}"
+    sudo -u "$vagrant_user" -H vagrant plugin install fog-json --plugin-version 1.2.0
+    check_success "!!"
+    sudo -u "$vagrant_user" -H vagrant plugin install fog-libvirt --plugin-version 0.12.2
+    check_success "!!"
+    sudo -u "$vagrant_user" -H vagrant plugin install vagrant-libvirt
+    check_success "!!"
+
     # Add vagrant boxes
     # this operation requires no sudo privilages
     # we need it at preparation stage to prevent
     # 'vagrant up' failure.
-    ./vagrant_box.sh
+    sudo -u "$vagrant_user" -H ./vagrant_box.sh
     check_success "!!"
 
 }
@@ -108,10 +122,10 @@ install_for_fedora() {
     check_success "!!"
 
     # Required for ansible-galaxy later in bootstrap script
-    dnf install python3-resolvelib
+    dnf install -y python3-resolvelib
     check_success "!!"
 
-    dnf install python3-tox
+    dnf install -y python3-tox
     check_success "!!"
 }
 
@@ -139,24 +153,32 @@ install_for_ubuntu() {
     check_success "!!"
 
     # https://docs.ansible.com/ansible/latest/installation_guide/installation_distros.html#installing-ansible-on-ubuntu
-    apt install software-properties-common
-    check_success "!!"
     add-apt-repository --yes --update ppa:ansible/ansible
     check_success "!!"
+    # Ubuntu's own ansible 2.10 package ships /usr/bin/ansible, which conflicts
+    # with the PPA's ansible-core, so remove it before installing from the PPA
+    if dpkg -s ansible &>/dev/null && ! dpkg -s ansible-core &>/dev/null; then
+        apt remove -y ansible
+        check_success "!!"
+    fi
     apt install -y ansible
     check_success "!!"
-    apt  install python3-tox
+    # On 22.04 tox is packaged as "tox", not "python3-tox"
+    apt install -y tox
     check_success "!!"
 
     grep -qxF 'export PATH=$HOME/.local/bin:$PATH' ~/.bashrc || echo 'export PATH=$HOME/.local/bin:$PATH' >> ~/.bashrc
 
-    wget https://releases.hashicorp.com/vagrant/2.4.0/vagrant_2.4.0-1_amd64.deb
-    apt install ./vagrant_2.4.0-1_amd64.deb
+    wget -nc https://releases.hashicorp.com/vagrant/2.4.0/vagrant_2.4.0-1_amd64.deb
+    apt install -y ./vagrant_2.4.0-1_amd64.deb
     check_success "!!"
 
     # Avoid Permission denied ~/swiftacular/.vagrant/bundler error
-    chown -R "$USER:$USER" .vagrant
-    check_success "!!"
+    # ($USER is root under sudo, so use the invoking user)
+    if [ -d .vagrant ]; then
+        chown -R "${SUDO_USER:-$USER}:" .vagrant
+        check_success "!!"
+    fi
 }
 
 install_for_arch() {
