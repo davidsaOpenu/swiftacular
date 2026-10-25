@@ -32,7 +32,34 @@ else
     echo "vagrant-libvirt plugin is already installed."
 fi
 
-./vagrant_box.sh
+./vagrant_info.sh
+
+# Boxes live in a store shared by all users and are prepared by 1_install_prereqs.sh.
+# This script never downloads or builds them.
+GLOBAL_BOXES_DIR="/var/lib/vagrant/boxes"
+case "${VM_BOX:-centos}" in
+  centos) base_box="eurolinux-vagrant/centos-stream-9" ;;
+  ubuntu) base_box="generic/ubuntu2204" ;;
+  *) echo "Error: unsupported VM_BOX '$VM_BOX'. Use 'centos' or 'ubuntu'." >&2; exit 1 ;;
+esac
+
+boxes_dir="${VAGRANT_HOME:-$HOME/.vagrant.d}/boxes"
+if [ "$(readlink -f "$boxes_dir")" != "$GLOBAL_BOXES_DIR" ]; then
+  echo "Error: $boxes_dir is not linked to the shared box store $GLOBAL_BOXES_DIR." >&2
+  echo "Make sure user '$(id -un)' is in the libvirt group, then run 'sudo ./1_install_prereqs.sh' to link it." >&2
+  exit 1
+fi
+
+missing_boxes=()
+for box in "$base_box" "$base_box-ceph"; do
+  vagrant box list | grep -q "^$box " || missing_boxes+=("$box")
+done
+if [ ${#missing_boxes[@]} -gt 0 ]; then
+  echo "Error: missing Vagrant box(es) in $GLOBAL_BOXES_DIR: ${missing_boxes[*]}" >&2
+  echo "Run 'sudo ./1_install_prereqs.sh' to download the base box and build the -ceph box." >&2
+  echo "It only prepares the CentOS boxes; see README.md for Ubuntu." >&2
+  exit 1
+fi
 
 # Run the playbooks with timing and logging
 echo start
