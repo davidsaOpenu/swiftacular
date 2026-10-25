@@ -9,19 +9,18 @@ nodes = {
 #  'grafana'             => [1, 150],
 }
 
-# Select box based on ENV variable
+# Select box based on ENV variable. Boxes come from the shared store set up by
+# 1_install_prereqs.sh, and 2_provision_VMs.sh checks they exist before 'vagrant up'.
 selected_box = ENV['VM_BOX'] || "centos"
 box_config = {
   "centos" => {
     box:     "eurolinux-vagrant/centos-stream-9",
-    box_url: "https://app.vagrantup.com/eurolinux-vagrant/boxes/centos-stream-9/versions/9.0.28/providers/libvirt.box"
   },
   "centos-ceph" => {
     box:     "eurolinux-vagrant/centos-stream-9-ceph",
   },
   "ubuntu" => {
     box:     "generic/ubuntu2204",
-    box_url: "https://vagrantcloud.com/generic/boxes/ubuntu2204/versions/4.3.12/providers/libvirt/amd64/vagrant.box",
   },
   "ubuntu-ceph" => {
     box:     "generic/ubuntu2204-ceph",
@@ -52,13 +51,11 @@ Vagrant.configure("2") do |config|
           ceph_box = "#{selected_box}-ceph"
           if box_config[ceph_box]
             box.vm.box     = box_config[ceph_box][:box]
-            box.vm.box_url = box_config[ceph_box][:box_url] if box_config[ceph_box][:box_url]
           else
             abort "Ceph variant '#{ceph_box}' not available for storage nodes. Please use 'centos' or 'ubuntu' as VM_BOX."
           end
         else
           box.vm.box     = box_config[selected_box][:box]
-          box.vm.box_url = box_config[selected_box][:box_url] if box_config[selected_box][:box_url]
         end
 
         # Configure synced folders - storage nodes don't need them, others use rsync

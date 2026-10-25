@@ -22,6 +22,7 @@ This repository will create a virtualized OpenStack Swift cluster using Vagrant,
   - [Features](#features)
   - [Requirements](#hardware-requirements)
   - [Virtual machines created](#virtual-machines-created)
+  - [Vagrant boxes](#vagrant-boxes)
   - [Networking setup](#networking-setup)
   - [Self-signed certificates](#self-signed-certificates)
   - [Using the swift command line client](#using-the-swift-command-line-client)
@@ -38,13 +39,11 @@ This repository will create a virtualized OpenStack Swift cluster using Vagrant,
 # Clone swiftaucular repo
 $ cd swiftacular
 
-# Install prerequisites on the host (requires sudo)
-$ ./1_install_prereqs.sh
+# Install prerequisites on the host and prepare the shared Vagrant boxes,
+# including the -ceph box with precompiled bluestore for the storage nodes (requires sudo)
+$ sudo ./1_install_prereqs.sh
 
-# Prepare vagrant boxes with precompiled bluestore to be used as a storage nodes
-$ ./vagrant_box.sh --ceph
-
-# Provision VMs
+# Provision VMs (fails with instructions if the shared boxes are missing)
 $ ./2_provision_VMs.sh
 
 # Deploy Swift and monitoring dashboards
@@ -114,13 +113,26 @@ Seven Vagrant-based virtual machines are used for this playbook:
 * __swift-storage__ - Three Swift storage nodes
 
 
-Also, running
+## Vagrant boxes
 
-```bash
-vagrant_box.sh --ceph
-```
+Boxes are stored once, in `/var/lib/vagrant/boxes`, and shared by all users on the host.
+`sudo ./1_install_prereqs.sh` sets this up:
 
-creates a VM with 20 GB of ram for bluestore compilation. The VM is destroyed later.
+* It links `~/.vagrant.d/boxes` of the invoking user and of every member of the `libvirt`
+  group (including Jenkins) to `/var/lib/vagrant/boxes`. Boxes already in a user's
+  `~/.vagrant.d/boxes` are moved to the shared store, or deleted if it already has them.
+* It downloads `eurolinux-vagrant/centos-stream-9` and builds
+  `eurolinux-vagrant/centos-stream-9-ceph`, the storage node box with precompiled bluestore.
+  The build runs `vagrant_box.sh --ceph`, which creates a VM with 20 GB of RAM for bluestore
+  compilation and destroys it afterwards. Boxes that already exist are skipped.
+
+`2_provision_VMs.sh` never downloads or builds boxes. If the shared store isn't linked for
+the current user, or the boxes for `VM_BOX` are missing, it stops with an error saying what
+to run. To add a new user, add them to the `libvirt` group and rerun
+`sudo ./1_install_prereqs.sh`.
+
+Only the CentOS boxes are prepared automatically. For `VM_BOX=ubuntu`, add
+`generic/ubuntu2204` and build `generic/ubuntu2204-ceph` yourself.
 
 ## Networking setup
 

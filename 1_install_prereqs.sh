@@ -36,6 +36,70 @@ check_success() {
     fi
 }
 
+# Vagrant boxes are stored once, in a store shared by all users, instead of
+# in every user's ~/.vagrant.d/boxes. Each user's boxes directory is a symlink to it.
+GLOBAL_BOXES_DIR="/var/lib/vagrant/boxes"
+
+# Move a user's boxes into the shared store (dropping copies it already has)
+# and replace the user's boxes directory with a symlink to it
+link_user_boxes() {
+    local user=$1
+    local home
+    home=$(getent passwd "$user" | cut -d: -f6)
+    if [ -z "$home" ] || [ ! -d "$home" ]; then
+        return 0
+    fi
+    local boxes="$home/.vagrant.d/boxes"
+
+    if [ -L "$boxes" ] && [ "$(readlink -f "$boxes")" = "$GLOBAL_BOXES_DIR" ]; then
+        return 0
+    fi
+
+    if [ -d "$boxes" ] && [ ! -L "$boxes" ]; then
+        local name_dir name version_dir version file
+        for name_dir in "$boxes"/*/; do
+            [ -d "$name_dir" ] || continue
+            name=$(basename "$name_dir")
+            mkdir -p "$GLOBAL_BOXES_DIR/$name"
+            for version_dir in "$boxes/$name"/*/; do
+                [ -d "$version_dir" ] || continue
+                version=$(basename "$version_dir")
+                if [ -e "$GLOBAL_BOXES_DIR/$name/$version" ]; then
+                    echo "Removing $user's copy of $name $version (already in $GLOBAL_BOXES_DIR)"
+                else
+                    echo "Moving $user's $name $version to $GLOBAL_BOXES_DIR"
+                    mv "$boxes/$name/$version" "$GLOBAL_BOXES_DIR/$name/"
+                fi
+            done
+            # Box metadata such as metadata_url
+            for file in "$boxes/$name"/*; do
+                if [ -f "$file" ] && [ ! -e "$GLOBAL_BOXES_DIR/$name/$(basename "$file")" ]; then
+                    mv "$file" "$GLOBAL_BOXES_DIR/$name/"
+                fi
+            done
+        done
+        rm -rf "$boxes"
+    fi
+
+    rm -f "$boxes"
+    install -d -o "$user" -g "$(id -gn "$user")" "$home/.vagrant.d"
+    ln -s "$GLOBAL_BOXES_DIR" "$boxes"
+    chown -h "$user:" "$boxes"
+    echo "Linked $boxes to $GLOBAL_BOXES_DIR"
+}
+
+# Link every libvirt user (including Jenkins) and the invoking user to the shared store
+setup_global_boxes() {
+    install -d -m 2775 -g libvirt "$GLOBAL_BOXES_DIR"
+    check_success "!!"
+
+    local user
+    for user in $( { echo "$1"; getent group libvirt | cut -d: -f4 | tr ',' '\n'; } | sort -u); do
+        link_user_boxes "$user"
+        check_success "!!"
+    done
+}
+
 user_exists() {
     id "$1" &>/dev/null
 }
@@ -88,11 +152,17 @@ post_install_common() {
     sudo -u "$vagrant_user" -H vagrant plugin install vagrant-libvirt
     check_success "!!"
 
-    # Add vagrant boxes
-    # this operation requires no sudo privilages
-    # we need it at preparation stage to prevent
-    # 'vagrant up' failure.
-    sudo -u "$vagrant_user" -H ./vagrant_box.sh
+    setup_global_boxes "$vagrant_user"
+
+    # Download the base box and build the -ceph box (precompiled bluestore) for the
+    # storage nodes into the shared store. Boxes that already exist are skipped.
+    # 2_provision_VMs.sh never downloads boxes, it fails if they are missing.
+    sudo -u "$vagrant_user" -H ./vagrant_box.sh --ceph
+    check_success "!!"
+
+    # Let every libvirt user read the boxes, and update them through this script
+    chgrp -R libvirt "$GLOBAL_BOXES_DIR"
+    chmod -R g+rwX,o+rX "$GLOBAL_BOXES_DIR"
     check_success "!!"
 
 }

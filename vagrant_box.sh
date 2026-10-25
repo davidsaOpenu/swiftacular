@@ -41,7 +41,7 @@ EOF
 }
 
 # Add base boxes
-vagrant box list | grep -q 'eurolinux-vagrant/centos-stream-9' || \
+vagrant box list | grep -q '^eurolinux-vagrant/centos-stream-9 ' || \
     vagrant box add eurolinux-vagrant/centos-stream-9 --provider libvirt
 
 # Customize if --ceph flag
