@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "042d79e8_4bee086c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1007990
+      },
+      "writtenOn": "2026-10-25T11:52:24Z",
+      "side": 1,
+      "message": "v: https://192.114.0.189:8080/jenkins/job/swiftacular/8/",
+      "revId": "5f645fb00a67e619e1f44aee38b9f719f7d4b942",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
