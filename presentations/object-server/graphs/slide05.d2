@@ -5,7 +5,7 @@ d: "DiskFile" {
   grid-gap: 1
   style.fill: "#2eb872"
 
-  o: "When open" {
+  o: "When open\n(after open())" {
     width: 150
     height: 200
 
@@ -33,13 +33,13 @@ o: "Results" {
   *.shape: hexagon
 }
 
-d -> r: "reader()"
+d.o -> r: "reader()"
 r -> o.d: "for chunk in"
-d -> o.m: "get_metadata()"
+d.o -> o.m: "get_metadata()"
 
-d -> w: "create() / writer()"
+d.a -> w: "create() / writer()"
 w -> w: "write(chunk)"
 w -> o.s: "put(metadata)"
 
-d -> o.e: "delete()"
-d -> o.u: "write_metadata(metadata)"
+d.a -> o.e: "delete()"
+d.a -> o.u: "write_metadata(metadata)"

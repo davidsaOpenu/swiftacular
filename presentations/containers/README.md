@@ -8,7 +8,7 @@ get its own image alongside it.
 A presentation selects one by symlinking:
 
 ```sh
-ln -s ../../containers/d2marp my-presentation/container
+ln -s ../containers/d2marp my-presentation/container
 ```
 
 Images are built once per unique target and reused, so several presentations
@@ -26,7 +26,8 @@ has to hold up its end of that.
 The presentation directory is bind-mounted at `/src` and its `build.sh` is
 executed with no arguments. The image needs a `bash` capable of running it, plus
 every tool that script invokes. Nothing is installed at run time — the container
-gets no network and no writable root.
+runs with `--network none` and `--read-only`; only `/src`, `/tmp` and
+`/home/user` (both tmpfs) are writable.
 
 ```dockerfile
 WORKDIR /src
@@ -47,8 +48,9 @@ USER user
 `USER` matters as well as the `--user` flag: it fixes `$HOME` and makes the
 image behave the same when someone runs it by hand for debugging.
 
-Keep this as the last layer that depends on `BUILD_UID`, so changing the UID
-only invalidates the tail of the build cache.
+Declare `ARG BUILD_UID` just above this, not at the top: an `ARG` is visible to
+every later `RUN`, so changing the UID only invalidates the tail of the build
+cache if nothing before it can see it.
 
 ### Ship the entrypoint
 
@@ -91,10 +93,13 @@ if a given deck ever needs to be rebuilt byte-for-byte years later.
 Clean up in the same layer that installs, or the cleanup does nothing:
 
 ```dockerfile
-RUN apt-get update && apt-get -y install ... && apt-get clean
+RUN apt-get update && apt-get -y install --no-install-recommends ... \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN npm install -g ... && npm cache clean --force
-RUN go install ... && go clean -cache -modcache
 ```
+
+Build-only toolchains (Go for d2, say) belong in a separate stage, with just
+the binary copied into the final image.
 
 ## Naming
 
@@ -113,6 +118,8 @@ names short and lowercase and the tag will look like you chose it.
   ```sh
   docker build -t test-image containers/<name>
   docker run --rm -v "$PWD/my-presentation:/src" \
+      --network none --read-only \
+      --tmpfs /tmp:mode=1777 --tmpfs /home/user:mode=1777 \
       --user "4099:$(id -g)" test-image /src/build.sh
   ```
 

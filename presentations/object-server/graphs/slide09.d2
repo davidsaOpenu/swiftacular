@@ -4,17 +4,17 @@ grid-rows: 1
 before: "During write" {
   grid-rows: 1
 
-  tmp: "/tmp/" {
+  tmp: "<device>/tmp/" {
     style.fill: "#fdecec"
     grid-rows: 1
-    f: "120.data" {
+    f: "tmpXXXXXX" {
       grid-rows: 4
       shape: page
       style.stroke-dash: 3
       c1: "chunk"
       c2: "chunk"
       c3: "chunk" {style.font-color: "#c9ccd1"}
-      m: "metadata" {style.font-color: "#c9ccd1"}
+      m: "xattr: metadata" {style.font-color: "#c9ccd1"; style.stroke-dash: 3}
     }
   }
   hash: "/<suffix>/<hash>/" {
@@ -25,7 +25,7 @@ before: "During write" {
       shape: page
       c1: "chunk"
       c2: "chunk"
-      m: "metadata"
+      m: "xattr: metadata" {style.stroke-dash: 3}
     }
   }
 }
@@ -37,12 +37,13 @@ after: "After write" {
     grid-rows: 1
 
     style.fill: "#e6f4ea"
-    a: "110.data" {
+    a: "110.data (unlinked)" {
       grid-rows: 3
       shape: page
+      style.stroke-dash: 3
       c1: "chunk"
       c2: "chunk"
-      m: "metadata"
+      m: "xattr: metadata" {style.stroke-dash: 3}
     }
     b: "120.data" {
       grid-rows: 4
@@ -50,7 +51,7 @@ after: "After write" {
       c1: "chunk"
       c2: "chunk"
       c3: "chunk"
-      m: "metadata"
+      m: "xattr: metadata" {style.stroke-dash: 3}
     }
   }
 }

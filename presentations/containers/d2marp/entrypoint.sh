@@ -18,8 +18,6 @@ reclaim() {
 }
 
 forward() {
-	reclaim &
-
 	kill -s "$1" "$child" 2> /dev/null
 	return
 }
@@ -30,13 +28,14 @@ reclaim
 
 command "$@" &
 child="$!"
+ret=0
 
 trap 'forward TERM' TERM
 trap 'forward INT'  INT
 trap 'forward HUP'  HUP
 trap 'forward QUIT' QUIT
 
-# kill -0 checks if the proccess exists
+# kill -0 checks if the process exists
 while kill -0 "$child" 2> /dev/null; do
 	wait "$child" && ret="$?" || ret="$?"
 done

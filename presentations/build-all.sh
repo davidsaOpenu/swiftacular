@@ -174,6 +174,8 @@ presentation() {
 
 	error=""
 	docker run --rm $DOCKER_TTY \
+		--network none --read-only \
+		--tmpfs /tmp:mode=1777 --tmpfs /home/user:mode=1777 \
 		--user "$BUILD_UID:$USER_GID" \
 		-v "$presdir:/src" \
 		"$conid" "/src/build.sh" \
@@ -202,19 +204,24 @@ presentation() {
 	log "[$name]" Done
 }
 
+is_presentation() {
+	[[ -e "$1/build.sh" && -e "$1/container" ]]
+}
+
 if [[ -v "1" ]]; then
+	dir="$BASE_DIR/$(basename "$1")"
+	if ! is_presentation "$dir"; then
+		log "ERROR: $dir is not a presentation (needs build.sh and container/)"
+		exit 1
+	fi
 	mkdir -p "$DIST_DIR"
-	presentation "$BASE_DIR/$1"
+	presentation "$dir"
 else
 	rm -rf "$DIST_DIR"
 	mkdir -p "$DIST_DIR"
 
 	for dir in "$BASE_DIR"/*; do
-		if [[ ! -e "$dir/build.sh" ]]; then
-			true
-		elif [[ ! -e "$dir/container" ]]; then
-			true
-		else
+		if is_presentation "$dir"; then
 			presentation "$dir"
 		fi
 	done
