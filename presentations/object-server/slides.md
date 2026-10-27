@@ -14,91 +14,140 @@ style: |
 # The Swift Object Backend
 
 Ziv Entin · 2026-07-03
-![](images/swift.jpg)
+
+![w:900](images/swift.jpg)
 
 ---
 
 # Objectives
 
 - How requests for objects are handled
-- How does swift store objects on disk
-- What we can do to change this process
+- How Swift stores objects on disk
+- What we can change in this process
 
 ---
 
 # Request path
-A request for an object goes through several layers before it reaches the disk. The proxy and ring decide where, The object server does as it's told.
+The proxy and ring decide where; the object server does as it's told.
 
 ![](graphs/slide03.svg)
+
+<!--
+A request for an object goes through several layers before it reaches the disk.
+-->
 
 ---
 
 # The storage classes
-When the object server reaches for storage, it uses a DiskFileManager and DiskFiles to do so. This is the part of Swift responsible for disk operations. Swift provides two DiskFile families: one for replication and one for erasure coding. In addition, we can create our own.
+The object server reaches storage through a DiskFileManager and its DiskFiles.
 
 ![](images/classtree.svg)
+
+<!--
+This is the part of Swift responsible for disk operations. Swift provides two
+DiskFile families: one for replication and one for erasure coding. In addition,
+we can create our own.
+-->
 
 ---
 
 # What DiskFile does
-DiskFile is the interface for an object. It includes a reader, a writer and some direct operations. This interface is also the documented contract any replacement would need to fulfill.
+DiskFile is the per-object interface: a reader, a writer, and direct operations.
 
 ![h:540](graphs/slide05.svg)
 
+<!--
+This interface is also the documented contract any replacement would need to
+fulfill. reader() and get_metadata() need the DiskFile to be opened first;
+writing, deleting and updating metadata do not.
+-->
 
 ---
 
 # Standard file layout
-By default object data is stored in <device>/objects/<partition>/<suffix>/<hash>/<ts>.<ext> under the node's directory. These are examples of how different objects look on disk.
+Objects live at `<device>/objects/<partition>/<suffix>/<hash>/<ts>.<ext>`.
 
 ![](graphs/slide06.svg)
+
+<!--
+Temporary files live outside objects/, in <device>/tmp. These are examples of
+how different objects look on disk.
+-->
 
 ---
 
 # Standard write
-Objects are written in steps. First create a temporary file. Second fill it with the objects data. Lastly attach the objects metadata to the file and move it into place.
+Write to a temp file, attach metadata as xattrs, then rename it into place.
 
 ![h:540](graphs/slide07.svg)
+
+<!--
+Objects are written in steps. First create a temporary file under
+<device>/tmp. Second fill it with the object's data. Lastly store the object's
+metadata in the file's xattrs, fsync, and rename it to <ts>.data in the hash
+directory.
+-->
 
 ---
 
 # Standard read
-Objects are read by sorting the files within their directory by their timestamps and picking the newest to process.
+Sort the object's files by timestamp and use the newest.
 
 ![](graphs/slide08.svg)
+
+<!--
+The newest .meta supplies the metadata, the newest .data the body; a newer .ts
+means the object is gone.
+-->
 
 ---
 
 # Safety
-Because files are first written to a temporary directory and only moved into the object's directory once complete, the reader never has to fear an incomplete file.
+Readers never see an incomplete file: it only appears via an atomic rename.
 
 ![h:540](graphs/slide09.svg)
+
+<!--
+Files are written in <device>/tmp and only renamed into the object's directory
+once complete. Afterwards the older .data is unlinked; a reader that already has
+it open keeps reading it until it closes the file.
+-->
 
 ---
 
 # What DiskFileManager does
-The object server gets DiskFiles from the Manager through get_diskfile(). But the Manager is called in other ways — shown here as ???.
+The object server gets DiskFiles through `get_diskfile()` — but other callers need more.
 
 ![h:540](graphs/slide10.svg)
 
+<!--
+The Manager is called in other ways too — shown here as ???.
+-->
+
 ---
 
-# Non standard functions
-While not standardized these are some of the additional functions used on a DiskFileManager. This list is incomplete and may change.
+# Beyond the DiskFile interface
+Swift's daemons also rely on these `diskfile.py` helpers and the layout they assume.
 
 ![](graphs/slide11.svg)
+
+<!--
+These are not part of any documented interface; most are module-level
+functions rather than DiskFileManager methods. This list is incomplete and may
+change.
+-->
 
 ---
 
 # Erasure Coding
-When erasure coding is used, more parts are added to the filename: '#<frag>' for the fragment index and '#d' indicating durability. The '#d' is added by an additional commit() step.
+EC adds `#<frag>` (fragment index) and `#d` (durable, set by `commit()`).
 
 ![](graphs/slide12.svg)
 
 ---
 
 # Custom DiskFileManager
-The DiskFileManager can be replaced if it meets the requirements. Doing so keeps Swift's core strengths, but loses the features that depend on the reference behavior.
+A replacement keeps Swift's core strengths but loses what depends on the reference layout.
 
 ![h:530](graphs/slide13.svg)
 

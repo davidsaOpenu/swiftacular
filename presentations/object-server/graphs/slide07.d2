@@ -2,7 +2,7 @@ direction: right
 grid-rows: 1
 
 c: "create() / writer()" {
-  f: "tmp/<ts>.data" {
+  f: "<device>/tmp/tmpXXXXXX" {
     grid-rows: 3
     shape: page
 
@@ -16,7 +16,7 @@ c: "create() / writer()" {
 }
 
 w: "write(chunk)" {
-  f: "tmp/<ts>.data" {
+  f: "<device>/tmp/tmpXXXXXX" {
     grid-rows: 4
     vertical-gap: 20
     shape: page
@@ -37,6 +37,6 @@ p: "put(metadata)" {
     c1: "chunk"
     c2: "chunk"
     cN: "chunk"
-    m: "metadata" {style.fill: "#d6f5d6"} # metadata added → green
+    m: "xattr: metadata" {style.fill: "#d6f5d6"; style.stroke-dash: 3} # metadata lives in xattrs, not the body
   }
 }

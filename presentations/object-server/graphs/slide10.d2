@@ -2,14 +2,14 @@ direction: right
 
 s: Swift {
   o: Object Server
-  c1: "" {shape: square}
-  c2: "" {shape: square}
+  c1: "Replicator"
+  c2: "Auditor"
 }
 
 m: DiskFileManager
 d: DiskFile
-a1: "" {shape: square}
-a2: "" {shape: square}
+a1: "?" {style.stroke-dash: 3}
+a2: "?" {style.stroke-dash: 3}
 
 s.o -> m: get_diskfile()
 s.c1 -> m: "???()"

@@ -2,7 +2,7 @@ direction: right
 grid-rows: 1
 
 c: "create() / writer()" {
-  f: "tmp/<ts>#<frag>.data" {
+  f: "<device>/tmp/tmpXXXXXX" {
     grid-rows: 3
     shape: page
     style.fill: "#d6f5d6"
@@ -17,7 +17,7 @@ p: "put(metadata)" {
     shape: page
     style.font-color: "#1a7f37"
     body: "..."
-    m: "metadata" {style.fill: "#d6f5d6"}
+    m: "xattr: metadata" {style.fill: "#d6f5d6"; style.stroke-dash: 3}
   }
 }
 
@@ -27,6 +27,6 @@ cm: "commit()" {
     style.font-color: "#1a7f37"
     shape: page
     body: "..."
-    m: "metadata"
+    m: "xattr: metadata" {style.stroke-dash: 3}
   }
 }

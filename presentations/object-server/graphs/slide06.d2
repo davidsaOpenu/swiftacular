@@ -1,15 +1,15 @@
-a: "<device>/objects/<partition>" {
+a: "<device>" {
   grid-rows: 1
 
   t: "/tmp/" {
     grid-rows: 3
-    n: "<ts>.data" {
+    n: "tmpXXXXXX" {
       shape: page
       style.font-color: "#1f6feb"
     }
   }
 
-  o1: "/<suffix>/<hash>/" {
+  o1: "/objects/<partition>/<suffix>/<hash>/" {
     grid-rows: 3
     style.font-color: "#0b8a8a"
     d1: "<ts>.data" {shape: page; style.font-color: "#1a7f37"}
@@ -18,17 +18,16 @@ a: "<device>/objects/<partition>" {
     e: |md
       - The object is currently being updated.
       - <span style="color:#1a7f37">&lt;ts&gt;.data</span> holds the current data.
-      - After the update, <span style="color:#1f6feb">&lt;ts&gt;.data</span> will hold the new data.
+      - Once renamed into place, <span style="color:#1f6feb">&lt;ts&gt;.data</span> will hold the new data.
     | {shape: document}
   }
 
-  o2: "/<suffix>/<hash>/" {
+  o2: "/objects/<partition>/<suffix>/<hash>/" {
     style.font-color: "#8250df"
     grid-rows: 3
 
     d: "<ts>.data" {shape: page; style.font-color: "#cf222e"}
     m: "<ts>.meta" {shape: page; style.font-color: "#d4a72c"}
-    e: "This object has its metadata updated\nThe object's data is in <ts>.data\nbut its metadata is in <ts>.meta" {shape: document}
     e: |md
       - This object had its metadata updated.
       - Data stays in <span style="color:#cf222e">&lt;ts&gt;.data</span>
@@ -36,7 +35,7 @@ a: "<device>/objects/<partition>" {
     | {shape: document}
   }
 
-  o3: "/<suffix>/<hash>/" {
+  o3: "/objects/<partition>/<suffix>/<hash>/" {
     style.font-color: "#bc4c00"
     grid-rows: 3
 
@@ -46,7 +45,7 @@ a: "<device>/objects/<partition>" {
     | {shape: document}
   }
 
-  t.n -> o1.d2: "move" {
+  t.n -> o1.d2: "rename" {
     style.font-color: black
     style.border-radius: 20
     style.bold: true
