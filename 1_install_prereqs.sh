@@ -6,7 +6,6 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
-USERNAME="stack"
 
 OS_ID=""
 VERSION_ID=""
@@ -104,17 +103,6 @@ user_exists() {
     id "$1" &>/dev/null
 }
 
-ensure_user_exists() {
-    if user_exists "$USERNAME"; then
-        echo "User $USERNAME already exists."
-    else
-        useradd -m "$USERNAME"
-        check_success "!!"
-
-        echo "$USERNAME:swiftaucular" | chpasswd
-        check_success "!!"
-    fi
-}
 
 post_install_common() {
     # Although the performancecopilot.metrics collection requires no special permissions,
