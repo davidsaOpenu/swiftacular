@@ -16,6 +16,24 @@
       "message": "A concurrent GET can still be reading this same cached object through Object::read(), which releases the GIL. That path reads state in require() and address(), while this assignment writes it without shared synchronization, creating a C++ data race. ChangedError handles storage changes but does not synchronize these accesses. Could we protect the shared state consistently across reads and replacement PUTs?",
       "revId": "8c8cb8aa6d1256232ac0e18d7ab3968366d8bfa8",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a24a8d4c_5b2645e1",
+        "filename": "bluestore/src/injection/backend.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 1039624
+      },
+      "writtenOn": "2026-10-30T07:14:34Z",
+      "side": 1,
+      "message": "While there is a data race I don\u0027t think it ever causes wrong behavior. Since read accepts both ACTIVE and OLD. And we switch from ACTIVE to OLD. I could be wrong though as I haven\u0027t looked at this code for a while",
+      "parentUuid": "95e2e086_8fcc6600",
+      "revId": "8c8cb8aa6d1256232ac0e18d7ab3968366d8bfa8",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     }
   ],
   "submitRequirementResults": []
